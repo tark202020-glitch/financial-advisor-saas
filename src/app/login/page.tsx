@@ -1,45 +1,16 @@
 "use client";
 
-import { useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useActionState } from 'react';
+import { login } from './actions';
 import { Lock, Mail, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
+const initialState = {
+    error: '',
+};
+
 export default function LoginPage() {
-    const router = useRouter();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const supabase = createClient();
-
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-
-        try {
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-
-            if (error) {
-                console.error("Login Error:", error.message);
-                setError(error.message); // e.g. "Invalid login credentials"
-                setLoading(false);
-            } else {
-                console.log("Login Success");
-                // Force hard navigation only to avoid router cache issues
-                window.location.href = '/dashboard';
-            }
-        } catch (err: any) {
-            console.error("Unexpected Error:", err);
-            setError("An unexpected error occurred.");
-            setLoading(false);
-        }
-    };
+    const [state, formAction, isPending] = useActionState(login, initialState);
 
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -53,10 +24,10 @@ export default function LoginPage() {
                 </div>
 
                 <div className="p-8">
-                    <form onSubmit={handleLogin} className="space-y-6">
-                        {error && (
+                    <form action={formAction} className="space-y-6">
+                        {state?.error && (
                             <div className="bg-red-50 text-red-500 p-3 rounded-lg text-sm font-medium border border-red-100">
-                                🛑 {error}
+                                🛑 {state.error}
                             </div>
                         )}
 
@@ -64,12 +35,11 @@ export default function LoginPage() {
                             <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
                             <div className="relative">
                                 <input
+                                    name="email"
                                     type="email"
                                     required
                                     className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
                                     placeholder="Enter your email"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
                                 />
                                 <Mail className="absolute left-3 top-3.5 text-slate-400" size={20} />
                             </div>
@@ -79,12 +49,11 @@ export default function LoginPage() {
                             <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
                             <div className="relative">
                                 <input
+                                    name="password"
                                     type="password"
                                     required
                                     className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
                                     placeholder="Enter your password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
                                 />
                                 <Lock className="absolute left-3 top-3.5 text-slate-400" size={20} />
                             </div>
@@ -98,10 +67,10 @@ export default function LoginPage() {
 
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={isPending}
                             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition flex items-center justify-center"
                         >
-                            {loading ? <Loader2 className="animate-spin" size={20} /> : 'Login'}
+                            {isPending ? <Loader2 className="animate-spin" size={20} /> : 'Login'}
                         </button>
                     </form>
 

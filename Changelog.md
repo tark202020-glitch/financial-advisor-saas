@@ -1,3 +1,12 @@
+## [Alpha V1.023] - 2026-02-08 22:30:00
+
+### 🚀 Login Refactor (Server Actions)
+- **Summary**: Login System migrated to Server Actions
+- **Detail**:
+  - **Stability**: 클라이언트 측 로그인 로직(`signInWithPassword`)을 제거하고 Next.js **Server Action**으로 이관
+  - **Redirect**: 서버 측에서 쿠키 설정 및 리다이렉트(`redirect('/dashboard')`)를 처리하여 브라우저 환경 변수(AdBlocker 등)로 인한 무한 로딩 해결
+- **Build Time**: 2026-02-08 22:30:00
+
 ## [Alpha V1.022] - 2026-02-08 22:00:00
 
 ### 🎨 Dashboard & Data Refactor
