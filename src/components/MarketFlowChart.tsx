@@ -193,8 +193,8 @@ export default function MarketFlowChart() {
                     <h3 className="font-bold text-slate-700 mb-4 border-b border-slate-100 pb-2">해외</h3>
                     <div>
                         <OverseasRow name="DOW" symbol=".DJI" />
-                        <OverseasRow name="NASDAQ" symbol=".IXIC" />
-                        <OverseasRow name="S&P500" symbol=".SPX" />
+                        <OverseasRow name="NASDAQ" symbol="COMP" />
+                        <OverseasRow name="S&P500" symbol="SPX" />
                         {/* <OverseasRow name="Hong Kong H" symbol="HSCEI" /> */}
                         {/* <OverseasRow name="Nikkei" symbol="N225" /> */}
                     </div>

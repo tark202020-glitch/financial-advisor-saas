@@ -1,3 +1,13 @@
+## [Alpha V1.035] - 2026-02-09 06:00:00
+
+### 🌏 Overseas Index Symbol Fix
+- **Summary**: Correct Symbols for NASDAQ & S&P500
+- **Detail**:
+  - **Symbol Correction**: KIS API에서 요구하는 올바른 심볼로 교체 (NASDAQ: `.IXIC` -> `COMP`, S&P500: `.SPX` -> `SPX`)
+  - **Exchange Code**: 각 지수에 맞는 거래소 코드 매핑 적용 (`COMP` -> `NAS`, `SPX` -> `NYS`)
+  - **Verification**: DOW(.DJI), NASDAQ(COMP), S&P500(SPX) 데이터 수신 확인 완료
+- **Build Time**: 2026-02-09 06:00:00
+
 ## [Alpha V1.034] - 2026-02-09 05:00:00
 
 ### 🌏 Overseas Index Fallback & Fix
