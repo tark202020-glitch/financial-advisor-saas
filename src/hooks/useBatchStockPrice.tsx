@@ -109,7 +109,7 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
                 price: wsItem.price,
                 change: wsItem.change,
                 changePercent: wsItem.rate,
-                time: wsItem.time
+                time: wsItem.time || 'Realtime'
             };
         }
 
