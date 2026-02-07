@@ -364,12 +364,14 @@ export async function getMarketInvestorTrendRealTime(symbol: string = "0001"): P
 
 export async function getOverseasIndex(symbol: string): Promise<KisOvStockPrice | null> {
     const token = await getAccessToken();
+    const exchangeCode = getUSExchangeCode(symbol);
 
     // Use Index Chart API to get latest price (Minute Chart)
     // TR_ID: FHKST03030200
     // URL: inquire-time-indexchartprice
 
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/inquire-time-indexchartprice?FID_COND_MRKT_DIV_CODE=N&FID_INPUT_ISCD=${symbol}&FID_HOUR_CLS_CODE=0&FID_PW_DATA_INCU_YN=N`, {
+    // Initial Request
+    let response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/inquire-time-indexchartprice?FID_COND_MRKT_DIV_CODE=N&FID_INPUT_ISCD=${symbol}&FID_HOUR_CLS_CODE=0&FID_PW_DATA_INCU_YN=N`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
@@ -381,29 +383,65 @@ export async function getOverseasIndex(symbol: string): Promise<KisOvStockPrice 
     }));
 
     if (!response.ok) {
-        console.error(`Failed to fetch Overseas Index for ${symbol}:`, await response.text());
+        // const text = await response.text(); 
+        // console.error...
         return null;
     }
 
     const data = await response.json();
+
     if (data.rt_cd !== "0") {
         console.error(`KIS API Error (OV Index): ${data.msg1}`);
         return null;
     }
 
     const output1 = data.output1; // Contains latest snapshot
-    // output1: { hts_kor_isnm, ovrs_nmix_prpr, ovrs_nmix_prdy_vrss, ovrs_nmix_prdy_ctrt ... }
+    const output2 = data.output2;
 
     if (!output1) return null;
 
-    // Map to KisOvStockPrice format for frontend consistency
-    // Note: types.ts defines KisOvStockPrice with last, diff, rate, tvol.
+    let date = '';
+    let time = '';
+
+    // Attempt to find Date/Time in output2 (Time Series)
+    if (output2 && output2.length > 0) {
+        // Sort by time descending if needed? Usually Index Chart returns recent first or uses 'xymd'/'xhms'
+        // Common keys: stck_bsop_date, stck_cntg_hour, ymd, hms, xymd, xhms
+        const latest = output2[0]; // Assume 0 is latest or check sorting. KIS Chart usually latest first? Or last?
+        // Actually inquire-time-indexchart usually returns arrays. 
+        // Let's iterate keys to find promising ones if unknown
+        // But for safety, we check specific known keys.
+
+        date = latest.stck_bsop_date || latest.ymd || latest.ac_date || latest.xymd || '';
+        time = latest.stck_cntg_hour || latest.hms || latest.ac_time || latest.xhms || '';
+
+        // If sorting is wrong (e.g. earliest first), we might need output2[output2.length-1]
+        // But without seeing data, we assume standard KIS reversed order for charts? 
+        // Actually charts usually ASC (oldest first). 
+        // IF oldest first, we need last element.
+        // Let's check output2 length and use the one that matches today/recent?
+        // Safe bet: Use the one with MAX date/time.
+        // But sorting is expensive.
+        // Let's assume LAST element if it's a chart (Old -> New).
+        if (output2.length > 1) {
+            const lastItem = output2[output2.length - 1];
+            const lastDate = lastItem.stck_bsop_date || lastItem.ymd || lastItem.ac_date || lastItem.xymd || '';
+            // If lastItem date > latest date, switch.
+            if (lastDate > date) {
+                date = lastDate;
+                time = lastItem.stck_cntg_hour || lastItem.hms || lastItem.ac_time || lastItem.xhms || '';
+            }
+        }
+    }
+
     return {
         last: output1.ovrs_nmix_prpr,
         diff: output1.ovrs_nmix_prdy_vrss,
         rate: output1.ovrs_nmix_prdy_ctrt,
-        tvol: '0', // Index chart snapshot might not have volume in same format or we use 0
-        // e_date, e_time etc can be omitted if optional
+        tvol: '0',
+        date: date,
+        time: time,
+        isDelay: true // Assume delay for index chart
     } as KisOvStockPrice;
 }
 

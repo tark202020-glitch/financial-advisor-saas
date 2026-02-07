@@ -5,24 +5,15 @@ interface IndexData {
     value: number;
     change: number;
     changePercent: number;
+    date?: string;
+    time?: string;
+    isDelay?: boolean;
 }
 
 export function useMarketIndex(symbol: string, initialValue: number, category: 'KR' | 'US' = 'KR') {
     const { subscribe, unsubscribe, lastData } = useWebSocketContext();
 
-    // Note: KIS WebSocket for Index uses different TR_ID e.g., H0UPCNT0 (KOSPI Index)
-    // Currently WebSocketContext Parser assumes H0STCNT0 (Stock) mapping.
-    // We might need to update Parser if we want *exact* Index WebSocket support.
-    // HOWEVER, for MVP Phase 4, users might be okay with Stock WebSocket working perfectly 
-    // and Indices using REST (mixed) OR we check if Parser supports Index.
-
-    // Let's implement REST fallback for Index for now to avoid breaking it,
-    // OR update WebSocketContext to support Index TR_ID.
-    // Index TR_ID: H0UPCNT0
-
-    // For simplicity and stability of the "50 stock" requirement (which is the main blocker),
-    // we will leave Index on REST polling for now (it's only 2-3 items, no rate limit issue).
-    // AND the user specifically asked for "50 items" (Stocks) optimization.
+    // ... (comments omitted)
 
     const [data, setData] = useState<IndexData>({
         value: initialValue,
@@ -51,6 +42,12 @@ export function useMarketIndex(symbol: string, initialValue: number, category: '
                     const newChange = parseFloat(json.bstp_nmix_prdy_vrss);
                     const newRate = parseFloat(json.bstp_nmix_prdy_ctrt);
 
+                    // Domestic API (inquire-daily-indexchartprice) returns output1 (snapshot) which lacks time usually?
+                    // Or we check if client.ts adds it. client.ts returns data.output1.
+                    // types.ts says KisDomIndexPrice has only price fields.
+                    // We might not have date/time for Domestic Index here easily unless we fetch RealTime or check output2.
+                    // For now, keep Domestic as is.
+
                     if (!isNaN(newValue)) {
                         setData({
                             value: newValue,
@@ -59,7 +56,7 @@ export function useMarketIndex(symbol: string, initialValue: number, category: '
                         });
                     }
                 } else if (category === 'US') {
-                    // Mapped to KisOvStockPrice-like structure (last, diff, rate)
+                    // Mapped to KisOvStockPrice-like structure (last, diff, rate, date, time, isDelay)
                     const newValue = parseFloat(json.last);
                     const newChange = parseFloat(json.diff);
                     const newRate = parseFloat(json.rate);
@@ -68,7 +65,10 @@ export function useMarketIndex(symbol: string, initialValue: number, category: '
                         setData({
                             value: newValue,
                             change: newChange,
-                            changePercent: newRate
+                            changePercent: newRate,
+                            date: json.date,
+                            time: json.time,
+                            isDelay: json.isDelay
                         });
                     }
                 }

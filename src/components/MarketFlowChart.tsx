@@ -100,11 +100,24 @@ function OverseasRow({ name, symbol }: { name: string, symbol: string }) {
     const hasData = indexData.value > 0;
     const isUp = indexData.change >= 0;
 
+    // Build Time String
+    // Format: "MM/DD HH:mm 지연" or "종가"
+    let timeStr = "";
+    if (indexData.date && indexData.time) {
+        // ymd: YYYYMMDD, time: HHMMSS
+        const mm = indexData.date.slice(4, 6);
+        const dd = indexData.date.slice(6, 8);
+        const HH = indexData.time.slice(0, 2);
+        const Min = indexData.time.slice(2, 4);
+        const status = indexData.isDelay ? "지연" : "종가"; // Or Check time?
+        timeStr = `${mm}/${dd} ${HH}:${Min} ${status}`;
+    }
+
     return (
         <div className="flex items-center justify-between py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50 px-2 transition-colors">
             <div>
                 <div className="font-bold text-slate-700">{name}</div>
-                {/* <div className="text-[10px] text-slate-400">02/06 00:00 지연</div> */}
+                {timeStr && <div className="text-[10px] text-slate-400">{timeStr}</div>}
             </div>
             <div className="text-right">
                 <div className="font-bold text-slate-800">{hasData ? indexData.value.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</div>

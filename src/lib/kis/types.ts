@@ -21,6 +21,9 @@ export interface KisOvStockPrice {
     e_time?: string; // 현지 시간 (HHMMSS)
     ymd?: string;
     t?: string;
+    date?: string; // Formatted Date (e.g. 20240206)
+    time?: string; // Formatted Time (e.g. 000000)
+    isDelay?: boolean; // Delayed data (15min)
 }
 
 export interface KisDomIndexPrice {

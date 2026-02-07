@@ -1,3 +1,13 @@
+## [Alpha V1.033] - 2026-02-09 04:00:00
+
+### 🌏 Overseas Index & Env Fix
+- **Summary**: Fix Overseas Index Display (Date/Time) & Restore KIS API Keys
+- **Detail**:
+  - **Env Fix**: `.env.local`에 누락된 KIS API Key 복구 (Token 발급 에러 해결)
+  - **Overseas Index**: 해외지수(다우, 나스닥 등) 표출 시 날짜/시간 및 지연/종가 상태 표시 기능 추가 (`output2` Time Series 활용)
+  - **Cleanup**: 디버깅용 API 및 로그 파일 제거
+- **Build Time**: 2026-02-09 04:00:00
+
 ## [Alpha V1.032] - 2026-02-09 03:30:00
 
 ### 🖥️ Dashboard UX Redesign
