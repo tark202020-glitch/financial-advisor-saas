@@ -23,6 +23,20 @@ export default function LoginPage() {
     };
 
     useEffect(() => {
+        // Auto-cleanup on mount to prevent stale sessions
+        const cleanupSession = () => {
+            // Clear specifically Supabase auth tokens
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                    localStorage.removeItem(key);
+                }
+            });
+            // Also try strict signOut (catch errors silent)
+            supabase.auth.signOut().catch(() => { });
+            console.log("Auto-cleanup: Stale sessions cleared.");
+        };
+        cleanupSession();
+
         const checkConnection = async () => {
             const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
             if (!supabaseUrl) return;
@@ -78,6 +92,9 @@ export default function LoginPage() {
         console.log("Login submitted", { email });
         setLoading(true);
         setError(null);
+
+        // Pre-emptive clear for the login action (User Request)
+        localStorage.clear();
 
         try {
             console.log("Calling supabase.auth.signInWithPassword with timeout...");
@@ -185,7 +202,7 @@ export default function LoginPage() {
                             disabled={loading}
                             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition flex items-center justify-center"
                         >
-                            {loading ? <Loader2 className="animate-spin" size={20} /> : 'Sign In'}
+                            {loading ? <Loader2 className="animate-spin" size={20} /> : 'Login'}
                         </button>
                     </form>
 

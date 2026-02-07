@@ -1,3 +1,13 @@
+## [Alpha V1.015] - 2026-02-08 20:40:00
+
+### ⚡ Optimization
+- **Summary**: Login Flow Optimization
+- **Detail**:
+  - 버튼 텍스트 변경: "Sign In" -> "Login"
+  - 로그인 페이지 진입 시 자동으로 오래된 세션 데이터 정리 (무한 로딩 방지)
+  - 로그인 시도 직전 로컬 스토리지 초기화 로직 추가
+- **Build Time**: 2026-02-08 20:40:00
+
 ## [Alpha V1.014] - 2026-02-08 20:35:00
 
 ### 🚑 Hotfix
