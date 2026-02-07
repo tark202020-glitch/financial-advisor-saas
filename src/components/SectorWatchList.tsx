@@ -52,6 +52,7 @@ export default function SectorWatchList({ title, stocks, onAddClick }: SectorWat
                             onClick={setSelectedStock}
                             // Pass Batch Data
                             overrideData={getStockData(stock.symbol)}
+                            disableSelfFetch={true}
                             // We don't really need onTimeUpdate for batch usually, 
                             // but we can keep it if SectorRowItem emits it.
                             onTimeUpdate={setLastUpdated}

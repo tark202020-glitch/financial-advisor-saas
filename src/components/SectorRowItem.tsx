@@ -14,11 +14,12 @@ interface SectorRowItemProps {
     onClick: (stock: Stock) => void;
     onTimeUpdate?: (time: string) => void;
     overrideData?: any; // Accepting injected data from Batch
+    disableSelfFetch?: boolean;
 }
 
-export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, overrideData }: SectorRowItemProps) {
-    // Use custom hook to get real-time price ONLY if overrideData is NOT provided
-    const shouldSkip = !!overrideData;
+export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, overrideData, disableSelfFetch = false }: SectorRowItemProps) {
+    // Use custom hook to get real-time price ONLY if overrideData is NOT provided AND self-fetch is enabled
+    const shouldSkip = !!overrideData || disableSelfFetch;
     const hookData = useStockPrice(stock.symbol, stock.price, category, { skip: shouldSkip });
 
     const stockData = overrideData || hookData;

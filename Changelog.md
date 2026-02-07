@@ -1,3 +1,12 @@
+## [Alpha V1.026] - 2026-02-09 00:30:00
+
+### 🚑 Deep Fix (Data Flood Prevention)
+- **Summary**: Fix Massive 500 Errors & Data Loss
+- **Detail**:
+  - **Flooding Fix**: `SectorWatchList` 내의 모든 종목이 동시에 개별 API를 호출하여 서버 Rate Limit을 초과하던 문제 해결 (개별 Fetch 비활성화 및 Batch 전용 모드 적용)
+  - **Stability**: 이제 리스트 로딩 시 Batch API 하나만 호출되므로 서버 부하가 95% 이상 감소하고 데이터 로딩 성공률 향상 예상
+- **Build Time**: 2026-02-09 00:30:00
+
 ## [Alpha V1.025] - 2026-02-09 00:00:00
 
 ### 🎨 UI & Data Stability
