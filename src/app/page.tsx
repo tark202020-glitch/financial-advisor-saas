@@ -52,13 +52,13 @@ export default function LandingPage() {
             <Link href="/dashboard" className="w-full sm:w-auto px-8 py-4 bg-white text-slate-900 rounded-xl font-bold text-lg hover:bg-slate-100 transition shadow-xl flex items-center justify-center gap-2">
               대시보드 체험하기 <ArrowRight size={20} />
             </Link>
-            <Link href="/about" className="w-full sm:w-auto px-8 py-4 bg-slate-800 text-slate-300 rounded-xl font-medium text-lg hover:bg-slate-700 transition border border-slate-700 flex items-center justify-center">
+            <Link href="#features" className="w-full sm:w-auto px-8 py-4 bg-slate-800 text-slate-300 rounded-xl font-medium text-lg hover:bg-slate-700 transition border border-slate-700 flex items-center justify-center">
               더 알아보기
             </Link>
           </div>
 
           {/* Feature Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-16 text-left">
+          <div id="features" className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-16 text-left">
             <FeatureCard
               icon={<BarChart3 className="text-blue-400" />}
               title="실시간 수급 분석"
