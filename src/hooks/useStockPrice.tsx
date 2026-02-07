@@ -8,9 +8,11 @@ interface StockData {
     time?: string; // Add time field
 }
 
-export function useStockPrice(symbol: string, initialPrice: number, category: string = 'KR'): StockData | null {
+export function useStockPrice(symbol: string, initialPrice: number, category: string = 'KR', options?: { skip?: boolean }): StockData | null {
     const { subscribe, unsubscribe, lastData } = useWebSocketContext();
     const [restData, setRestData] = useState<StockData | null>(null);
+
+    const shouldSkip = options?.skip;
 
     // REST Fallback (Critical for Vercel where WSS might be blocked)
     useEffect(() => {
@@ -63,16 +65,18 @@ export function useStockPrice(symbol: string, initialPrice: number, category: st
         };
 
         // Trigger Fallback if no WS data immediate
-        if (!lastData.get(symbol)) {
+        if (!shouldSkip && !lastData.get(symbol)) {
             fetchFallback();
         }
 
         return () => { isMounted = false; };
-    }, [symbol, category, lastData]);
+    }, [symbol, category, lastData, shouldSkip]);
 
 
     // WebSocket Subscription
     useEffect(() => {
+        if (shouldSkip) return;
+
         if (category === 'KR' || category === 'US') {
             subscribe(symbol, category as any);
         }
@@ -81,7 +85,7 @@ export function useStockPrice(symbol: string, initialPrice: number, category: st
                 unsubscribe(symbol, category as any);
             }
         };
-    }, [symbol, category, subscribe, unsubscribe]);
+    }, [symbol, category, subscribe, unsubscribe, shouldSkip]);
 
     // Priority: WebSocket -> REST -> Null
     const wsData = lastData.get(symbol);

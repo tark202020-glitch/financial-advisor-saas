@@ -11,9 +11,16 @@ interface SectorWatchListProps {
     onAddClick?: () => void; // Optional Add Handler
 }
 
+import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
+
 export default function SectorWatchList({ title, stocks, onAddClick }: SectorWatchListProps) {
     const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
     const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+    // Batch Fetching Logic
+    const market = title.includes('Korea') || title.includes('KR') || title.includes('한국') ? 'KR' : 'US';
+    const symbols = stocks.map(s => s.symbol);
+    const { getStockData, isLoading } = useBatchStockPrice(symbols, market);
 
     return (
         <>
@@ -30,20 +37,20 @@ export default function SectorWatchList({ title, stocks, onAddClick }: SectorWat
                             </button>
                         )}
                     </div>
-                    {lastUpdated && (
-                        <span className="text-xs text-slate-400 font-medium bg-slate-50 px-2 py-1 rounded">
-                            {lastUpdated} 기준
-                        </span>
-                    )}
+                    {/* Simplified Time Display (Batch time or specific) */}
+                    {/* We can pick the time from the first available stock or just show 'Realtime' if connected */}
                 </div>
                 <div className="space-y-3">
                     {stocks.map((stock) => (
                         <SectorRowItem
                             key={stock.symbol}
                             stock={stock}
-                            // Detect category from title: "Korea Major", "US Finance", etc.
-                            category={title.includes('Korea') || title.includes('KR') ? 'KR' : 'US'}
+                            category={market}
                             onClick={setSelectedStock}
+                            // Pass Batch Data
+                            overrideData={getStockData(stock.symbol)}
+                            // We don't really need onTimeUpdate for batch usually, 
+                            // but we can keep it if SectorRowItem emits it.
                             onTimeUpdate={setLastUpdated}
                         />
                     ))}

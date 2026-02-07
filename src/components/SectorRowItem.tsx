@@ -13,17 +13,15 @@ interface SectorRowItemProps {
     category?: string;
     onClick: (stock: Stock) => void;
     onTimeUpdate?: (time: string) => void;
+    overrideData?: any; // Accepting injected data from Batch
 }
 
-export default function SectorRowItem({ stock, onClick, category, onTimeUpdate }: SectorRowItemProps) {
-    // Use custom hook to get real-time price
-    // We pass 'category' to help decide if it is KR or US stock logic
-    // If 'category' is not passed, we might guess from symbol or parent title logic, 
-    // but for now let's assume parent title logic is handled in useStockPrice or passed down.
-    // Actually useStockPrice takes (symbol, initialPrice, category). 
-    // We need to pass category.
+export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, overrideData }: SectorRowItemProps) {
+    // Use custom hook to get real-time price ONLY if overrideData is NOT provided
+    const shouldSkip = !!overrideData;
+    const hookData = useStockPrice(stock.symbol, stock.price, category, { skip: shouldSkip });
 
-    const stockData = useStockPrice(stock.symbol, stock.price, category);
+    const stockData = overrideData || hookData;
 
     const price = stockData ? stockData.price : 0;
     const change = stockData ? stockData.change : 0;

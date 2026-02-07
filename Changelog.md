@@ -1,3 +1,13 @@
+## [Alpha V1.005] - 2026-02-07 20:49:00
+
+### 🚀 Performance Update
+- **Summary**: Batch Data Fetching Implementation
+- **Detail**: 
+  - 대시보드 데이터 로딩 안정성 확보를 위해 **일괄 요청(Batch Fetching)** 시스템 도입
+  - 기존 30+개 개별 요청 -> 6개 그룹 요청으로 최적화 (API 차단 방지)
+  - 서버 사이드 병렬 처리(Concurrency Control) 적용
+- **Build Time**: 2026-02-07 20:49:00
+
 ## [Alpha V1.004] - 2026-02-07 20:10:00
 
 ### 🔄 Bug Fix
