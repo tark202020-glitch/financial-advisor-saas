@@ -1,3 +1,13 @@
+## [Alpha V1.032] - 2026-02-09 03:30:00
+
+### 🖥️ Dashboard UX Redesign
+- **Summary**: Modern Dashboard Header & Layout Update
+- **Detail**:
+  - **지수종합 카드**: KOSPI, KOSDAQ의 지수와 당일 투자자 순매수 현황을 한눈에 볼 수 있는 대형 카드 레이아웃 적용
+  - **해외지수 리스트**: 주요 해외 지수(DOW, NASDAQ, S&P 500)를 컴팩트한 리스트 형태로 제공
+  - **마켓트렌드 테이블**: 시장별(코스피, 코스닥) 외국인/개인/기관 순매수 현황을 직관적인 테이블로 구성
+- **Build Time**: 2026-02-09 03:30:00
+
 ## [Alpha V1.031] - 2026-02-09 03:00:00
 
 ### 🟢 Real-Time Investor Data (Intraday)
