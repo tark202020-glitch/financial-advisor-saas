@@ -47,7 +47,7 @@ function DomesticIndexCard({ name, symbol, marketCode }: { name: string, symbol:
     }, [marketCode]);
 
     const isUp = indexData.change >= 0;
-    const fmt = (n: number) => Math.abs(n / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }); // 억 unit
+    const fmt = (n: number) => Math.abs(n / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // 억 unit
 
     return (
         <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex-1">
