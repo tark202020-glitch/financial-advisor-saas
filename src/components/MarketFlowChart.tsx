@@ -56,8 +56,8 @@ function IndexDisplay({ indexName }: { indexName: string }) {
         isStockProxy = true;
         category = 'US';
     } else if (indexName === 'S&P 500') {
-        symbol = 'SPY';
-        isStockProxy = true;
+        symbol = 'SPX'; // Try SPX for Index
+        isStockProxy = true; // Still uses Overseas Price API
         category = 'US';
     }
 

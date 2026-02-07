@@ -272,7 +272,17 @@ export async function getMarketInvestorTrend(symbol: string = "0001"): Promise<a
 
     // TR_ID: FHKUP03500300 (Upjong/Index Daily Investor Net Buying)
     // URL: /uapi/domestic-stock/v1/quotations/inquire-daily-index-investor
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-index-investor?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=D`, {
+    // Start Date: 30 days ago? Or just same day? Daily Investor usually returns list.
+    // If we leave dates empty, it might default or error. Let's try explicit 1 month range.
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10).replace(/-/g, "");
+
+    // 1 Month ago
+    const past = new Date();
+    past.setMonth(past.getMonth() - 1);
+    const pastStr = past.toISOString().slice(0, 10).replace(/-/g, "");
+
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-index-investor?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${pastStr}&FID_INPUT_DATE_2=${todayStr}&FID_PERIOD_DIV_CODE=D`, {
         method: "GET",
         headers: {
             "content-type": "application/json",

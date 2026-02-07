@@ -1,3 +1,13 @@
+## [Alpha V1.028] - 2026-02-09 01:30:00
+
+### 🛡️ System Stabilization
+- **Summary**: Rate Limit Tightening & Investor API Fix
+- **Detail**:
+  - **Rate Limit**: 서버 요청 제한을 강화 (Concurrency 5->3, Interval 100ms->300ms)하여 500 에러 원천 차단
+  - **Investor API**: 투자자별 순매수 데이터 요청 시 날짜 파라미터(최근 1개월)를 명시하여 호출 오류 수정
+  - **S&P 500**: (TODO) 인덱스 심볼 점검 예정
+- **Build Time**: 2026-02-09 01:30:00
+
 ## [Alpha V1.027] - 2026-02-09 01:00:00
 
 ### 🚑 Deep Fix (Data Blocking & WS Stability)

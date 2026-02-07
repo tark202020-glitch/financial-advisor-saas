@@ -60,5 +60,5 @@ export class RateLimiter {
 }
 
 // Global instance
-// Limit to 5 concurrent requests, with at least 100ms between start times
-export const kisRateLimiter = new RateLimiter(5, 100);
+// Limit to 3 concurrent requests, with at least 300ms between start times to be safe
+export const kisRateLimiter = new RateLimiter(3, 300);
