@@ -25,7 +25,7 @@ interface WebSocketContextType {
 }
 
 // --- Constants ---
-const WS_URL = "ws://ops.koreainvestment.com:21000";
+const WS_URL = "wss://ops.koreainvestment.com:21000";
 
 // TR IDs
 const TR_ID_KR = "H0STCNT0"; // Domestic Realtime Price
@@ -34,6 +34,9 @@ const TR_ID_US = "HDFSCNT0"; // Overseas Realtime Price
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 export function WebSocketProvider({ children }: { children: ReactNode }) {
+    // VERSION LOG FOR DEBUGGING DEPLOYMENT
+    useEffect(() => { console.log("[SYS] WebSocketProvider Mounted - Version: WSS_FIX_APPLIED_v2"); }, []);
+
     const [status, setStatus] = useState<WebSocketStatus>('disconnected');
     const [approvalKey, setApprovalKey] = useState<string | null>(null);
     const ws = useRef<WebSocket | null>(null);
@@ -122,33 +125,38 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             if (ws.current?.readyState === WebSocket.OPEN) return;
 
             setStatus('connecting');
-            const socket = new WebSocket(WS_URL);
-            ws.current = socket;
+            try {
+                const socket = new WebSocket("wss://ops.koreainvestment.com:21000");
+                ws.current = socket;
 
-            socket.onopen = () => {
-                console.log("[WS] Connected");
-                setStatus('connected');
-                addLog("[SYS] Connected to KIS WS");
-            };
+                socket.onopen = () => {
+                    console.log("[WS] Connected");
+                    setStatus('connected');
+                    addLog("[SYS] Connected to KIS WS");
+                };
 
-            socket.onmessage = (event) => {
-                if (typeof event.data === 'string') {
-                    handleMessage(event.data);
-                }
-            };
+                socket.onmessage = (event) => {
+                    if (typeof event.data === 'string') {
+                        handleMessage(event.data);
+                    }
+                };
 
-            socket.onclose = () => {
-                console.log("[WS] Disconnected");
-                setStatus('disconnected');
-                addLog("[SYS] Disconnected");
-                setTimeout(connect, 3000); // Auto Reconnect
-            };
+                socket.onclose = () => {
+                    console.log("[WS] Disconnected");
+                    setStatus('disconnected');
+                    addLog("[SYS] Disconnected");
+                    setTimeout(connect, 3000); // Auto Reconnect
+                };
 
-            socket.onerror = (err) => {
-                console.error("[WS] Error", err);
+                socket.onerror = (err) => {
+                    console.error("[WS] Error", err);
+                    setStatus('error');
+                    addLog("[SYS] Connection Error");
+                };
+            } catch (e) {
+                console.error("[WS] Construction Error", e);
                 setStatus('error');
-                addLog("[SYS] Connection Error");
-            };
+            }
         };
 
         connect();

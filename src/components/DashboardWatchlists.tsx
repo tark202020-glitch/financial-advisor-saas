@@ -27,7 +27,7 @@ export default function DashboardWatchlists() {
 
                 {/* Row 2: Korea */}
                 <SectorWatchList
-                    title="🇰🇷 Global Tech & Manufacturing"
+                    title="🇰🇷 KR Tech & Manufacturing"
                     stocks={SECTOR_STOCKS['KR Tech & Manufacturing']}
                     onAddClick={() => setIsSearchOpen(true)}
                 />
