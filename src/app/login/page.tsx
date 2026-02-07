@@ -18,11 +18,32 @@ export default function LoginPage() {
     useEffect(() => {
         const checkConnection = async () => {
             try {
+                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+                if (!supabaseUrl) throw new Error("Supabase URL not set");
+
+                setConnectionStatus('Checking... (1/2: Config)');
+                console.log("Checking Config...", { url: supabaseUrl });
+
+                setConnectionStatus('Checking... (2/2: Network)');
                 const start = performance.now();
-                console.log("Testing Supabase Connectivity...");
-                // Just check session to see if we can reach auth server
+
+                // Direct fetch check to rule out Client Lib issues
+                try {
+                    // Just fetch the root of the project URL (often 404 or welcome, but confirms reachability)
+                    // Or try a known lightweight endpoint if possible. 
+                    // Let's just try to reach the domain.
+                    await fetch(supabaseUrl, { method: 'HEAD', mode: 'no-cors' });
+                    // Note: 'no-cors' won't give status, but if it doesn't throw network error, DNS/IP is reachable?
+                    // actually no-cors might hide errors.
+                    // Let's try normal fetch, might fail CORS but at least we know it reached server if 200/4xx.
+                } catch (netErr) {
+                    console.warn("Direct fetch failed:", netErr);
+                }
+
+                // Supabase Client Check
                 const { error } = await supabase.auth.getSession();
                 const end = performance.now();
+
                 if (error) {
                     console.error("Connectivity Check Failed:", error);
                     setConnectionStatus(`Error: ${error.message}`);

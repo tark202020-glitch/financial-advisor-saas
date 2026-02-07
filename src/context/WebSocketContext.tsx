@@ -37,6 +37,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     // VERSION LOG FOR DEBUGGING DEPLOYMENT
     useEffect(() => { console.log("[SYS] WebSocketProvider Mounted - Version: WSS_FIX_APPLIED_v2"); }, []);
 
+    const pathname = usePathname();
+
     const [status, setStatus] = useState<WebSocketStatus>('disconnected');
     const [approvalKey, setApprovalKey] = useState<string | null>(null);
     const ws = useRef<WebSocket | null>(null);
@@ -120,6 +122,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     // --- 2. Connection Logic ---
     useEffect(() => {
         if (!approvalKey) return;
+        // Don't connect on Login or Landing page
+        if (pathname === '/login' || pathname === '/') return;
 
         const connect = () => {
             if (ws.current?.readyState === WebSocket.OPEN) return;
@@ -164,7 +168,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         return () => {
             ws.current?.close();
         };
-    }, [approvalKey, addLog]);
+    }, [approvalKey, addLog, pathname]);
 
     // --- 2.5 Reconnection / Queue Processing ---
     // Whenever status becomes 'connected', re-send all active subscriptions.
