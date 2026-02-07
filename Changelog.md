@@ -1,3 +1,12 @@
+## [Alpha V1.036] - 2026-02-09 06:15:00
+
+### 🎨 UI Refinement & Formatting
+- **Summary**: Improve Number Visibility & Layout
+- **Detail**:
+  - **Decimal Removal**: KOSPI/KOSDAQ 지수를 제외한 모든 숫자(등락폭, 수급주체별 금액, 해외지수 등)의 소수점 제거하여 가독성 향상
+  - **Overseas Layout**: 해외지수(DOW/NASDAQ/S&P500) 표시 방식을 3단 그리드(종목명 | 등락률 | 현재가)로 변경하여 데이터 구분 명확화
+- **Build Time**: 2026-02-09 06:15:00
+
 ## [Alpha V1.035] - 2026-02-09 06:00:00
 
 ### 🌏 Overseas Index Symbol Fix

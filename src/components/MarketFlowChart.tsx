@@ -47,7 +47,7 @@ function DomesticIndexCard({ name, symbol, marketCode }: { name: string, symbol:
     }, [marketCode]);
 
     const isUp = indexData.change >= 0;
-    const fmt = (n: number) => Math.abs(n / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // 억 unit
+    const fmt = (n: number) => Math.abs(n / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }); // 억 unit, No decimal
 
     return (
         <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex-1">
@@ -62,7 +62,7 @@ function DomesticIndexCard({ name, symbol, marketCode }: { name: string, symbol:
                 {indexData.value > 0 && (
                     <div className={`flex items-center text-lg font-medium ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
                         {isUp ? <ArrowUp size={20} /> : <ArrowDown size={20} />}
-                        <span className="ml-1">{Math.abs(indexData.change).toLocaleString()}</span>
+                        <span className="ml-1">{Math.round(Math.abs(indexData.change)).toLocaleString()}</span>
                         <span className="ml-2 text-base opacity-90">{Math.abs(indexData.changePercent).toFixed(2)}%</span>
                     </div>
                 )}
@@ -114,19 +114,28 @@ function OverseasRow({ name, symbol }: { name: string, symbol: string }) {
     }
 
     return (
-        <div className="flex items-center justify-between py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50 px-2 transition-colors">
-            <div>
+        <div className="grid grid-cols-3 items-center py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50 px-2 transition-colors">
+            {/* Col 1: Name & Time */}
+            <div className="flex flex-col">
                 <div className="font-bold text-slate-700">{name}</div>
                 {timeStr && <div className="text-[10px] text-slate-400">{timeStr}</div>}
             </div>
+
+            {/* Col 2: Change & Rate */}
+            <div className={`flex items-center justify-center gap-2 font-medium ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
+                {hasData ? (
+                    <>
+                        <span>{isUp ? '+' : ''}{Math.round(indexData.change).toLocaleString()}</span>
+                        <span className="text-sm opacity-90">{Math.abs(indexData.changePercent).toFixed(2)}%</span>
+                    </>
+                ) : '-'}
+            </div>
+
+            {/* Col 3: Index Value (Right Aligned) */}
             <div className="text-right">
-                <div className="font-bold text-slate-800">{hasData ? indexData.value.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</div>
-                {hasData && (
-                    <div className={`text-xs font-medium flex items-center justify-end ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
-                        {isUp ? '▲' : '▼'} {Math.abs(indexData.change).toFixed(2)}
-                        <span className="ml-2">{Math.abs(indexData.changePercent).toFixed(2)}%</span>
-                    </div>
-                )}
+                <div className="font-bold text-slate-900 text-lg">
+                    {hasData ? indexData.value.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '-'}
+                </div>
             </div>
         </div>
     );
@@ -155,7 +164,7 @@ function MarketTrendRow({ name, marketCode }: { name: string, marketCode: string
         fetchInvestor();
     }, [marketCode]);
 
-    const fmt = (n: number) => (n / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmt = (n: number) => (n / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
     const col = (n: number) => n > 0 ? 'text-red-500' : 'text-blue-500';
 
     return (
