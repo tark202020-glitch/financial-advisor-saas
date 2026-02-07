@@ -1,3 +1,10 @@
+## [Alpha V1.024] - 2026-02-08 23:00:00
+
+### 🚑 Login Fix (Signature Mismatch)
+- **Summary**: Fix Server Action Signature for `useActionState`
+- **Detail**: `useActionState` Hook이 요구하는 `prevState` 인자를 Server Action 함수에 추가하여 타입 에러 해결
+- **Build Time**: 2026-02-08 23:00:00
+
 ## [Alpha V1.023] - 2026-02-08 22:30:00
 
 ### 🚀 Login Refactor (Server Actions)
