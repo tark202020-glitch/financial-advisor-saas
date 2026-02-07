@@ -120,56 +120,59 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         fetchKey();
     }, [addLog]);
 
-    // --- 2. Connection Logic ---
+
+    // 2.1 Reconnection Effect
+    const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
+    const retryCount = useRef(0);
+
     useEffect(() => {
-        if (!approvalKey) return;
-        // Don't connect on Login or Landing page
-        if (pathname === '/login' || pathname === '/') return;
+        if (status === 'disconnected' || status === 'error') {
+            const delay = Math.min(1000 * (2 ** retryCount.current), 30000); // Max 30s
+            // addLog(`[SYS] Reconnecting in ${delay/1000}s...`);
 
-        const connect = () => {
-            if (ws.current?.readyState === WebSocket.OPEN) return;
+            reconnectTimeout.current = setTimeout(() => {
+                retryCount.current++;
+                // Force trigger connect effect? 
+                // Actually the main connect effect depends on nothing dynamic that changes to trigger it.
+                // We need to trigger it.
+                // Let's move connect logic out or force a state update?
+                // Easier: Just reload the component? No.
+                // Let's toggle a 'retryTrigger' state.
+                setRetryTrigger(r => r + 1);
+            }, delay);
+        } else if (status === 'connected') {
+            retryCount.current = 0;
+            if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+        }
+    }, [status]);
 
-            setStatus('connecting');
-            try {
-                const socket = new WebSocket("wss://ops.koreainvestment.com:21000");
-                ws.current = socket;
+    const [retryTrigger, setRetryTrigger] = useState(0);
 
-                socket.onopen = () => {
-                    console.log("[WS] Connected");
-                    setStatus('connected');
-                    addLog("[SYS] Connected to KIS WS");
-                };
+    // Update main effect to depend on retryTrigger
+    useEffect(() => {
+        if (!approvalKey || pathname === '/login' || pathname === '/') return;
 
-                socket.onmessage = (event) => {
-                    if (typeof event.data === 'string') {
-                        handleMessage(event.data);
-                    }
-                };
+        if (ws.current?.readyState === WebSocket.OPEN) return;
 
-                socket.onclose = () => {
-                    console.log("[WS] Disconnected");
-                    setStatus('disconnected');
-                    addLog("[SYS] Disconnected");
-                    setTimeout(connect, 3000); // Auto Reconnect
-                };
+        // Connect Logic...
+        const socket = new WebSocket("wss://ops.koreainvestment.com:21000");
+        ws.current = socket;
 
-                socket.onerror = (err) => {
-                    console.error("[WS] Error", err);
-                    setStatus('error');
-                    addLog("[SYS] Connection Error");
-                };
-            } catch (e) {
-                console.error("[WS] Construction Error", e);
-                setStatus('error');
-            }
+        socket.onopen = () => {
+            setStatus('connected');
+            addLog("[SYS] Connected");
         };
 
-        connect();
-
-        return () => {
-            ws.current?.close();
+        socket.onclose = () => {
+            setStatus('disconnected');
         };
-    }, [approvalKey, addLog, pathname]);
+
+        socket.onerror = () => {
+            setStatus('error');
+        };
+
+        return () => socket.close();
+    }, [approvalKey, pathname, retryTrigger]);
 
     // --- 2.5 Reconnection / Queue Processing ---
     // Whenever status becomes 'connected', re-send all active subscriptions.

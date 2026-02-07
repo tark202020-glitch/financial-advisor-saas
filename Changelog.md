@@ -1,3 +1,12 @@
+## [Alpha V1.027] - 2026-02-09 01:00:00
+
+### 🚑 Deep Fix (Data Blocking & WS Stability)
+- **Summary**: Client-side Sequential Chunking & WS Backoff
+- **Detail**:
+  - **Data Blocking**: Batch 데이터를 4개씩 끊어서 순차적으로 요청(Sequential Chunking)하고, 실패 시 자동 재시도하는 로직 적용. (서버 500 에러 및 타임아웃 원천 차단)
+  - **WS Stability**: WebSocket 연결 실패 시 무한 재접속으로 인한 깜빡임을 막기 위해 지수적 백오프(Exponential Backoff, 실패할수록 대기시간 증가) 알고리즘 적용
+- **Build Time**: 2026-02-09 01:00:00
+
 ## [Alpha V1.026] - 2026-02-09 00:30:00
 
 ### 🚑 Deep Fix (Data Flood Prevention)
