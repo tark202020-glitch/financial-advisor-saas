@@ -267,11 +267,10 @@ export async function getInvestorTrend(symbol: string = "005930"): Promise<any[]
     return result;
 }
 
-export async function getMarketInvestorTrend(symbol: string = "0001"): Promise<any[] | null> {
+export async function getMarketInvestorTrendDaily(symbol: string = "0001"): Promise<any[] | null> {
     const token = await getAccessToken();
 
     // TR_ID: FHPTJ04040000 (Market Investor Daily)
-    // URL: /uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market
 
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10).replace(/-/g, "");
@@ -297,16 +296,48 @@ export async function getMarketInvestorTrend(symbol: string = "0001"): Promise<a
     if (!response.ok) {
         const text = await response.text();
         console.error(`Failed to fetch Market Investor Trend for ${symbol}:`, text);
-        throw new Error(`HTTP Error ${response.status}: ${text}`);
+        // Fallback or empty
+        return [];
     }
 
     const data = await response.json();
-    if (data.rt_cd !== "0") {
-        console.error(`KIS API Error (Market Investor): ${data.msg1}`);
-        throw new Error(`KIS Error: ${data.msg1} (Code: ${data.msg_cd})`);
+    // Return output
+    return data.output || [];
+}
+
+export async function getMarketInvestorTrendRealTime(symbol: string = "0001"): Promise<any[] | null> {
+    const token = await getAccessToken();
+
+    // TR_ID: FHPTJ04030000 (Market Investor Time/Intraday)
+
+    let iscd = "999";
+    let iscd2 = "S001"; // Default KOSPI
+
+    if (symbol === '0001') { // KOSPI
+        iscd = "999";
+        iscd2 = "S001";
+    } else if (symbol === '1001') { // KOSDAQ
+        iscd = "999";
+        iscd2 = "S002";
     }
 
-    // Output is in 'output' for this TR
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market?FID_INPUT_ISCD=${iscd}&FID_INPUT_ISCD_2=${iscd2}`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "FHPTJ04030000",
+        },
+    }));
+
+    if (!response.ok) {
+        console.warn(`[KIS] RealTime Investor failed:`, await response.text());
+        return null;
+    }
+
+    const data = await response.json();
     return data.output || [];
 }
 
