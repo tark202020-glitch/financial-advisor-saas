@@ -321,7 +321,7 @@ export async function getMarketInvestorTrendRealTime(symbol: string = "0001"): P
         iscd2 = "S002";
     } else if (symbol === 'ETF') { // ETF
         iscd = "999";
-        iscd2 = "S000"; // Code for ETF
+        iscd2 = "T000"; // T000 as per hint
     }
 
     const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market?FID_INPUT_ISCD=${iscd}&FID_INPUT_ISCD_2=${iscd2}`, {
@@ -333,6 +333,7 @@ export async function getMarketInvestorTrendRealTime(symbol: string = "0001"): P
             "appsecret": APP_SECRET!,
             "tr_id": "FHPTJ04030000",
         },
+        cache: 'no-store' // Ensure fresh data
     }));
 
     if (!response.ok) {
