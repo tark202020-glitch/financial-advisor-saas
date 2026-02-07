@@ -1,3 +1,12 @@
+## [Alpha V1.030] - 2026-02-09 02:30:00
+
+### 📊 Data Unit Correction
+- **Summary**: Investor Net Buying unit fix (Million -> Eok)
+- **Detail**:
+  - **투자자별 순매수**: API 원본 단위(백만원)를 통상적으로 사용하는 **억 원** 단위로 변환하여 표시 (값 / 100)
+  - **S&P 500**: 데이터 로딩 디버깅 로그 추가
+- **Build Time**: 2026-02-09 02:30:00
+
 ## [Alpha V1.029] - 2026-02-09 02:00:00
 
 ### 📈 S&P 500 & Investor Data Fix

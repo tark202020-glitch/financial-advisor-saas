@@ -74,6 +74,7 @@ export function useMarketIndex(symbol: string, initialValue: number, category: '
                 }
             } catch (e) {
                 // console.error("Index fetch error", e);
+                console.log(`[Index] Failed to fetch ${symbol} (${category})`, e);
             }
         };
 

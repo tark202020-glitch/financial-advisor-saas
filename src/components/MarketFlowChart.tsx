@@ -164,7 +164,9 @@ export default function MarketFlowChart() {
 
     const tableData = summaryData.map(d => ({
         ...d,
-        formattedValue: d.value.toLocaleString()
+        // API returns Million KRW. display in '억' (100 Million)
+        // Value / 100
+        formattedValue: (d.value / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }) + '억'
     }));
 
     return (
@@ -228,7 +230,7 @@ export default function MarketFlowChart() {
                         <div className="mt-auto">
                             <div className="flex justify-between text-xs text-slate-500 mb-2 px-2">
                                 <span>투자자</span>
-                                <span>순매수 (백만원)</span>
+                                <span>순매수 (억 원)</span>
                             </div>
                             <div className="space-y-3 bg-white p-2 rounded-lg border border-slate-100">
                                 {tableData.map((item) => (
