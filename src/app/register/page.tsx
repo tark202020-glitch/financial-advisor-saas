@@ -1,7 +1,5 @@
-"use client";
-
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, User, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -14,6 +12,7 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
+    const supabase = createClient();
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();

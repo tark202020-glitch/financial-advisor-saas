@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { LogOut, User as UserIcon, Loader2 } from 'lucide-react';
 
@@ -10,6 +10,7 @@ export default function UserMenu() {
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
+    const supabase = createClient();
 
     useEffect(() => {
         const getUser = async () => {

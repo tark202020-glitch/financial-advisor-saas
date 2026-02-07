@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -12,135 +12,32 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    // Connectivity Check
-    const [connectionStatus, setConnectionStatus] = useState<string>('Checking...');
-
-    const [diagLog, setDiagLog] = useState<string[]>([]);
-
-    const addLog = (msg: string) => {
-        console.log(msg);
-        setDiagLog(prev => [...prev, msg].slice(-5));
-    };
-
-    useEffect(() => {
-        // Auto-cleanup on mount to prevent stale sessions
-        const cleanupSession = () => {
-            // Clear specifically Supabase auth tokens
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-                    localStorage.removeItem(key);
-                }
-            });
-            // Also try strict signOut (catch errors silent)
-            supabase.auth.signOut().catch(() => { });
-            console.log("Auto-cleanup: Stale sessions cleared.");
-        };
-        cleanupSession();
-
-        const checkConnection = async () => {
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-            if (!supabaseUrl) return;
-
-            addLog(`Target: ${supabaseUrl.substring(0, 20)}...`);
-            setConnectionStatus('Diagnosing...');
-
-            try {
-                // 1. Raw Fetch to Auth Settings (Public)
-                const settingsUrl = `${supabaseUrl}/auth/v1/settings`;
-                addLog(`Fetch: ${settingsUrl}`);
-
-                const fetchStart = performance.now();
-                const res = await fetch(settingsUrl, { method: 'GET' });
-                const fetchEnd = performance.now();
-
-                addLog(`Fetch Status: ${res.status} (${(fetchEnd - fetchStart).toFixed(0)}ms)`);
-
-                if (res.ok) {
-                    setConnectionStatus('Network OK (Settings Accessible)');
-                } else {
-                    setConnectionStatus(`Network Warning: HTTP ${res.status}`);
-                }
-
-                // 2. Supabase Client Session Check
-                addLog('Checking Client Session...');
-                // Set a short timeout for the client check specifically
-                const sessionPromise = supabase.auth.getSession();
-                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Client Timeout")), 5000));
-
-                try {
-                    await Promise.race([sessionPromise, timeoutPromise]);
-                    addLog('Client: Session Check OK');
-                } catch (e: any) {
-                    addLog(`Client Error: ${e.message}`);
-                    // Don't show HANGING status automatically on load
-                    // setConnectionStatus('Supabase Client HANGING'); 
-                    console.warn("Background Session Check Timeout - Silent Fail");
-                }
-
-            } catch (e: any) {
-                addLog(`Fetch Fail: ${e.message}`);
-                setConnectionStatus('Network FAILED');
-            }
-        };
-
-        // Delay slightly to let UI mount
-        setTimeout(checkConnection, 500);
-    }, []);
+    const supabase = createClient();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Login submitted (Raw Fetch Mode)", { email });
         setLoading(true);
         setError(null);
 
-        // Pre-emptive clear
-        localStorage.clear();
-
         try {
-            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-            const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-            if (!supabaseUrl || !supabaseKey) {
-                throw new Error("Missing Supabase Configuration");
-            }
-
-            // Direct Fetch to bypass Client Hang
-            const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'apikey': supabaseKey,
-                },
-                body: JSON.stringify({ email, password }),
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
             });
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error_description || data.msg || "Login failed");
+            if (error) {
+                console.error("Login Error:", error.message);
+                setError(error.message); // e.g. "Invalid login credentials"
+                setLoading(false);
+            } else {
+                console.log("Login Success");
+                // Refresh router to update server components (middleware handled session)
+                router.push('/dashboard');
+                router.refresh();
             }
-
-            console.log("Raw Login Success", data);
-
-            // Manually set session to update internal client state
-            const { error: sessionError } = await supabase.auth.setSession({
-                access_token: data.access_token,
-                refresh_token: data.refresh_token,
-            });
-
-            if (sessionError) {
-                console.warn("setSession warning:", sessionError);
-                // Even if setSession complains (e.g. storage issue), we have the token. 
-                // We can manually write to generic storage if needed, but let's proceed.
-            }
-
-            console.log("Session set! Redirecting...");
-            router.push('/dashboard');
-            router.refresh();
-
         } catch (err: any) {
-            console.error("Login error:", err);
-            setError(err.message);
+            console.error("Unexpected Error:", err);
+            setError("An unexpected error occurred.");
             setLoading(false);
         }
     };
@@ -154,20 +51,6 @@ export default function LoginPage() {
                     </div>
                     <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
                     <p className="text-slate-400 mt-2">Sign in to access your portfolio</p>
-                    <div className="flex flex-col items-center">
-                        <p className="text-xs text-slate-600 mt-2 font-mono">{connectionStatus}</p>
-                        {connectionStatus.includes("HANGING") && (
-                            <button
-                                onClick={() => {
-                                    localStorage.clear();
-                                    window.location.reload();
-                                }}
-                                className="mt-2 px-3 py-1 bg-red-100 text-red-600 text-xs rounded-full hover:bg-red-200 transition"
-                            >
-                                🔄 Force Session Reset
-                            </button>
-                        )}
-                    </div>
                 </div>
 
                 <div className="p-8">
@@ -208,7 +91,6 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-
                         <div className="flex justify-end">
                             <Link href="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
                                 Forgot Password?
@@ -230,7 +112,7 @@ export default function LoginPage() {
                         </Link>
                     </div>
                 </div>
-            </div >
-        </div >
+            </div>
+        </div>
     );
 }

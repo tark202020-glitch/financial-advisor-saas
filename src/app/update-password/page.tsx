@@ -1,7 +1,5 @@
-"use client";
-
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Lock, Loader2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -12,6 +10,7 @@ export default function UpdatePasswordPage() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const supabase = createClient();
 
     // Initial check to ensure session exists (Supabase auto-logins via link)
     useEffect(() => {
