@@ -27,14 +27,14 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
             setKrStocks(JSON.parse(savedKR));
         } else {
             // Default: Korea Major
-            setKrStocks(SECTOR_STOCKS['KR Major']);
+            setKrStocks(SECTOR_STOCKS['KR Tech & Manufacturing']);
         }
 
         if (savedUS) {
             setUsStocks(JSON.parse(savedUS));
         } else {
             // Default: US Big Tech + US Finance
-            setUsStocks([...SECTOR_STOCKS['US Big Tech'], ...SECTOR_STOCKS['US Finance']]);
+            setUsStocks([...SECTOR_STOCKS['Global Big Tech'], ...SECTOR_STOCKS['Global Finance & Consumption']]);
         }
         setLoaded(true);
     }, []);
