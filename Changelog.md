@@ -1,3 +1,14 @@
+## [Alpha V1.022] - 2026-02-08 22:00:00
+
+### 🎨 Dashboard & Data Refactor
+- **Summary**: Dashboard Content & Layout Update
+- **Detail**:
+  - **Layout**: 우측 "AI Analyst Insight" 패널 제거 및 전체 너비 확장
+  - **Header**: "Market Insight Advisor" -> "일일 체크"로 변경, 설명 문구 수정
+  - **Market Info**: KOSPI, KOSDAQ 등 주요 지수 정보를 "투자자별 순매수" 블록 상단으로 통합 ("시장정보" 섹션)
+  - **Data Source**: 투자자별 순매수 데이터 대상을 "대형주"에서 "KOSPI 시장 전체"로 변경 (`0001` Market Trend 적용)
+- **Build Time**: 2026-02-08 22:00:00
+
 ## [Alpha V1.021] - 2026-02-08 21:30:00
 
 ### 🔍 Debugging Mode

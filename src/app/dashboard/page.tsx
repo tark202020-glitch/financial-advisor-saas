@@ -16,21 +16,11 @@ import UserMenu from '@/components/UserMenu';
 export default function DashboardPage() {
     return (
         <main className="min-h-screen bg-slate-50 font-sans">
-
-            {/* 1. Macro Strip */}
-            <div className="sticky top-0 z-50">
-                <MacroStrip
-                    indices={MACRO_INDICES}
-                    exchangeRate={EXCHANGE_RATE}
-                    interestRates={INTEREST_RATES}
-                />
-            </div>
-
             <div className="max-w-[1600px] mx-auto p-6">
                 <header className="mb-6 flex justify-between items-end">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800">Market Insight Advisor</h1>
-                        <p className="text-slate-500 text-sm">Today&apos;s market context and investment opportunities.</p>
+                        <h1 className="text-2xl font-bold text-slate-800">일일 체크</h1>
+                        <p className="text-slate-500 text-sm">매일 확인해야할 주식 정보를 보여줍니다.</p>
                     </div>
                     <div className="flex gap-3 items-center">
                         <UserMenu />
@@ -42,25 +32,17 @@ export default function DashboardPage() {
                 </header>
 
                 <div className="grid grid-cols-12 gap-6">
-                    {/* LEFT COLUMN: Main Charts & Lists (8 cols) -> Expanded to 9 */}
-                    <div className="col-span-12 lg:col-span-9 space-y-6">
+                    {/* Main Content (Full Width) */}
+                    <div className="col-span-12 space-y-6">
 
-                        {/* 2. Market Flow (Investor Trends) */}
+                        {/* 1. Market Info & Trends (Merged) */}
                         <div className="w-full">
                             <MarketFlowChart />
                         </div>
 
-                        {/* 3. Watchlists (Client Component) */}
+                        {/* 2. Watchlists */}
                         <DashboardWatchlists />
 
-                    </div>
-
-                    {/* RIGHT COLUMN: AI Analysis (4 cols) */}
-                    <div className="col-span-12 lg:col-span-3">
-                        {/* 4. News Feed */}
-                        <div className="sticky top-[70px] h-[calc(100vh-100px)]">
-                            <NewsFeedSidebar news={NEWS_FEED} />
-                        </div>
                     </div>
                 </div>
             </div>
