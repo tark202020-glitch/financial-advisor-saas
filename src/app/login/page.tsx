@@ -15,20 +15,31 @@ export default function LoginPage() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
+        console.log("Login submitted", { email });
         setLoading(true);
         setError(null);
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        try {
+            console.log("Calling supabase.auth.signInWithPassword...");
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            console.log("Supabase response:", { data, error });
 
-        if (error) {
-            setError(error.message);
+            if (error) {
+                console.error("Login error:", error.message);
+                setError(error.message);
+                setLoading(false);
+            } else {
+                console.log("Login success! Redirecting to /dashboard");
+                router.push('/dashboard'); // Redirect to dashboard
+                router.refresh();
+            }
+        } catch (err) {
+            console.error("Unexpected error in handleLogin:", err);
+            setError("An unexpected error occurred.");
             setLoading(false);
-        } else {
-            router.push('/dashboard'); // Redirect to dashboard
-            router.refresh();
         }
     };
 
