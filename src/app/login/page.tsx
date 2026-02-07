@@ -47,9 +47,9 @@ export default function LoginPage() {
         try {
             console.log("Calling supabase.auth.signInWithPassword with timeout...");
 
-            // Create a timeout promise
+            // Create a timeout promise (Extended to 30s)
             const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Login Request Timed Out (10s)")), 10000)
+                setTimeout(() => reject(new Error("Login Request Timed Out (30s)")), 30000)
             );
 
             // Race against the actual login
