@@ -319,6 +319,9 @@ export async function getMarketInvestorTrendRealTime(symbol: string = "0001"): P
     } else if (symbol === '1001') { // KOSDAQ
         iscd = "999";
         iscd2 = "S002";
+    } else if (symbol === 'ETF') { // ETF
+        iscd = "999";
+        iscd2 = "S003"; // Assumed Code for ETF Industry/Sector
     }
 
     const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market?FID_INPUT_ISCD=${iscd}&FID_INPUT_ISCD_2=${iscd2}`, {

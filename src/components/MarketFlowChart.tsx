@@ -142,7 +142,7 @@ function MarketTrendRow({ name, marketCode }: { name: string, marketCode: string
         fetchInvestor();
     }, [marketCode]);
 
-    const fmt = (n: number) => (n / 100).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    const fmt = (n: number) => (n / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const col = (n: number) => n > 0 ? 'text-red-500' : 'text-blue-500';
 
     return (
@@ -206,11 +206,7 @@ export default function MarketFlowChart() {
                     <div>
                         <MarketTrendRow name="코스피" marketCode="0001" />
                         <MarketTrendRow name="코스닥" marketCode="1001" />
-                        {/* ETF Placeholder? 
-                           If we don't know code, maybe omit or use placeholder.
-                           User image shows ETF. 
-                           I will omit for now as I don't have the code. 
-                        */}
+                        <MarketTrendRow name="ETF" marketCode="ETF" />
                     </div>
                 </div>
             </div>
