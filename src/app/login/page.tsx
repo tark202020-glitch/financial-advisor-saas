@@ -15,48 +15,60 @@ export default function LoginPage() {
     // Connectivity Check
     const [connectionStatus, setConnectionStatus] = useState<string>('Checking...');
 
+    const [diagLog, setDiagLog] = useState<string[]>([]);
+
+    const addLog = (msg: string) => {
+        console.log(msg);
+        setDiagLog(prev => [...prev, msg].slice(-5));
+    };
+
     useEffect(() => {
         const checkConnection = async () => {
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+            if (!supabaseUrl) return;
+
+            addLog(`Target: ${supabaseUrl.substring(0, 20)}...`);
+            setConnectionStatus('Diagnosing...');
+
             try {
-                const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-                if (!supabaseUrl) throw new Error("Supabase URL not set");
+                // 1. Raw Fetch to Auth Settings (Public)
+                const settingsUrl = `${supabaseUrl}/auth/v1/settings`;
+                addLog(`Fetch: ${settingsUrl}`);
 
-                setConnectionStatus('Checking... (1/2: Config)');
-                console.log("Checking Config...", { url: supabaseUrl });
+                const fetchStart = performance.now();
+                const res = await fetch(settingsUrl, { method: 'GET' });
+                const fetchEnd = performance.now();
 
-                setConnectionStatus('Checking... (2/2: Network)');
-                const start = performance.now();
+                addLog(`Fetch Status: ${res.status} (${(fetchEnd - fetchStart).toFixed(0)}ms)`);
 
-                // Direct fetch check to rule out Client Lib issues
-                try {
-                    // Just fetch the root of the project URL (often 404 or welcome, but confirms reachability)
-                    // Or try a known lightweight endpoint if possible. 
-                    // Let's just try to reach the domain.
-                    await fetch(supabaseUrl, { method: 'HEAD', mode: 'no-cors' });
-                    // Note: 'no-cors' won't give status, but if it doesn't throw network error, DNS/IP is reachable?
-                    // actually no-cors might hide errors.
-                    // Let's try normal fetch, might fail CORS but at least we know it reached server if 200/4xx.
-                } catch (netErr) {
-                    console.warn("Direct fetch failed:", netErr);
-                }
-
-                // Supabase Client Check
-                const { error } = await supabase.auth.getSession();
-                const end = performance.now();
-
-                if (error) {
-                    console.error("Connectivity Check Failed:", error);
-                    setConnectionStatus(`Error: ${error.message}`);
+                if (res.ok) {
+                    setConnectionStatus('Network OK (Settings Accessible)');
                 } else {
-                    console.log(`Connectivity to Supabase OK (${(end - start).toFixed(0)}ms)`);
-                    setConnectionStatus('Connected to Auth Server');
+                    setConnectionStatus(`Network Warning: HTTP ${res.status}`);
                 }
+
+                // 2. Supabase Client Session Check
+                addLog('Checking Client Session...');
+                // Set a short timeout for the client check specifically
+                const sessionPromise = supabase.auth.getSession();
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Client Timeout")), 5000));
+
+                try {
+                    await Promise.race([sessionPromise, timeoutPromise]);
+                    addLog('Client: Session Check OK');
+                } catch (e: any) {
+                    addLog(`Client Error: ${e.message}`);
+                    setConnectionStatus('Supabase Client HANGING');
+                }
+
             } catch (e: any) {
-                console.error("Connectivity Check Exception:", e);
-                setConnectionStatus(`Exception: ${e.message}`);
+                addLog(`Fetch Fail: ${e.message}`);
+                setConnectionStatus('Network FAILED');
             }
         };
-        checkConnection();
+
+        // Delay slightly to let UI mount
+        setTimeout(checkConnection, 500);
     }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -107,6 +119,11 @@ export default function LoginPage() {
                     <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
                     <p className="text-slate-400 mt-2">Sign in to access your portfolio</p>
                     <p className="text-xs text-slate-600 mt-2 font-mono">{connectionStatus}</p>
+                    {diagLog.length > 0 && (
+                        <div className="mt-2 text-[10px] text-slate-500 text-left bg-slate-800 p-2 rounded overflow-hidden">
+                            {diagLog.map((log, i) => <div key={i}>{log}</div>)}
+                        </div>
+                    )}
                 </div>
 
                 <div className="p-8">

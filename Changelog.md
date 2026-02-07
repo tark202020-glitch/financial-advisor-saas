@@ -1,3 +1,10 @@
+## [Alpha V1.010] - 2026-02-08 20:15:00
+
+### 🚑 Hotfix
+- **Summary**: Network Diagnostics Tool
+- **Detail**: 로그인 페이지에 상세 네트워크 진단 도구 탑재 (Raw Fetch vs Client 테스트)
+- **Build Time**: 2026-02-08 20:15:00
+
 ## [Alpha V1.009] - 2026-02-08 20:10:00
 
 ### 🛠 Build Fix
