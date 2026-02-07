@@ -89,47 +89,58 @@ export default function LoginPage() {
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("Login submitted", { email });
+        console.log("Login submitted (Raw Fetch Mode)", { email });
         setLoading(true);
         setError(null);
 
-        // Pre-emptive clear for the login action (User Request)
+        // Pre-emptive clear
         localStorage.clear();
 
         try {
-            console.log("Calling supabase.auth.signInWithPassword with timeout...");
+            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+            const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-            // Create a timeout promise (Extended to 30s)
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Login Request Timed Out (30s)")), 30000)
-            );
-
-            // Race against the actual login
-            const { data, error } = await Promise.race([
-                supabase.auth.signInWithPassword({ email, password }),
-                timeoutPromise
-            ]) as any;
-
-            console.log("Supabase response received:", { data, error });
-
-            if (error) {
-                console.error("Login error:", error.message);
-                setError(error.message);
-                setLoading(false);
-            } else {
-                console.log("Login success! Redirecting to /dashboard");
-                router.push('/dashboard');
-                router.refresh();
+            if (!supabaseUrl || !supabaseKey) {
+                throw new Error("Missing Supabase Configuration");
             }
+
+            // Direct Fetch to bypass Client Hang
+            const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': supabaseKey,
+                },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error_description || data.msg || "Login failed");
+            }
+
+            console.log("Raw Login Success", data);
+
+            // Manually set session to update internal client state
+            const { error: sessionError } = await supabase.auth.setSession({
+                access_token: data.access_token,
+                refresh_token: data.refresh_token,
+            });
+
+            if (sessionError) {
+                console.warn("setSession warning:", sessionError);
+                // Even if setSession complains (e.g. storage issue), we have the token. 
+                // We can manually write to generic storage if needed, but let's proceed.
+            }
+
+            console.log("Session set! Redirecting...");
+            router.push('/dashboard');
+            router.refresh();
+
         } catch (err: any) {
-            console.error("Unexpected error in handleLogin:", err);
-            const msg = err.message || "An unexpected error occurred.";
-            setError(msg);
-
-            if (msg.includes("Timed Out")) {
-                setConnectionStatus("Supabase Client HANGING");
-            }
-
+            console.error("Login error:", err);
+            setError(err.message);
             setLoading(false);
         }
     };
