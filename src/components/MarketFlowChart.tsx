@@ -1,318 +1,219 @@
 "use client";
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { useState, useMemo, useEffect } from 'react';
-import { useMarketIndex } from '@/hooks/useMarketIndex';
-import { useStockPrice } from '@/hooks/useStockPrice';
+import { useMemo, useEffect, useState } from 'react';
 import { ArrowUp, ArrowDown } from 'lucide-react';
+import { useMarketIndex } from '@/hooks/useMarketIndex';
 
-// --- Types for Data ---
-interface InvestorHistoryItem {
-    stck_bsop_date: string;
-    prsn_ntby_qty: string;
-    frgn_ntby_qty: string;
-    orgn_ntby_qty: string;
-    prsn_ntby_tr_pbmn?: string;
-    frgn_ntby_tr_pbmn?: string;
-    orgn_ntby_tr_pbmn?: string;
-}
-
-interface ChartDataPoint {
-    date: string; // YYYYMMDD
+// --- Types ---
+interface InvestorData {
     individual: number;
     foreign: number;
     institution: number;
-    pension: number;
 }
 
-// --- Reused Index Display Component ---
-interface MarketIndex {
-    name: string;
-    value: number;
-    change: number;
-    changePercent: number;
-}
+// --- Components ---
 
-const INDICES_LIST: MarketIndex[] = [
-    { name: 'KOSPI', value: 0, change: 0, changePercent: 0 },
-    { name: 'KOSDAQ', value: 0, change: 0, changePercent: 0 },
-    { name: 'NASDAQ', value: 0, change: 0, changePercent: 0 },
-    { name: 'S&P 500', value: 0, change: 0, changePercent: 0 },
-];
+function DomesticIndexCard({ name, symbol, marketCode }: { name: string, symbol: string, marketCode: string }) {
+    // 1. Price Data
+    const indexData = useMarketIndex(symbol, 0, 'KR');
 
-function IndexDisplay({ indexName }: { indexName: string }) {
-    let symbol = '';
-    let category: 'KR' | 'US' = 'KR';
-    let isStockProxy = false;
+    // 2. Investor Data (RealTime)
+    const [investor, setInvestor] = useState<InvestorData>({ individual: 0, foreign: 0, institution: 0 });
 
-    if (indexName === 'KOSPI') {
-        symbol = '0001';
-        category = 'KR';
-    } else if (indexName === 'KOSDAQ') {
-        symbol = '1001';
-        category = 'KR';
-    } else if (indexName === 'NASDAQ') {
-        symbol = 'QQQ';
-        isStockProxy = true;
-        category = 'US';
-    } else if (indexName === 'S&P 500') {
-        symbol = 'SPX'; // Try SPX for Index
-        isStockProxy = true; // Still uses Overseas Price API
-        category = 'US';
-    }
+    useEffect(() => {
+        const fetchInvestor = async () => {
+            try {
+                // Determine Code mapping (KOSPI=0001, KOSDAQ=1001) for route
+                const res = await fetch(`/api/kis/market/investor?symbol=${marketCode}`);
+                if (!res.ok) return;
+                const data = await res.json();
 
-    const indexData = useMarketIndex(symbol, 0, category);
-    const stockData = useStockPrice(symbol, 0, 'US');
-    const data = isStockProxy ? stockData : indexData; // Prioritize one hook result
+                if (data && data.realtime && data.realtime.length > 0) {
+                    const latest = data.realtime[0];
+                    setInvestor({
+                        individual: parseInt(latest.prsn_ntby_tr_pbmn || '0'),
+                        foreign: parseInt(latest.frgn_ntby_tr_pbmn || '0'),
+                        institution: parseInt(latest.orgn_ntby_tr_pbmn || '0'),
+                    });
+                }
+            } catch (e) {
+                // console.error(e);
+            }
+        };
 
-    // Check validity
-    const hasData = !!data && (isStockProxy ? (data as any).price > 0 : (data as any).value > 0);
+        fetchInvestor();
+        const interval = setInterval(fetchInvestor, 60000); // 1 min update
+        return () => clearInterval(interval);
+    }, [marketCode]);
 
-    if (!hasData || !data) {
-        return (
-            <div className="flex flex-col items-start bg-slate-50 rounded-lg p-3 min-w-[120px] border border-slate-100">
-                <span className="text-xs font-bold text-slate-500 mb-1">{indexName}</span>
-                <span className="text-sm font-semibold text-slate-400">Loading...</span>
-            </div>
-        );
-    }
-
-    const val = isStockProxy ? (data as any).price : (data as any).value;
-    const change = (data as any).change;
-    const pct = (data as any).changePercent || (data as any).rate || 0;
-    const isUp = change >= 0;
+    const isUp = indexData.change >= 0;
+    const fmt = (n: number) => Math.abs(n / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }); // 억 unit
 
     return (
-        <div className="flex flex-col items-start bg-slate-50 rounded-lg p-3 min-w-[140px] border border-slate-100 shadow-sm">
-            <span className="text-xs font-bold text-slate-500 mb-1">{indexName}</span>
-            <div className="flex items-baseline gap-2">
-                <span className="text-lg font-bold text-slate-800">{val.toLocaleString()}</span>
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex-1">
+            <div className="flex items-center gap-2 mb-2 border-l-4 border-blue-600 pl-3">
+                <h3 className="text-lg font-bold text-slate-800">{name}</h3>
             </div>
-            <div className={`flex items-center text-xs font-medium ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
-                {isUp ? <ArrowUp size={12} /> : <ArrowDown size={12} />}
-                <span className="ml-0.5">{Math.abs(change).toLocaleString()} ({Math.abs(pct).toFixed(2)}%)</span>
+
+            <div className="flex items-baseline gap-3 mb-6">
+                <span className="text-4xl font-bold text-slate-900 tracking-tight">
+                    {indexData.value > 0 ? indexData.value.toLocaleString() : 'Loading...'}
+                </span>
+                {indexData.value > 0 && (
+                    <div className={`flex items-center text-lg font-medium ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
+                        {isUp ? <ArrowUp size={20} /> : <ArrowDown size={20} />}
+                        <span className="ml-1">{Math.abs(indexData.change).toLocaleString()}</span>
+                        <span className="ml-2 text-base opacity-90">{Math.abs(indexData.changePercent).toFixed(2)}%</span>
+                    </div>
+                )}
+            </div>
+
+            <div className="flex items-center text-sm text-slate-600 gap-4 pt-4 border-t border-slate-100">
+                <div className="flex gap-1">
+                    <span className="text-slate-500">개인</span>
+                    <span className={`font-semibold ${investor.individual > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                        {fmt(investor.individual)}억
+                    </span>
+                </div>
+                <div className="w-px h-3 bg-slate-300"></div>
+                <div className="flex gap-1">
+                    <span className="text-slate-500">외국인</span>
+                    <span className={`font-semibold ${investor.foreign > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                        {fmt(investor.foreign)}억
+                    </span>
+                </div>
+                <div className="w-px h-3 bg-slate-300"></div>
+                <div className="flex gap-1">
+                    <span className="text-slate-500">기관</span>
+                    <span className={`font-semibold ${investor.institution > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                        {fmt(investor.institution)}억
+                    </span>
+                </div>
             </div>
         </div>
     );
 }
 
-
-export default function MarketFlowChart() {
-    const [period, setPeriod] = useState<'1D' | '1W' | '1M' | '3M' | '6M' | '1Y'>('1M');
-    const [rawData, setRawData] = useState<{ daily: any[], realtime: any[] } | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    // Fetch Real Data (Use KOSPI Market Trend)
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // Fetch KOSPI Market Investor Trend
-                const res = await fetch('/api/kis/market/investor?symbol=0001');
-                if (!res.ok) throw new Error("Failed to fetch");
-                const data = await res.json();
-
-                if (data && (data.daily || data.realtime)) {
-                    setRawData(data);
-                }
-            } catch (e) {
-                console.error("Investor Fetch Error", e);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
-
-    // Process Data (Daily History)
-    const processedData: ChartDataPoint[] = useMemo(() => {
-        if (!rawData || !rawData.daily) return [];
-        const dailyList = [...rawData.daily].reverse(); // Sort old to new for Chart
-
-        return dailyList.map(item => {
-            // Ensure we parse Amount fields if available, otherwise fallback
-            // KIS 'inquire-daily-index-investor' usually provides amount in Million KRW directly?
-            // Let's assume fields are same but check values.
-            const individual = parseInt(item.prsn_ntby_tr_pbmn || item.prsn_ntby_qty || '0');
-            const foreign = parseInt(item.frgn_ntby_tr_pbmn || item.frgn_ntby_qty || '0');
-            const institution = parseInt(item.orgn_ntby_tr_pbmn || item.orgn_ntby_qty || '0');
-
-            return {
-                date: item.stck_bsop_date,
-                individual,
-                foreign,
-                institution,
-                pension: 0
-            };
-        });
-    }, [rawData]);
-
-    // Summarize for Bar Chart (using RealTime data usually found in the first item of realtime response)
-    const summaryData = useMemo(() => {
-        // If we have realtime data, use the latest snapshot (index 0 usually).
-        // RealTime API returns a list of time snapshots.
-        // We want the accumulated net buying for the day.
-
-        let targetData: any = {};
-
-        // Find latest realtime data
-        if (rawData && (rawData as any).realtime && (rawData as any).realtime.length > 0) {
-            const latest = (rawData as any).realtime[0];
-            // RealTime fields: prsn_ntby_tr_pbmn, frgn_ntby_tr_pbmn, etc.
-            // Note: API might return these as accumulated already? Yes usually "Net Buying Transaction Amount" is accumulated.
-            targetData = {
-                individual: parseInt(latest.prsn_ntby_tr_pbmn || '0'),
-                foreign: parseInt(latest.frgn_ntby_tr_pbmn || '0'),
-                institution: parseInt(latest.orgn_ntby_tr_pbmn || '0'),
-            };
-        } else if (processedData.length > 0) {
-            // Fallback to Daily Latest
-            // The first item in processedData matches the latest date.
-            // But daily data is end-of-day. If used during day, might be yesterday's?
-            const latest = processedData[processedData.length - 1]; // processedData is reversed?
-            // Let's check processedData logic:
-            // rawData.reverse().map... so processedData[0] is Oldest? 
-            // processedData = rawData.daily.reverse(). 
-            // rawData from API { daily: [...], realtime: [...] }
-
-            // Wait, I need to fix rawData type usage first.
-            targetData = {
-                individual: 0, foreign: 0, institution: 0
-            };
-        }
-
-        return [
-            { type: '개인', value: targetData.individual || 0, color: '#8b5cf6' },
-            { type: '외국인', value: targetData.foreign || 0, color: '#eab308' },
-            { type: '기관', value: targetData.institution || 0, color: '#22c55e' },
-        ].filter(d => d.value !== 0);
-    }, [rawData, processedData]);
-
-    const tableData = summaryData.map(d => ({
-        ...d,
-        // API returns Million KRW. display in '억' (100 Million)
-        // Value / 100
-        formattedValue: (d.value / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }) + '억'
-    }));
+function OverseasRow({ name, symbol }: { name: string, symbol: string }) {
+    // Uses getOverseasIndex (.SPX etc)
+    const indexData = useMarketIndex(symbol, 0, 'US');
+    const hasData = indexData.value > 0;
+    const isUp = indexData.change >= 0;
 
     return (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            {/* Header with Indices */}
-            <div className="mb-8">
-                <h2 className="text-xl font-bold mb-4 text-slate-800">시장정보 (Market Info)</h2>
-                <div className="flex flex-wrap gap-4 pb-4 border-b border-slate-100">
-                    {INDICES_LIST.map(idx => (
-                        <IndexDisplay key={idx.name} indexName={idx.name} />
-                    ))}
-                </div>
+        <div className="flex items-center justify-between py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50 px-2 transition-colors">
+            <div>
+                <div className="font-bold text-slate-700">{name}</div>
+                {/* <div className="text-[10px] text-slate-400">02/06 00:00 지연</div> */}
+            </div>
+            <div className="text-right">
+                <div className="font-bold text-slate-800">{hasData ? indexData.value.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '-'}</div>
+                {hasData && (
+                    <div className={`text-xs font-medium flex items-center justify-end ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
+                        {isUp ? '▲' : '▼'} {Math.abs(indexData.change).toFixed(2)}
+                        <span className="ml-2">{Math.abs(indexData.changePercent).toFixed(2)}%</span>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function MarketTrendRow({ name, marketCode }: { name: string, marketCode: string }) {
+    const [investor, setInvestor] = useState<InvestorData>({ individual: 0, foreign: 0, institution: 0 });
+
+    useEffect(() => {
+        const fetchInvestor = async () => {
+            try {
+                const res = await fetch(`/api/kis/market/investor?symbol=${marketCode}`);
+                if (!res.ok) return;
+                const data = await res.json();
+
+                if (data && data.realtime && data.realtime.length > 0) {
+                    const latest = data.realtime[0];
+                    setInvestor({
+                        individual: parseInt(latest.prsn_ntby_tr_pbmn || '0'),
+                        foreign: parseInt(latest.frgn_ntby_tr_pbmn || '0'),
+                        institution: parseInt(latest.orgn_ntby_tr_pbmn || '0'),
+                    });
+                }
+            } catch (e) { }
+        };
+        fetchInvestor();
+    }, [marketCode]);
+
+    const fmt = (n: number) => (n / 100).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    const col = (n: number) => n > 0 ? 'text-red-500' : 'text-blue-500';
+
+    return (
+        <div className="grid grid-cols-4 py-4 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50 px-2">
+            <div className="font-bold text-lg text-slate-800">{name}</div>
+            <div className={`text-right font-medium ${col(investor.foreign)}`}>{fmt(investor.foreign)}</div>
+            <div className={`text-right font-medium ${col(investor.individual)}`}>{fmt(investor.individual)}</div>
+            <div className={`text-right font-medium ${col(investor.institution)}`}>{fmt(investor.institution)}</div>
+        </div>
+    );
+}
+
+export default function MarketFlowChart() {
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')} ${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')} 최근 업데이트`;
+
+    return (
+        <div className="space-y-8">
+            {/* Header */}
+            <div>
+                <h2 className="text-xl font-bold text-slate-800">지수종합</h2>
+                <p className="text-xs text-slate-400 mt-1">{dateStr}</p>
             </div>
 
-            <h3 className="text-lg font-bold mb-6 text-slate-700">투자자별 순매수 (KOSPI)</h3>
+            {/* Top Row: Domestic Indices */}
+            <div className="flex flex-col lg:flex-row gap-6">
+                <DomesticIndexCard name="KOSPI" symbol="0001" marketCode="0001" />
+                <DomesticIndexCard name="KOSDAQ" symbol="1001" marketCode="1001" />
+            </div>
 
-            {loading ? (
-                <div className="h-64 flex items-center justify-center bg-slate-50 rounded-xl text-slate-400">
-                    데이터 로딩 중...
-                </div>
-            ) : processedData.length === 0 ? (
-                <div className="h-64 flex items-center justify-center bg-slate-50 rounded-xl text-slate-400">
-                    데이터가 없습니다
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* LEFT PANEL: Cumulative Bar Chart + Table */}
-                    <div className="lg:col-span-5 flex flex-col h-full bg-slate-50 rounded-xl p-6 border border-slate-200">
-                        {/* ... (Same Chart Logic) ... */}
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="font-bold text-slate-700">누적 순매수 현황</h3>
-                            <div className="flex bg-slate-200 rounded-lg p-1 text-xs">
-                                {['1일', '1주', '1개월', '3개월'].map(p => (
-                                    <button
-                                        key={p}
-                                        onClick={() => setPeriod(p as any)}
-                                        className={`px-2 py-1 rounded transition-colors ${period === p ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-slate-500 hover:text-slate-700'}`}
-                                    >
-                                        {p}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="h-48 mb-8">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart layout="vertical" data={summaryData} margin={{ left: 10, right: 10 }}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                                    <XAxis type="number" hide />
-                                    <YAxis dataKey="type" type="category" width={50} tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
-                                    <Tooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', color: '#1e293b' }} cursor={{ fill: 'transparent' }} />
-                                    <Bar dataKey="value" barSize={20} radius={[0, 4, 4, 0]}>
-                                        {summaryData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-
-                        <div className="mt-auto">
-                            <div className="flex justify-between text-xs text-slate-500 mb-2 px-2">
-                                <span>투자자</span>
-                                <span>순매수 (억 원)</span>
-                            </div>
-                            <div className="space-y-3 bg-white p-2 rounded-lg border border-slate-100">
-                                {tableData.map((item) => (
-                                    <div key={item.type} className="flex justify-between items-center px-2 py-1">
-                                        <span className="text-slate-600 font-medium">{item.type}</span>
-                                        <span className={`font-bold ${item.value > 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                                            {item.formattedValue}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="text-right text-[10px] text-slate-400 mt-4">
-                                출처: 한국투자증권 (KIS) API
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* RIGHT PANEL: Trends */}
-                    <div className="lg:col-span-7 flex flex-col gap-6">
-                        {/* 1. Individual Trend */}
-                        <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 h-64">
-                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                최근 1개월간 <span className="text-violet-500 text-lg">개인</span> 순매수 추이
-                            </h3>
-                            <div className="h-44">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={processedData}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#e2e8f0" />
-                                        <XAxis dataKey="date" hide />
-                                        <YAxis hide domain={['auto', 'auto']} />
-                                        <Tooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', color: '#1e293b' }} formatter={(val: any) => [val?.toLocaleString(), '순매수']} />
-                                        <Line type="monotone" dataKey="individual" stroke="#8b5cf6" strokeWidth={3} dot={false} />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-
-                        {/* 2. Foreign Trend */}
-                        <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 h-64">
-                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                최근 1개월간 <span className="text-yellow-500 text-lg">외국인</span> 순매수 추이
-                            </h3>
-                            <div className="h-44">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={processedData}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={true} stroke="#e2e8f0" />
-                                        <XAxis dataKey="date" hide />
-                                        <YAxis hide domain={['auto', 'auto']} />
-                                        <Tooltip contentStyle={{ backgroundColor: '#fff', borderColor: '#e2e8f0', color: '#1e293b' }} formatter={(val: any) => [val?.toLocaleString(), '순매수']} />
-                                        <Line type="monotone" dataKey="foreign" stroke="#eab308" strokeWidth={3} dot={false} />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
+            {/* Bottom Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Overseas List */}
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                    <h3 className="font-bold text-slate-700 mb-4 border-b border-slate-100 pb-2">해외</h3>
+                    <div>
+                        <OverseasRow name="DOW" symbol=".DJI" />
+                        <OverseasRow name="NASDAQ" symbol=".IXIC" />
+                        <OverseasRow name="S&P500" symbol=".SPX" />
+                        {/* <OverseasRow name="Hong Kong H" symbol="HSCEI" /> */}
+                        {/* <OverseasRow name="Nikkei" symbol="N225" /> */}
                     </div>
                 </div>
-            )}
+
+                {/* Market Trend Table */}
+                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+                    <div className="flex justify-between items-end mb-4 border-b border-slate-100 pb-2">
+                        <h3 className="font-bold text-lg text-slate-800">마켓트렌드</h3>
+                        <span className="text-xs text-slate-400">단위/억원</span>
+                    </div>
+
+                    {/* Table Header */}
+                    <div className="grid grid-cols-4 text-xs text-slate-500 pb-2 border-b border-slate-100 px-2">
+                        <div>종목명</div>
+                        <div className="text-right">외국인</div>
+                        <div className="text-right">개인</div>
+                        <div className="text-right">기관</div>
+                    </div>
+
+                    {/* Table Body */}
+                    <div>
+                        <MarketTrendRow name="코스피" marketCode="0001" />
+                        <MarketTrendRow name="코스닥" marketCode="1001" />
+                        {/* ETF Placeholder? 
+                           If we don't know code, maybe omit or use placeholder.
+                           User image shows ETF. 
+                           I will omit for now as I don't have the code. 
+                        */}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
