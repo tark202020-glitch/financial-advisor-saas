@@ -321,7 +321,7 @@ export async function getMarketInvestorTrendRealTime(symbol: string = "0001"): P
         iscd2 = "S002";
     } else if (symbol === 'ETF') { // ETF
         iscd = "999";
-        iscd2 = "S003"; // Assumed Code for ETF Industry/Sector
+        iscd2 = "S000"; // Code for ETF
     }
 
     const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market?FID_INPUT_ISCD=${iscd}&FID_INPUT_ISCD_2=${iscd2}`, {
@@ -341,7 +341,15 @@ export async function getMarketInvestorTrendRealTime(symbol: string = "0001"): P
     }
 
     const data = await response.json();
-    return data.output || [];
+    let output = data.output || [];
+
+    // Sort by time descending to ensure [0] is latest
+    // Time field corresponds to stck_bsop_time (HHMMSS)
+    if (output.length > 0 && output[0].stck_bsop_time) {
+        output.sort((a: any, b: any) => Number(b.stck_bsop_time) - Number(a.stck_bsop_time));
+    }
+
+    return output;
 }
 
 export async function getOverseasIndex(symbol: string): Promise<KisOvStockPrice | null> {
