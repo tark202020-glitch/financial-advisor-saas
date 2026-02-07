@@ -1,5 +1,6 @@
 import { KisTokenResponse, KisDomStockPrice, KisOvStockPrice, KisResponse, KisDomIndexPrice, KisWebSocketApprovalResponse, KisIndexChartResponse } from './types';
 import { getUSExchangeCode } from './exchange';
+import { kisRateLimiter } from './rateLimiter';
 
 const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
 const APP_KEY = process.env.KIS_APP_KEY;
@@ -40,7 +41,7 @@ export async function getAccessToken(): Promise<string> {
 
     console.log("Fetching new KIS Access Token...");
 
-    const response = await fetch(`${BASE_URL}/oauth2/tokenP`, {
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/oauth2/tokenP`, {
         method: "POST",
         headers: {
             "content-type": "application/json",
@@ -50,7 +51,7 @@ export async function getAccessToken(): Promise<string> {
             appkey: APP_KEY,
             appsecret: APP_SECRET,
         }),
-    });
+    }));
 
     if (!response.ok) {
         const errorText = await response.text();
@@ -76,7 +77,7 @@ export async function getAccessToken(): Promise<string> {
 export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice | null> {
     const token = await getAccessToken();
 
-    const response = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}`, {
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
@@ -85,7 +86,7 @@ export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice
             "appsecret": APP_SECRET!,
             "tr_id": "FHKST01010100", // Current Price Inquiry TR ID
         },
-    });
+    }));
 
     if (!response.ok) {
         console.error(`Failed to fetch DOM price for ${symbol}:`, await response.text());
@@ -108,7 +109,7 @@ export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice 
     const exchangeCode = getUSExchangeCode(symbol);
 
     // Initial Request
-    let response = await fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/price?AUTH=&EXCD=${exchangeCode}&SYMB=${symbol}`, {
+    let response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/price?AUTH=&EXCD=${exchangeCode}&SYMB=${symbol}`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
@@ -117,7 +118,7 @@ export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice 
             "appsecret": APP_SECRET!,
             "tr_id": "HHDFS00000300",
         },
-    });
+    }));
 
     let data: KisResponse<KisOvStockPrice> = await response.json();
 
@@ -126,7 +127,7 @@ export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice 
         console.warn(`[KIS] Empty data for ${symbol} (${exchangeCode}). Retrying with alternate exchange...`);
 
         const altExchange = exchangeCode === 'NYS' ? 'NAS' : 'NYS'; // Toggle
-        response = await fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/price?AUTH=&EXCD=${altExchange}&SYMB=${symbol}`, {
+        response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/price?AUTH=&EXCD=${altExchange}&SYMB=${symbol}`, {
             method: "GET",
             headers: {
                 "content-type": "application/json",
@@ -135,7 +136,7 @@ export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice 
                 "appsecret": APP_SECRET!,
                 "tr_id": "HHDFS00000300",
             },
-        });
+        }));
 
         const altData: KisResponse<KisOvStockPrice> = await response.json();
         /* If alt worked, use it */
@@ -161,7 +162,7 @@ export async function getDomesticIndex(symbol: string): Promise<KisDomIndexPrice
     // 0001 = KOSPI, 1001 = KOSDAQ
     // TR ID: FHKUP03500100 (Daily Chart)
     // URL: inquire-daily-indexchartprice
-    const response = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${today}&FID_INPUT_DATE_2=${today}&FID_PERIOD_DIV_CODE=D`, {
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${today}&FID_INPUT_DATE_2=${today}&FID_PERIOD_DIV_CODE=D`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
@@ -170,7 +171,7 @@ export async function getDomesticIndex(symbol: string): Promise<KisDomIndexPrice
             "appsecret": APP_SECRET!,
             "tr_id": "FHKUP03500100",
         },
-    });
+    }));
 
     if (!response.ok) {
         console.error(`Failed to fetch DOM Index for ${symbol}:`, await response.text());
@@ -202,7 +203,7 @@ export async function getWebSocketApprovalKey(): Promise<string> {
         throw new Error("KIS API Keys are missing");
     }
 
-    const response = await fetch(`${BASE_URL}/oauth2/Approval`, {
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/oauth2/Approval`, {
         method: "POST",
         headers: {
             "content-type": "application/json",
@@ -212,7 +213,7 @@ export async function getWebSocketApprovalKey(): Promise<string> {
             appkey: APP_KEY,
             secretkey: APP_SECRET,
         }),
-    });
+    }));
 
     if (!response.ok) {
         console.error("Failed to get WS Approval Key:", await response.text());
@@ -228,7 +229,7 @@ export async function getInvestorTrend(symbol: string = "005930"): Promise<any[]
     const token = await getAccessToken();
 
     // TR_ID: FHKST01010900 (Daily Investor Net Buying)
-    const response = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}`, {
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
@@ -237,7 +238,7 @@ export async function getInvestorTrend(symbol: string = "005930"): Promise<any[]
             "appsecret": APP_SECRET!,
             "tr_id": "FHKST01010900",
         },
-    });
+    }));
 
     if (!response.ok) {
         const text = await response.text();
@@ -271,7 +272,7 @@ export async function getMarketInvestorTrend(symbol: string = "0001"): Promise<a
 
     // TR_ID: FHKUP03500300 (Upjong/Index Daily Investor Net Buying)
     // URL: /uapi/domestic-stock/v1/quotations/inquire-daily-index-investor
-    const response = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-index-investor?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=D`, {
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-index-investor?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=D`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
@@ -280,7 +281,7 @@ export async function getMarketInvestorTrend(symbol: string = "0001"): Promise<a
             "appsecret": APP_SECRET!,
             "tr_id": "FHKUP03500300",
         },
-    });
+    }));
 
     if (!response.ok) {
         const text = await response.text();
@@ -392,7 +393,7 @@ export async function getDailyPriceHistory(symbol: string): Promise<KisCandleDat
     startDate.setFullYear(startDate.getFullYear() - 1);
     const startYMD = startDate.toISOString().slice(0, 10).replace(/-/g, "");
 
-    const response = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${startYMD}&FID_INPUT_DATE_2=${today}&FID_PERIOD_DIV_CODE=D&FID_ORG_ADJ_PRC=0`, {
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${startYMD}&FID_INPUT_DATE_2=${today}&FID_PERIOD_DIV_CODE=D&FID_ORG_ADJ_PRC=0`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
@@ -401,7 +402,7 @@ export async function getDailyPriceHistory(symbol: string): Promise<KisCandleDat
             "appsecret": APP_SECRET!,
             "tr_id": "FHKST03010100",
         },
-    });
+    }));
 
     if (!response.ok) {
         console.error(`Failed to fetch Daily History for ${symbol}:`, await response.text());
@@ -421,7 +422,7 @@ export async function getDailyPriceHistory(symbol: string): Promise<KisCandleDat
 async function fetchGenericFinance(tr_id: string, path: string, symbol: string): Promise<any | null> {
     try {
         const token = await getAccessToken();
-        const response = await fetch(`${BASE_URL}${path}?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}&FID_DIV_CLS_CODE=1`, {
+        const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}${path}?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}&FID_DIV_CLS_CODE=1`, {
             method: "GET",
             headers: {
                 "content-type": "application/json",
@@ -431,7 +432,7 @@ async function fetchGenericFinance(tr_id: string, path: string, symbol: string):
                 "tr_id": tr_id,
                 "custtype": "P"
             },
-        });
+        }));
 
         if (!response.ok) {
             console.warn(`[KIS] Failed ${tr_id}: ${response.status} ${response.statusText}`);

@@ -1,3 +1,13 @@
+## [Alpha V1.006] - 2026-02-08 20:01:00
+
+### 🚀 Performance Update
+- **Summary**: Global API Rate Limiter Implementation
+- **Detail**:
+  - API 순간 과부하 방지를 위한 전역 속도 제어기(Rate Limiter) 도입
+  - 대시보드 로딩 시 데이터 누락 현상 수정 (Concurrency Limit: 5)
+  - Watchlist 상단에 최종 업데이트 시간 표시 UI 추가
+- **Build Time**: 2026-02-08 20:01:00
+
 ## [Alpha V1.005] - 2026-02-07 20:49:00
 
 ### 🚀 Performance Update

@@ -37,9 +37,12 @@ export default function SectorWatchList({ title, stocks, onAddClick }: SectorWat
                             </button>
                         )}
                     </div>
-                    {/* Simplified Time Display (Batch time or specific) */}
-                    {/* We can pick the time from the first available stock or just show 'Realtime' if connected */}
                 </div>
+                {lastUpdated && (
+                    <div className="text-xs text-slate-400 font-medium mb-4 text-right">
+                        Last Update: {lastUpdated}
+                    </div>
+                )}
                 <div className="space-y-3">
                     {stocks.map((stock) => (
                         <SectorRowItem

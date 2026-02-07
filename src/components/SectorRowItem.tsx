@@ -48,9 +48,8 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
     // Volatility Highlight logic: +/- 5%
     const isVolatile = Math.abs(currentStock.changePercent) >= 5;
 
-    // Assuming marketType is derived from category or stock data, for now, let's use a placeholder
-    // In a real app, you'd pass this down or derive it more robustly.
-    const marketType = category === 'US' ? 'US' : 'KR'; // Placeholder for marketType
+    // Simplified market type derivation
+    const marketType = category === 'US' ? 'US' : 'KR';
 
     return (
         <div
