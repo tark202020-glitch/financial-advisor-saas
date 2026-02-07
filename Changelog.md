@@ -1,3 +1,12 @@
+## [Alpha V1.020] - 2026-02-08 21:20:00
+
+### 🚑 Deep Fix (Middleware & Navigation)
+- **Summary**: Fix Login Hang & WebSocket Error
+- **Detail**:
+  - **Middleware**: `/api/*` 경로에 대한 인증 검사를 제외하여, 비로그인 상태에서도 WebSocket Approval Key 발급 요청(405 오류 원인)이 가능하도록 수정
+  - **Login Page**: `router.push`가 반응하지 않는 현상(Hanging)을 방지하기 위해 `window.location.href`를 통한 강제 네비게이션 폴백 추가
+- **Build Time**: 2026-02-08 21:20:00
+
 ## [Alpha V1.019] - 2026-02-08 21:10:00
 
 ### 🚑 Build Fix

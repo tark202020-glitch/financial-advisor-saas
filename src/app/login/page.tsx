@@ -31,9 +31,11 @@ export default function LoginPage() {
                 setLoading(false);
             } else {
                 console.log("Login Success");
-                // Refresh router to update server components (middleware handled session)
-                router.push('/dashboard');
+                // Force navigation
                 router.refresh();
+
+                // Use window.location as a hard fallback if router.push is slow/stuck
+                window.location.href = '/dashboard';
             }
         } catch (err: any) {
             console.error("Unexpected Error:", err);
