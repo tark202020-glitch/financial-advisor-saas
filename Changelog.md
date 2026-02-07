@@ -1,3 +1,12 @@
+## [Alpha V1.019] - 2026-02-08 21:10:00
+
+### 🚑 Build Fix
+- **Summary**: Fix Build Errors (V1.018 Hotfix)
+- **Detail**:
+  - **Client Components**: 인증 관련 페이지(`register`, `forgot-password`, `update-password`)에 `"use client"` 지시어 누락 수정
+  - **Dependency**: `tokenManager.ts`에서 삭제된 `lib/supabase`를 참조하던 문제를 수정 (독립 인스턴스 사용)
+- **Build Time**: 2026-02-08 21:10:00
+
 ## [Alpha V1.018] - 2026-02-08 21:00:00
 
 ### 🏗️ Ground Zero Rebuild
