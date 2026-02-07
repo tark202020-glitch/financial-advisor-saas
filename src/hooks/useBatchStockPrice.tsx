@@ -28,6 +28,7 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
                 const data = await res.json();
 
                 if (isMounted && data) {
+                    console.log(`[Batch] Received ${Object.keys(data).length} items for ${market}`);
                     const formatted: Record<string, StockData> = {};
 
                     Object.keys(data).forEach(symbol => {

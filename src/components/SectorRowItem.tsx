@@ -54,36 +54,35 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
     return (
         <div
             onClick={() => onClick(currentStock)}
-            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all hover:shadow-md border ${isVolatile ? 'bg-amber-50 border-amber-200' : 'bg-white border-transparent hover:border-slate-100'
+            className={`grid grid-cols-12 items-center p-3 rounded-lg cursor-pointer transition-all hover:shadow-md border gap-2 ${isVolatile ? 'bg-amber-50 border-amber-200' : 'bg-white border-transparent hover:border-slate-100'
                 }`}
         >
-            <div className="flex items-center gap-3">
-                {isVolatile && <div className="text-amber-500 font-bold">⭐</div>}
+            {/* 1. Name & Sector (Col 1-6) */}
+            <div className="col-span-6 flex items-center gap-3 overflow-hidden">
+                {isVolatile && <div className="text-amber-500 font-bold shrink-0">⭐</div>}
 
-                {/* Removed Circle with Text per User Request to prevent overlay/clutter */}
-
-                <div>
-                    <div className="font-bold text-slate-800 flex items-center gap-2">
-                        {stock.name}
-                        {marketType === 'US' && <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded">US</span>}
+                <div className="min-w-0">
+                    <div className="font-bold text-slate-800 flex items-center gap-2 truncate">
+                        <span className="truncate">{stock.name}</span>
+                        {marketType === 'US' && <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded shrink-0">US</span>}
                     </div>
-                    <div className="text-xs text-slate-500 flex items-center gap-1">
-                        {stock.symbol}
+                    <div className="text-xs text-slate-500 flex items-center gap-1 truncate">
+                        <span className="truncate">{stock.symbol}</span>
                         <span className="text-slate-300">|</span>
-                        <span>{stock.sector}</span>
+                        <span className="truncate">{stock.sector}</span>
                     </div>
                 </div>
             </div>
 
-            {/* 2. Price (Aligned Right) - Re-added from original structure as it was missing in the provided snippet */}
-            <div className="text-right pr-4">
+            {/* 2. Price (Col 7-9, Right Aligned) */}
+            <div className="col-span-3 text-right">
                 <div className="font-bold text-slate-900 text-lg tracking-tight">
                     {(price && price > 0) ? price.toLocaleString() : <span className="text-slate-300">---</span>}
                 </div>
             </div>
 
-            {/* 3. Change (Aligned Right) */}
-            <div className={`flex flex-col items-end justify-center ${priceColor}`}>
+            {/* 3. Change (Col 10-12, Right Aligned) */}
+            <div className={`col-span-3 flex flex-col items-end justify-center ${priceColor}`}>
                 <div className="flex items-center space-x-1 font-bold">
                     {change > 0 ? <ArrowUp size={16} /> : change < 0 ? <ArrowDown size={16} /> : null}
                     <span className="text-base">{Math.abs(changePercent).toFixed(2)}%</span>

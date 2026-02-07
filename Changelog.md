@@ -1,3 +1,12 @@
+## [Alpha V1.025] - 2026-02-09 00:00:00
+
+### 🎨 UI & Data Stability
+- **Summary**: Grid Layout for Watchlists & Data Debugging
+- **Detail**:
+  - **UI**: 종목 리스트의 정렬 불량을 해결하기 위해 CSS Grid(12 cols) 시스템 도입 (종목명 6: 현재가 3: 등락률 3 비율)
+  - **Debugging**: 데이터 유실 원인 파악을 위한 Batch API 응답 로그 추가
+- **Build Time**: 2026-02-09 00:00:00
+
 ## [Alpha V1.024] - 2026-02-08 23:00:00
 
 ### 🚑 Login Fix (Signature Mismatch)
