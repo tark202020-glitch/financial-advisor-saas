@@ -371,7 +371,7 @@ export async function getOverseasIndex(symbol: string): Promise<KisOvStockPrice 
     // URL: inquire-time-indexchartprice
 
     // Initial Request
-    let response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/inquire-time-indexchartprice?FID_COND_MRKT_DIV_CODE=N&FID_INPUT_ISCD=${symbol}&FID_HOUR_CLS_CODE=0&FID_PW_DATA_INCU_YN=N`, {
+    let response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/inquire-time-indexchartprice?FID_COND_MRKT_DIV_CODE=N&FID_INPUT_ISCD=${symbol}&FID_HOUR_CLS_CODE=0&FID_PW_DATA_INCU_YN=Y`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
@@ -395,7 +395,7 @@ export async function getOverseasIndex(symbol: string): Promise<KisOvStockPrice 
         return null;
     }
 
-    const output1 = data.output1; // Contains latest snapshot
+    const output1 = data.output1;
     const output2 = data.output2;
 
     if (!output1) return null;
@@ -405,43 +405,55 @@ export async function getOverseasIndex(symbol: string): Promise<KisOvStockPrice 
 
     // Attempt to find Date/Time in output2 (Time Series)
     if (output2 && output2.length > 0) {
-        // Sort by time descending if needed? Usually Index Chart returns recent first or uses 'xymd'/'xhms'
-        // Common keys: stck_bsop_date, stck_cntg_hour, ymd, hms, xymd, xhms
-        const latest = output2[0]; // Assume 0 is latest or check sorting. KIS Chart usually latest first? Or last?
-        // Actually inquire-time-indexchart usually returns arrays. 
-        // Let's iterate keys to find promising ones if unknown
-        // But for safety, we check specific known keys.
+        // Log keys of the first item to debug
+        // logDebug({ symbol, output2_keys: Object.keys(output2[0]) });
+
+        const latest = output2[0];
 
         date = latest.stck_bsop_date || latest.ymd || latest.ac_date || latest.xymd || '';
         time = latest.stck_cntg_hour || latest.hms || latest.ac_time || latest.xhms || '';
 
-        // If sorting is wrong (e.g. earliest first), we might need output2[output2.length-1]
-        // But without seeing data, we assume standard KIS reversed order for charts? 
-        // Actually charts usually ASC (oldest first). 
-        // IF oldest first, we need last element.
-        // Let's check output2 length and use the one that matches today/recent?
-        // Safe bet: Use the one with MAX date/time.
-        // But sorting is expensive.
-        // Let's assume LAST element if it's a chart (Old -> New).
         if (output2.length > 1) {
             const lastItem = output2[output2.length - 1];
             const lastDate = lastItem.stck_bsop_date || lastItem.ymd || lastItem.ac_date || lastItem.xymd || '';
-            // If lastItem date > latest date, switch.
             if (lastDate > date) {
                 date = lastDate;
                 time = lastItem.stck_cntg_hour || lastItem.hms || lastItem.ac_time || lastItem.xhms || '';
             }
         }
+    } else {
+        // Fallback: Use Current Server Time (Korea Time)
+        // KIS API didn't return time series (maybe closed or restricted).
+        // generating 'YYYYMMDD' and 'HHMMSS'
+        const now = new Date();
+        const kstOffset = 9 * 60 * 60 * 1000;
+        const kst = new Date(now.getTime() + kstOffset); // UTC+9 (Approx, server might be UTC)
+
+        // Actually, just use ISO string parts if server is in UTC.
+        // Let's assume server is UTC.
+        // We want to show "mm/dd hh:mm" in Frontend.
+        // Let's provide standard format or parts.
+
+        // Formating manually to match YYYYMMDD HHMMSS
+        const yyyy = kst.getUTCFullYear().toString();
+        const mm = (kst.getUTCMonth() + 1).toString().padStart(2, '0');
+        const dd = kst.getUTCDate().toString().padStart(2, '0');
+        const hh = kst.getUTCHours().toString().padStart(2, '0');
+        const min = kst.getUTCMinutes().toString().padStart(2, '0');
+        const ss = kst.getUTCSeconds().toString().padStart(2, '0');
+
+        date = `${yyyy}${mm}${dd}`;
+        time = `${hh}${min}${ss}`;
     }
 
     return {
         last: output1.ovrs_nmix_prpr,
         diff: output1.ovrs_nmix_prdy_vrss,
-        rate: output1.ovrs_nmix_prdy_ctrt,
+        rate: output1.ovrs_nmix_prdy_ctrt || output1.prdy_ctrt, // Handle aliasing if needed
         tvol: '0',
         date: date,
         time: time,
-        isDelay: true // Assume delay for index chart
+        isDelay: true
     } as KisOvStockPrice;
 }
 

@@ -1,3 +1,13 @@
+## [Alpha V1.034] - 2026-02-09 05:00:00
+
+### 🌏 Overseas Index Fallback & Fix
+- **Summary**: Implement Date/Time Fallback & Rate Parsing Fix
+- **Detail**:
+  - **Fallback Logic**: KIS API가 시계열 데이터(`output2`)를 반환하지 않을 경우(장중/휴장 등), 서버 시간(KST)을 기준으로 날짜/시간을 생성하여 "표시 없음" 현상 방지
+  - **Rate Parsing**: 등락률(`rate`)이 `NaN%`로 표시되던 문제 해결 (API 필드 파싱 안전장치 추가)
+  - **Cleanup**: 로깅 로직 제거
+- **Build Time**: 2026-02-09 05:00:00
+
 ## [Alpha V1.033] - 2026-02-09 04:00:00
 
 ### 🌏 Overseas Index & Env Fix
