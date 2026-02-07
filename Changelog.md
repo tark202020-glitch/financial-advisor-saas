@@ -1,3 +1,14 @@
+## [Alpha V1.016] - 2026-02-08 20:45:00
+
+### 🔐 System Upgrade (Auth)
+- **Summary**: Comprehensive Auth System Update
+- **Detail**:
+  - **Landing Page**: 로그인 / 회원가입 버튼 분리
+  - **Registration**: 닉네임 설정이 포함된 회원가입 페이지 구현 (`/register`)
+  - **Password Reset**: 비밀번호 찾기 및 재설정 기능 구현 (`/forgot-password`, `/update-password`)
+  - **User Menu**: 대시보드 내 닉네임 표시 및 로그아웃 기능 추가
+- **Build Time**: 2026-02-08 20:45:00
+
 ## [Alpha V1.015] - 2026-02-08 20:40:00
 
 ### ⚡ Optimization

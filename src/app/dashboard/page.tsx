@@ -10,6 +10,7 @@ import {
 } from '@/lib/mockData';
 import Link from 'next/link';
 import { BookOpen } from 'lucide-react';
+import UserMenu from '@/components/UserMenu';
 
 
 export default function DashboardPage() {
@@ -31,8 +32,8 @@ export default function DashboardPage() {
                         <h1 className="text-2xl font-bold text-slate-800">Market Insight Advisor</h1>
                         <p className="text-slate-500 text-sm">Today&apos;s market context and investment opportunities.</p>
                     </div>
-                    <div className="flex gap-3">
-                        {/* Login button removed as we are inside dashboard, maybe Logout or Profile? */}
+                    <div className="flex gap-3 items-center">
+                        <UserMenu />
                         <Link href="/portfolio" className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition flex items-center gap-2">
                             <BookOpen size={16} />
                             내 주식일지로

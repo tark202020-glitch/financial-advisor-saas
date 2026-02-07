@@ -197,6 +197,13 @@ export default function LoginPage() {
                             </div>
                         </div>
 
+
+                        <div className="flex justify-end">
+                            <Link href="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                                Forgot Password?
+                            </Link>
+                        </div>
+
                         <button
                             type="submit"
                             disabled={loading}
@@ -212,7 +219,7 @@ export default function LoginPage() {
                         </Link>
                     </div>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }

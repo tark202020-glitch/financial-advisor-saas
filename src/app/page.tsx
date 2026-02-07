@@ -16,8 +16,8 @@ export default function LandingPage() {
             <Link href="/login" className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition">
               로그인
             </Link>
-            <Link href="/login" className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition shadow-lg shadow-indigo-500/20">
-              시작하기
+            <Link href="/register" className="px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition shadow-lg shadow-indigo-500/20">
+              회원가입
             </Link>
           </div>
         </div>
