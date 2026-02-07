@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { getWSPrefix } from '@/lib/kis/exchange';
 
 // --- Types ---

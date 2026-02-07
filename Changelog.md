@@ -1,3 +1,12 @@
+## [Alpha V1.009] - 2026-02-08 20:10:00
+
+### 🛠 Build Fix
+- **Summary**: Fix Build Error & Update Rules
+- **Detail**:
+  - `WebSocketContext.tsx` 빌드 에러 수정 (`usePathname` import 누락 해결)
+  - 개발 규칙 문서(`doc/gemini.md`) 생성 및 에러 방지 가이드 추가
+- **Build Time**: 2026-02-08 20:10:00
+
 ## [Alpha V1.008] - 2026-02-08 20:05:00
 
 ### 🔄 Bug Fix
