@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, Loader2, ArrowLeft } from 'lucide-react';
@@ -11,7 +11,31 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    // Connectivity Check
+    const [connectionStatus, setConnectionStatus] = useState<string>('Checking...');
+
+    useEffect(() => {
+        const checkConnection = async () => {
+            try {
+                const start = performance.now();
+                console.log("Testing Supabase Connectivity...");
+                // Just check session to see if we can reach auth server
+                const { error } = await supabase.auth.getSession();
+                const end = performance.now();
+                if (error) {
+                    console.error("Connectivity Check Failed:", error);
+                    setConnectionStatus(`Error: ${error.message}`);
+                } else {
+                    console.log(`Connectivity to Supabase OK (${(end - start).toFixed(0)}ms)`);
+                    setConnectionStatus('Connected to Auth Server');
+                }
+            } catch (e: any) {
+                console.error("Connectivity Check Exception:", e);
+                setConnectionStatus(`Exception: ${e.message}`);
+            }
+        };
+        checkConnection();
+    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -20,12 +44,20 @@ export default function LoginPage() {
         setError(null);
 
         try {
-            console.log("Calling supabase.auth.signInWithPassword...");
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-            console.log("Supabase response:", { data, error });
+            console.log("Calling supabase.auth.signInWithPassword with timeout...");
+
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Login Request Timed Out (10s)")), 10000)
+            );
+
+            // Race against the actual login
+            const { data, error } = await Promise.race([
+                supabase.auth.signInWithPassword({ email, password }),
+                timeoutPromise
+            ]) as any;
+
+            console.log("Supabase response received:", { data, error });
 
             if (error) {
                 console.error("Login error:", error.message);
@@ -33,12 +65,12 @@ export default function LoginPage() {
                 setLoading(false);
             } else {
                 console.log("Login success! Redirecting to /dashboard");
-                router.push('/dashboard'); // Redirect to dashboard
+                router.push('/dashboard');
                 router.refresh();
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Unexpected error in handleLogin:", err);
-            setError("An unexpected error occurred.");
+            setError(err.message || "An unexpected error occurred.");
             setLoading(false);
         }
     };
@@ -52,6 +84,7 @@ export default function LoginPage() {
                     </div>
                     <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
                     <p className="text-slate-400 mt-2">Sign in to access your portfolio</p>
+                    <p className="text-xs text-slate-600 mt-2 font-mono">{connectionStatus}</p>
                 </div>
 
                 <div className="p-8">
