@@ -58,7 +58,9 @@ export default function LoginPage() {
                     addLog('Client: Session Check OK');
                 } catch (e: any) {
                     addLog(`Client Error: ${e.message}`);
-                    setConnectionStatus('Supabase Client HANGING');
+                    // Don't show HANGING status automatically on load
+                    // setConnectionStatus('Supabase Client HANGING'); 
+                    console.warn("Background Session Check Timeout - Silent Fail");
                 }
 
             } catch (e: any) {
@@ -104,7 +106,13 @@ export default function LoginPage() {
             }
         } catch (err: any) {
             console.error("Unexpected error in handleLogin:", err);
-            setError(err.message || "An unexpected error occurred.");
+            const msg = err.message || "An unexpected error occurred.";
+            setError(msg);
+
+            if (msg.includes("Timed Out")) {
+                setConnectionStatus("Supabase Client HANGING");
+            }
+
             setLoading(false);
         }
     };

@@ -1,3 +1,12 @@
+## [Alpha V1.013] - 2026-02-08 20:30:00
+
+### 🛠 UX Improvement
+- **Summary**: Login UI Logic Refinement
+- **Detail**:
+  - 'Force Session Reset' 버튼이 대기 상태에서 자동 노출되는 현상 수정
+  - 실제 로그인 시도 중 타임아웃 발생 시에만 버튼이 나타나도록 로직 변경
+- **Build Time**: 2026-02-08 20:30:00
+
 ## [Alpha V1.012] - 2026-02-08 20:25:00
 
 ### 🧹 UI Cleanup
