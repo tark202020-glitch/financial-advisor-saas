@@ -270,10 +270,9 @@ export async function getInvestorTrend(symbol: string = "005930"): Promise<any[]
 export async function getMarketInvestorTrend(symbol: string = "0001"): Promise<any[] | null> {
     const token = await getAccessToken();
 
-    // TR_ID: FHKUP03500300 (Upjong/Index Daily Investor Net Buying)
-    // URL: /uapi/domestic-stock/v1/quotations/inquire-daily-index-investor
-    // Start Date: 30 days ago? Or just same day? Daily Investor usually returns list.
-    // If we leave dates empty, it might default or error. Let's try explicit 1 month range.
+    // TR_ID: FHPTJ04040000 (Market Investor Daily)
+    // URL: /uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market
+
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10).replace(/-/g, "");
 
@@ -282,22 +281,22 @@ export async function getMarketInvestorTrend(symbol: string = "0001"): Promise<a
     past.setMonth(past.getMonth() - 1);
     const pastStr = past.toISOString().slice(0, 10).replace(/-/g, "");
 
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-index-investor?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${pastStr}&FID_INPUT_DATE_2=${todayStr}&FID_PERIOD_DIV_CODE=D`, {
+    const mrktCode = symbol === '0001' ? 'KSP' : (symbol === '1001' ? 'KSQ' : 'KSP');
+
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${pastStr}&FID_INPUT_ISCD_1=${mrktCode}&FID_INPUT_DATE_2=${todayStr}&FID_INPUT_ISCD_2=${symbol}`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
             "authorization": `Bearer ${token}`,
             "appkey": APP_KEY!,
             "appsecret": APP_SECRET!,
-            "tr_id": "FHKUP03500300",
+            "tr_id": "FHPTJ04040000",
         },
     }));
 
     if (!response.ok) {
         const text = await response.text();
         console.error(`Failed to fetch Market Investor Trend for ${symbol}:`, text);
-        // Fallback: If 404/500, maybe standard stock API works for 0001? (We probed valid JSON but maybe empty).
-        // Let's assume this path is correct for KIS "Inquire Daily Index Investor".
         throw new Error(`HTTP Error ${response.status}: ${text}`);
     }
 
@@ -307,11 +306,53 @@ export async function getMarketInvestorTrend(symbol: string = "0001"): Promise<a
         throw new Error(`KIS Error: ${data.msg1} (Code: ${data.msg_cd})`);
     }
 
-    // Index Investor TR returns 'output' as list (unlike Stock which uses output2) or verify.
-    // Based on similar Index Chart TRs, it might be output2.
-    // Let's check both.
-    const result = data.output2 || data.output;
-    return result;
+    // Output is in 'output' for this TR
+    return data.output || [];
+}
+
+export async function getOverseasIndex(symbol: string): Promise<KisOvStockPrice | null> {
+    const token = await getAccessToken();
+
+    // Use Index Chart API to get latest price (Minute Chart)
+    // TR_ID: FHKST03030200
+    // URL: inquire-time-indexchartprice
+
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/inquire-time-indexchartprice?FID_COND_MRKT_DIV_CODE=N&FID_INPUT_ISCD=${symbol}&FID_HOUR_CLS_CODE=0&FID_PW_DATA_INCU_YN=N`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "FHKST03030200",
+        },
+    }));
+
+    if (!response.ok) {
+        console.error(`Failed to fetch Overseas Index for ${symbol}:`, await response.text());
+        return null;
+    }
+
+    const data = await response.json();
+    if (data.rt_cd !== "0") {
+        console.error(`KIS API Error (OV Index): ${data.msg1}`);
+        return null;
+    }
+
+    const output1 = data.output1; // Contains latest snapshot
+    // output1: { hts_kor_isnm, ovrs_nmix_prpr, ovrs_nmix_prdy_vrss, ovrs_nmix_prdy_ctrt ... }
+
+    if (!output1) return null;
+
+    // Map to KisOvStockPrice format for frontend consistency
+    // Note: types.ts defines KisOvStockPrice with last, diff, rate, tvol.
+    return {
+        last: output1.ovrs_nmix_prpr,
+        diff: output1.ovrs_nmix_prdy_vrss,
+        rate: output1.ovrs_nmix_prdy_ctrt,
+        tvol: '0', // Index chart snapshot might not have volume in same format or we use 0
+        // e_date, e_time etc can be omitted if optional
+    } as KisOvStockPrice;
 }
 
 export interface KisFinancialStats {

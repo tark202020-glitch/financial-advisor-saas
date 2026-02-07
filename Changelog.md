@@ -1,3 +1,12 @@
+## [Alpha V1.029] - 2026-02-09 02:00:00
+
+### 📈 S&P 500 & Investor Data Fix
+- **Summary**: Correct API usage for S&P 500 Index and Investor Trends
+- **Detail**:
+  - **S&P 500**: ETF(SPY)가 아닌 실제 지수(SPX) 데이터를 가져오도록 해외지수 전용 API(`FHKST03030200`) 연결
+  - **Investor Trends**: KOSPI 투자자별 매매동향 API를 `FHPTJ04040000`(시장별 투자자매매동향)로 교체하여 정확한 순매수 데이터 제공 (개인/외국인/기관)
+- **Build Time**: 2026-02-09 02:00:00
+
 ## [Alpha V1.028] - 2026-02-09 01:30:00
 
 ### 🛡️ System Stabilization

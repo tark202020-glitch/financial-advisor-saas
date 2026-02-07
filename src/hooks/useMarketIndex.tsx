@@ -38,7 +38,7 @@ export function useMarketIndex(symbol: string, initialValue: number, category: '
                 if (category === 'KR') {
                     url = `/api/kis/index/domestic/${symbol}`;
                 } else {
-                    return;
+                    url = `/api/kis/index/overseas/${symbol}`;
                 }
 
                 const res = await fetch(url);
@@ -50,6 +50,19 @@ export function useMarketIndex(symbol: string, initialValue: number, category: '
                     const newValue = parseFloat(json.bstp_nmix_prpr);
                     const newChange = parseFloat(json.bstp_nmix_prdy_vrss);
                     const newRate = parseFloat(json.bstp_nmix_prdy_ctrt);
+
+                    if (!isNaN(newValue)) {
+                        setData({
+                            value: newValue,
+                            change: newChange,
+                            changePercent: newRate
+                        });
+                    }
+                } else if (category === 'US') {
+                    // Mapped to KisOvStockPrice-like structure (last, diff, rate)
+                    const newValue = parseFloat(json.last);
+                    const newChange = parseFloat(json.diff);
+                    const newRate = parseFloat(json.rate);
 
                     if (!isNaN(newValue)) {
                         setData({
