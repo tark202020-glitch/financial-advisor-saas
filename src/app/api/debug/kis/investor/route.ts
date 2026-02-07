@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
-const BASE_URL = process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443";
+// Sanitize BASE_URL: Remove trailing slash if present
+const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
 const APP_KEY = process.env.KIS_APP_KEY;
 const APP_SECRET = process.env.KIS_APP_SECRET;
 
@@ -26,13 +27,15 @@ export async function GET() {
         // 1. Get Token
         const tokenRes = await getAccessTokenDebug();
         if (!tokenRes.access_token) {
-            return NextResponse.json({ error: "Token Failed", details: tokenRes });
+            return NextResponse.json({ error: "Token Failed", details: tokenRes, base_url: BASE_URL });
         }
         const token = tokenRes.access_token;
 
         // 2. Fetch Investor Trend (Market - KOSPI 0001)
         // TR_ID: FHKUP03500300
-        const response = await fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-index-investor?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=D`, {
+        const endpoint = `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-index-investor?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_DATE_1=&FID_INPUT_DATE_2=&FID_PERIOD_DIV_CODE=D`;
+
+        const response = await fetch(endpoint, {
             method: "GET",
             headers: {
                 "content-type": "application/json",
@@ -40,6 +43,7 @@ export async function GET() {
                 "appkey": APP_KEY!,
                 "appsecret": APP_SECRET!,
                 "tr_id": "FHKUP03500300",
+                "custtype": "P" // Added custtype just in case
             },
         });
 
@@ -52,8 +56,10 @@ export async function GET() {
         }
 
         return NextResponse.json({
-            message: "Debug Investor Trend (FHKUP03500300)",
+            message: "Debug Investor Trend (FHKUP03500300) - URL Sanitized",
             status: response.status,
+            used_url: endpoint, // Return the URL used for verification
+            token_prefix: token.slice(0, 10) + "...",
             kis_response: data
         });
     } catch (error: any) {

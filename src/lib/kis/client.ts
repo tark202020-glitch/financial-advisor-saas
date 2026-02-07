@@ -1,7 +1,7 @@
 import { KisTokenResponse, KisDomStockPrice, KisOvStockPrice, KisResponse, KisDomIndexPrice, KisWebSocketApprovalResponse, KisIndexChartResponse } from './types';
 import { getUSExchangeCode } from './exchange';
 
-const BASE_URL = process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443";
+const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
 const APP_KEY = process.env.KIS_APP_KEY;
 const APP_SECRET = process.env.KIS_APP_SECRET;
 const CANO = process.env.KIS_CANO;
