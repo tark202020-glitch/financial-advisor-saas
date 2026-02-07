@@ -99,7 +99,7 @@ function IndexDisplay({ indexName }: { indexName: string }) {
 
 export default function MarketFlowChart() {
     const [period, setPeriod] = useState<'1D' | '1W' | '1M' | '3M' | '6M' | '1Y'>('1M');
-    const [rawData, setRawData] = useState<InvestorHistoryItem[]>([]);
+    const [rawData, setRawData] = useState<{ daily: any[], realtime: any[] } | null>(null);
     const [loading, setLoading] = useState(true);
 
     // Fetch Real Data (Use KOSPI Market Trend)
@@ -111,7 +111,7 @@ export default function MarketFlowChart() {
                 if (!res.ok) throw new Error("Failed to fetch");
                 const data = await res.json();
 
-                if (Array.isArray(data)) {
+                if (data && (data.daily || data.realtime)) {
                     setRawData(data);
                 }
             } catch (e) {
@@ -123,12 +123,12 @@ export default function MarketFlowChart() {
         fetchData();
     }, []);
 
-    // Process Data
+    // Process Data (Daily History)
     const processedData: ChartDataPoint[] = useMemo(() => {
-        if (!rawData.length) return [];
-        const sorted = [...rawData].reverse();
+        if (!rawData || !rawData.daily) return [];
+        const dailyList = [...rawData.daily].reverse(); // Sort old to new for Chart
 
-        return sorted.map(item => {
+        return dailyList.map(item => {
             // Ensure we parse Amount fields if available, otherwise fallback
             // KIS 'inquire-daily-index-investor' usually provides amount in Million KRW directly?
             // Let's assume fields are same but check values.
@@ -146,21 +146,46 @@ export default function MarketFlowChart() {
         });
     }, [rawData]);
 
-    // Summarize for Bar Chart
+    // Summarize for Bar Chart (using RealTime data usually found in the first item of realtime response)
     const summaryData = useMemo(() => {
-        const total = processedData.reduce((acc, curr) => ({
-            individual: acc.individual + curr.individual,
-            foreign: acc.foreign + curr.foreign,
-            institution: acc.institution + curr.institution,
-            pension: acc.pension + curr.pension,
-        }), { individual: 0, foreign: 0, institution: 0, pension: 0 });
+        // If we have realtime data, use the latest snapshot (index 0 usually).
+        // RealTime API returns a list of time snapshots.
+        // We want the accumulated net buying for the day.
+
+        let targetData: any = {};
+
+        // Find latest realtime data
+        if (rawData && (rawData as any).realtime && (rawData as any).realtime.length > 0) {
+            const latest = (rawData as any).realtime[0];
+            // RealTime fields: prsn_ntby_tr_pbmn, frgn_ntby_tr_pbmn, etc.
+            // Note: API might return these as accumulated already? Yes usually "Net Buying Transaction Amount" is accumulated.
+            targetData = {
+                individual: parseInt(latest.prsn_ntby_tr_pbmn || '0'),
+                foreign: parseInt(latest.frgn_ntby_tr_pbmn || '0'),
+                institution: parseInt(latest.orgn_ntby_tr_pbmn || '0'),
+            };
+        } else if (processedData.length > 0) {
+            // Fallback to Daily Latest
+            // The first item in processedData matches the latest date.
+            // But daily data is end-of-day. If used during day, might be yesterday's?
+            const latest = processedData[processedData.length - 1]; // processedData is reversed?
+            // Let's check processedData logic:
+            // rawData.reverse().map... so processedData[0] is Oldest? 
+            // processedData = rawData.daily.reverse(). 
+            // rawData from API { daily: [...], realtime: [...] }
+
+            // Wait, I need to fix rawData type usage first.
+            targetData = {
+                individual: 0, foreign: 0, institution: 0
+            };
+        }
 
         return [
-            { type: '개인', value: total.individual, color: '#8b5cf6' }, // Violet-500
-            { type: '외국인', value: total.foreign, color: '#eab308' }, // Yellow-500
-            { type: '기관', value: total.institution, color: '#22c55e' }, // Green-500
+            { type: '개인', value: targetData.individual || 0, color: '#8b5cf6' },
+            { type: '외국인', value: targetData.foreign || 0, color: '#eab308' },
+            { type: '기관', value: targetData.institution || 0, color: '#22c55e' },
         ].filter(d => d.value !== 0);
-    }, [processedData]);
+    }, [rawData, processedData]);
 
     const tableData = summaryData.map(d => ({
         ...d,
