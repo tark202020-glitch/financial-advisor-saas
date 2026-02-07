@@ -31,10 +31,7 @@ export default function LoginPage() {
                 setLoading(false);
             } else {
                 console.log("Login Success");
-                // Force navigation
-                router.refresh();
-
-                // Use window.location as a hard fallback if router.push is slow/stuck
+                // Force hard navigation only to avoid router cache issues
                 window.location.href = '/dashboard';
             }
         } catch (err: any) {

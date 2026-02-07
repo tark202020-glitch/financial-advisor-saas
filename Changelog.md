@@ -1,3 +1,12 @@
+## [Alpha V1.021] - 2026-02-08 21:30:00
+
+### 🔍 Debugging Mode
+- **Summary**: Diagnose Infinite Loading
+- **Detail**:
+  - **Login Navigation**: `router.refresh()` 제거하고 `window.location.href`만 사용하여 라우터 충돌 가능성 배제
+  - **Middleware Logs**: 서버 측 미들웨어 진입 및 경로 처리 로그 추가 (`[MW] Request: ...`)
+- **Build Time**: 2026-02-08 21:30:00
+
 ## [Alpha V1.020] - 2026-02-08 21:20:00
 
 ### 🚑 Deep Fix (Middleware & Navigation)
