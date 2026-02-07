@@ -308,49 +308,58 @@ export async function getMarketInvestorTrendDaily(symbol: string = "0001"): Prom
 export async function getMarketInvestorTrendRealTime(symbol: string = "0001"): Promise<any[] | null> {
     const token = await getAccessToken();
 
-    // TR_ID: FHPTJ04030000 (Market Investor Time/Intraday)
+    // Use Daily API (FHPTJ04040000) to get "Accumulated" data for the day.
+    // Time API (FHPTJ04030000) returns 1-minute snapshot which is too small.
 
-    let iscd = "999";
-    let iscd2 = "S001"; // Default KOSPI
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10).replace(/-/g, "");
 
-    if (symbol === '0001') { // KOSPI
-        iscd = "999";
-        iscd2 = "S001";
-    } else if (symbol === '1001') { // KOSDAQ
-        iscd = "999";
-        iscd2 = "S002";
-    } else if (symbol === 'ETF') { // ETF
-        iscd = "999";
-        iscd2 = "T000"; // T000 as per hint
+    // Check if ETF
+    if (symbol === 'ETF') {
+        // ETF Market Code unknown for this API. Return empty to avoid error/confusion.
+        return [];
     }
 
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-time-by-market?FID_INPUT_ISCD=${iscd}&FID_INPUT_ISCD_2=${iscd2}`, {
+    let iscd = "0001";
+    let mrktCode = "KSP";
+
+    if (symbol === '0001') { // KOSPI
+        iscd = "0001";
+        mrktCode = "KSP";
+    } else if (symbol === '1001') { // KOSDAQ
+        iscd = "1001";
+        mrktCode = "KSQ";
+    }
+
+    // TR_ID: FHPTJ04040000 (Market Investor Daily)
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${iscd}&FID_INPUT_DATE_1=${todayStr}&FID_INPUT_ISCD_1=${mrktCode}&FID_INPUT_DATE_2=${todayStr}&FID_INPUT_ISCD_2=${iscd}`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
             "authorization": `Bearer ${token}`,
             "appkey": APP_KEY!,
             "appsecret": APP_SECRET!,
-            "tr_id": "FHPTJ04030000",
+            "tr_id": "FHPTJ04040000",
         },
-        cache: 'no-store' // Ensure fresh data
+        cache: 'no-store'
     }));
 
     if (!response.ok) {
-        console.warn(`[KIS] RealTime Investor failed:`, await response.text());
+        console.warn(`[KIS] RealTime (Daily) Investor failed:`, await response.text());
         return null;
     }
 
     const data = await response.json();
     let output = data.output || [];
 
-    // Sort by time descending to ensure [0] is latest
-    // Time field corresponds to stck_bsop_time (HHMMSS)
-    if (output.length > 0 && output[0].stck_bsop_time) {
-        output.sort((a: any, b: any) => Number(b.stck_bsop_time) - Number(a.stck_bsop_time));
+    // Sort by date descending (though we only asked for today, just in case)
+    if (output.length > 0) {
+        // If today is holiday or pre-market, it might be empty.
+        // If empty, frontend will show 0 or -.
+        return output;
     }
 
-    return output;
+    return [];
 }
 
 export async function getOverseasIndex(symbol: string): Promise<KisOvStockPrice | null> {
