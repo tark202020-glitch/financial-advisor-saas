@@ -10,14 +10,32 @@ const ACNT_PRDT_CD = process.env.KIS_ACNT_PRDT_CD || "01";
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;
 
+import { getStoredToken, saveToken } from './tokenManager';
+
 export async function getAccessToken(): Promise<string> {
-    // If we have a valid token (with 1 minute buffer), return it
+    // 1. In-Memory Cache (Fastest)
     if (cachedToken && Date.now() < tokenExpiresAt - 60000) {
         return cachedToken;
     }
 
     if (!APP_KEY || !APP_SECRET) {
         throw new Error("KIS API Keys are missing in .env.local");
+    }
+
+    // 2. Supabase Cache (Persistent)
+    const storedToken = await getStoredToken();
+    if (storedToken) {
+        // console.log("[KIS] Using Token from Supabase");
+        cachedToken = storedToken;
+        // Assume valid for at least 5 mins (buffer checked in manager)
+        // We don't know exact expiry here without querying DB again or changing manager return type.
+        // Let's set memory expiry to 5 mins to force re-check with DB occasionally, or just rely on DB check next time if memory invalid.
+        // Actually, if we just set cachedToken, we need tokenExpiresAt.
+        // Let's set it to Date.now() + 1 hour safely, or just 10 minutes to be safe.
+        // Better: Manager returns expiry? No, string.
+        // Let's just set it to +5 minutes so we re-verify with DB often enough but not every request.
+        tokenExpiresAt = Date.now() + (5 * 60 * 1000);
+        return cachedToken;
     }
 
     console.log("Fetching new KIS Access Token...");
@@ -44,7 +62,13 @@ export async function getAccessToken(): Promise<string> {
 
     cachedToken = data.access_token;
     // expires_in is usually seconds (86400).
-    tokenExpiresAt = Date.now() + (data.expires_in * 1000);
+    const expiresIn = data.expires_in;
+    tokenExpiresAt = Date.now() + (expiresIn * 1000);
+
+    // 3. Save to Supabase
+    // Run in background (don't await to speed up response?) 
+    // Vercel might kill bg tasks. Better await.
+    await saveToken(cachedToken, expiresIn);
 
     return cachedToken;
 }

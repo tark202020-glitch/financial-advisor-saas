@@ -1,3 +1,10 @@
+## [Alpha V1.002] - 2026-02-07 19:05:00
+
+### 🔄 Build Update
+- **Summary**: TS Config Optimization
+- **Detail** : tsconfig.json 최적화를 통해 references 폴더 제외 (메모리 누수 방지)
+- **Build Time**: 2026-02-07 19:05:00
+
 ## [Alpha V1.001] - 2026-02-06 23:59:00
 
 ### 🚀 Build Update
