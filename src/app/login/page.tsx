@@ -132,11 +132,6 @@ export default function LoginPage() {
                             </button>
                         )}
                     </div>
-                    {diagLog.length > 0 && (
-                        <div className="mt-2 text-[10px] text-slate-500 text-left bg-slate-800 p-2 rounded overflow-hidden">
-                            {diagLog.map((log, i) => <div key={i}>{log}</div>)}
-                        </div>
-                    )}
                 </div>
 
                 <div className="p-8">
