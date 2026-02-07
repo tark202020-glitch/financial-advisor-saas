@@ -118,7 +118,20 @@ export default function LoginPage() {
                     </div>
                     <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
                     <p className="text-slate-400 mt-2">Sign in to access your portfolio</p>
-                    <p className="text-xs text-slate-600 mt-2 font-mono">{connectionStatus}</p>
+                    <div className="flex flex-col items-center">
+                        <p className="text-xs text-slate-600 mt-2 font-mono">{connectionStatus}</p>
+                        {connectionStatus.includes("HANGING") && (
+                            <button
+                                onClick={() => {
+                                    localStorage.clear();
+                                    window.location.reload();
+                                }}
+                                className="mt-2 px-3 py-1 bg-red-100 text-red-600 text-xs rounded-full hover:bg-red-200 transition"
+                            >
+                                🔄 Force Session Reset
+                            </button>
+                        )}
+                    </div>
                     {diagLog.length > 0 && (
                         <div className="mt-2 text-[10px] text-slate-500 text-left bg-slate-800 p-2 rounded overflow-hidden">
                             {diagLog.map((log, i) => <div key={i}>{log}</div>)}

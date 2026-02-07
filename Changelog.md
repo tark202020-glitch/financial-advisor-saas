@@ -1,3 +1,13 @@
+## [Alpha V1.011] - 2026-02-08 20:20:00
+
+### 🚑 Hotfix
+- **Summary**: Session Reset Tool
+- **Detail**:
+  - Supabase Client 초기화 옵션 명시적 설정
+  - 로그인 페이지에 'Force Session Reset' 버튼 추가 (로컬 스토리지 초기화 기능)
+  - 'Supabase Client HANGING' 상태 감지 시 리셋 버튼 자동 노출
+- **Build Time**: 2026-02-08 20:20:00
+
 ## [Alpha V1.010] - 2026-02-08 20:15:00
 
 ### 🚑 Hotfix
