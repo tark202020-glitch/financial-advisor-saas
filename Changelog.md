@@ -1,3 +1,17 @@
+## [Alpha V1.084] - 2026-02-09 22:00:00
+
+### 🐛 Critical Bug Fix
+- **Summary**: Fix Supabase Auth Lock Timeout
+- **Detail**:
+  - **Issue**: `_acquireLock` timeout으로 인한 AbortError. Supabase Auth가 lock을 얻으려다 실패.
+  - **Root Cause**: 기본 auth 설정이 session detection과 lock 메커니즘에서 충돌.
+  - **Fix**: 
+    - `detectSessionInUrl: false` - URL 기반 자동 세션 감지 비활성화
+    - `storageKey` 명시적 지정으로 lock 충돌 방지
+    - `flowType: 'pkce'` 명시
+  - **Expected**: Auth lock timeout이 해결되고 데이터 로드 성공.
+- **Build Time**: 2026-02-09 22:00:00
+
 ## [Alpha V1.083] - 2026-02-09 21:45:00
 
 ### 🐛 Critical Bug Fix
