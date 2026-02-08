@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { getMarketType } from '@/utils/market';
@@ -63,6 +63,77 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     // Singleton Supabase Client
     const supabase = useMemo(() => createClient(), []);
 
+    // Define fetchPortfolio BEFORE useEffect (to avoid hoisting issues)
+    const fetchPortfolio = useCallback(async (userId: string, retryCount = 0) => {
+        setIsLoading(true);
+        setError(null);
+        setDebugLog(prev => [...prev, `[Fetch] Starting for userId: ${userId} (Attempt: ${retryCount + 1})`]);
+
+        try {
+            const { data: portfolios, error } = await supabase
+                .from('portfolios')
+                .select(`
+                    *,
+                    trade_logs (*)
+                `)
+                .eq('user_id', userId)
+                .order('created_at', { ascending: true })
+                .abortSignal(AbortSignal.timeout(10000)); // 10s timeout to prevent hanging
+
+            if (error) {
+                // Retry on AbortError or Network Error
+                if ((error.code === '20' || error.message.includes('AbortError')) && retryCount < 2) {
+                    setDebugLog(prev => [...prev, `[Fetch Retry] Retrying due to error: ${error.message}`]);
+                    setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500); // Retry after 500ms
+                    return;
+                }
+                setDebugLog(prev => [...prev, `[Fetch Error] ${error.message} (${error.code})`]);
+                throw error;
+            }
+
+            if (portfolios) {
+                setDebugLog(prev => [...prev, `[Fetch Success] Raw count: ${portfolios.length}`]);
+
+                const loadedAssets: Asset[] = portfolios
+                    .filter((p: any) => p.symbol)
+                    .map((p: any) => ({
+                        id: p.id,
+                        symbol: p.symbol,
+                        name: p.name,
+                        category: getMarketType(p.symbol),
+                        quantity: p.quantity,
+                        pricePerShare: p.buy_price || 0,
+                        memo: p.memo,
+                        targetPriceLower: p.buy_target,
+                        targetPriceUpper: p.sell_target,
+                        trades: p.trade_logs ? p.trade_logs.map((t: any) => ({
+                            id: t.id,
+                            date: t.trade_date,
+                            type: t.type,
+                            price: t.price,
+                            quantity: t.quantity,
+                            memo: t.memo,
+                        })) : []
+                    }));
+
+                setDebugLog(prev => [...prev, `[Process] Loaded Assets: ${loadedAssets.length}`]);
+                setAssets(loadedAssets);
+            } else {
+                setDebugLog(prev => [...prev, `[Fetch] portfolios is null`]);
+            }
+        } catch (error: any) {
+            if (error.name === 'AbortError' && retryCount < 2) {
+                setDebugLog(prev => [...prev, `[Fetch Retry] Aborted. Retrying...`]);
+                setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500);
+                return;
+            }
+            console.error('Error fetching portfolio:', error);
+            setError(error.message || "데이터를 불러오는데 실패했습니다.");
+        } finally {
+            setIsLoading(false);
+            setDebugLog(prev => [...prev, `[Fetch] Completed`]);
+        }
+    }, [supabase]);
 
     // 1. Auth & Data Fetching
     useEffect(() => {
@@ -132,78 +203,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             authListener.subscription.unsubscribe();
             clearTimeout(timeoutId);
         };
-    }, []);
-
-    const fetchPortfolio = async (userId: string, retryCount = 0) => {
-        setIsLoading(true);
-        setError(null);
-        setDebugLog(prev => [...prev, `[Fetch] Starting for userId: ${userId} (Attempt: ${retryCount + 1})`]);
-
-        try {
-            const { data: portfolios, error } = await supabase
-                .from('portfolios')
-                .select(`
-                    *,
-                    trade_logs (*)
-                `)
-                .eq('user_id', userId)
-                .order('created_at', { ascending: true })
-                .abortSignal(AbortSignal.timeout(10000)); // 10s timeout to prevent hanging
-
-            if (error) {
-                // Retry on AbortError or Network Error
-                if ((error.code === '20' || error.message.includes('AbortError')) && retryCount < 2) {
-                    setDebugLog(prev => [...prev, `[Fetch Retry] Retrying due to error: ${error.message}`]);
-                    setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500); // Retry after 500ms
-                    return;
-                }
-                setDebugLog(prev => [...prev, `[Fetch Error] ${error.message} (${error.code})`]);
-                throw error;
-            }
-
-            if (portfolios) {
-                setDebugLog(prev => [...prev, `[Fetch Success] Raw count: ${portfolios.length}`]);
-
-                const loadedAssets: Asset[] = portfolios
-                    .filter((p: any) => p.symbol)
-                    .map((p: any) => ({
-                        id: p.id,
-                        symbol: p.symbol,
-                        name: p.name,
-                        category: getMarketType(p.symbol),
-                        quantity: p.quantity,
-                        pricePerShare: p.buy_price || 0,
-                        memo: p.memo,
-                        targetPriceLower: p.buy_target,
-                        targetPriceUpper: p.sell_target,
-                        trades: p.trade_logs ? p.trade_logs.map((t: any) => ({
-                            id: t.id,
-                            date: t.trade_date,
-                            type: t.type,
-                            price: t.price,
-                            quantity: t.quantity,
-                            memo: t.memo,
-                        })) : []
-                    }));
-
-                setDebugLog(prev => [...prev, `[Process] Loaded Assets: ${loadedAssets.length}`]);
-                setAssets(loadedAssets);
-            } else {
-                setDebugLog(prev => [...prev, `[Fetch] portfolios is null`]);
-            }
-        } catch (error: any) {
-            if (error.name === 'AbortError' && retryCount < 2) {
-                setDebugLog(prev => [...prev, `[Fetch Retry] Aborted. Retrying...`]);
-                setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500);
-                return;
-            }
-            console.error('Error fetching portfolio:', error);
-            setError(error.message || "데이터를 불러오는데 실패했습니다.");
-        } finally {
-            setIsLoading(false);
-            setDebugLog(prev => [...prev, `[Fetch] Completed`]);
-        }
-    };
+    }, [fetchPortfolio, initialUser, supabase, isInitialized]);
 
     // 2. Actions
     const addAsset = async (newAsset: Omit<Asset, 'id'>) => {

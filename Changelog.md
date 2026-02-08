@@ -1,3 +1,12 @@
+## [Alpha V1.071] - 2026-02-09 19:00:00
+
+### 🐛 Critical Bug Fix
+- **Summary**: Fix fetchPort folio Hoisting Issue
+- **Detail**:
+  - **Issue**: `fetchPortfolio` 함수가 `useEffect` 이후에 정의되어 호이스팅 문제로 실행되지 않음. Force Refresh 시 로그만 표시되고 실제 데이터가 로딩되지 않는 문제.
+  - **Fix**: `fetchPortfolio`를 `useCallback`으로 감싸고 `useEffect` 전에 정의. `useEffect` 의존성 배열에 `fetchPortfolio` 추가.
+- **Build Time**: 2026-02-09 19:00:00
+
 ## [Alpha V1.070] - 2026-02-09 18:35:00
 
 ### 🚑 Build Fix
