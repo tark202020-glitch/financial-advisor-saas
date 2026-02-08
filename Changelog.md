@@ -1,3 +1,15 @@
+## [Alpha V1.090] - 2026-02-10 10:25:00
+
+### 🐛 Bug Fix: 로딩 화면 무한 로딩 수정
+- **Summary**: 로그인 직후 또는 새로고침 시 "회원 정보를 불러오는 중..." 화면에서 멈추는 현상 해결
+- **Detail**:
+  - **Issue**: `PortfolioContext` 초기화 시, 이미 동기화된 상태(`user.id === initialUser.id`)인 경우 로딩 메시지를 해제하는 로직이 누락됨.
+  - **Fix**:
+    1. `initialUser` 매칭 시 `loadingMessage`를 즉시 `null`로 초기화.
+    2. `fetchPortfolio` 호출을 `try/finally`로 감싸 예외 발생 시에도 로딩 메시지 해제 보장.
+  - **Result**: 어떤 상황에서도 로딩 화면이 적절한 시점에 사라지고 앱 화면으로 진입함.
+- **Build Time**: 2026-02-10 10:25:00
+
 ## [Alpha V1.089] - 2026-02-10 09:30:00
 
 ### ⚡ Performance: 로그인 직후 데이터 동기화 최적화

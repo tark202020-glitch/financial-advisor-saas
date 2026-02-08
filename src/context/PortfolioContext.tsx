@@ -111,15 +111,21 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         const init = async () => {
             // 1. Server-side User Injection (Priority)
             if (initialUser) {
-                // Only update if different to avoid loop/flicker
-                if (user?.id !== initialUser.id) {
-                    // console.log("[PortfolioContext] New initialUser detected:", initialUser.email);
-                    setUser(initialUser);
-                    setLoadingMessage("회원 정보를 불러오는 중...");
+                // Case A: User ID matches (Already synced or first render with correct state)
+                if (user?.id === initialUser.id) {
+                    if (mounted) setLoadingMessage(null);
+                    return;
+                }
 
-                    // Fetch data
+                // Case B: New User detected
+                setUser(initialUser);
+                setLoadingMessage("회원 정보를 불러오는 중...");
+
+                try {
                     await fetchPortfolio(initialUser.id);
-
+                } catch (e) {
+                    console.error("Init fetch failed:", e);
+                } finally {
                     if (mounted) setLoadingMessage(null);
                 }
                 return;
