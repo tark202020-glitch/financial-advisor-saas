@@ -1,3 +1,13 @@
+## [Alpha V1.095] - 2026-02-10 15:30:00
+
+### 🐛 Bug Fix: 조건검색 API 404 오류 수정
+- **Summary**: 조건검색 시 'API Limit or Error' 메시지가 발생하는 문제(404 Not Found)를 수정하고 에러 핸들링을 개선
+- **Detail**:
+  - **Route Refactoring**: `/api/kis/ranking/market-cap` → `/api/kis/ranking?type=market-cap` 으로 경로 구조 단순화
+  - **Dynamic Configuration**: `export const dynamic = 'force-dynamic'` 옵션을 추가하여 정적 빌드 시점의 오류 방지 및 런타임 실행 보장
+  - **Error Messaging**: Frontend에서 API 오류 발생 시 상태 코드(Status Code)와 상세 메시지를 표시하도록 개선하여 정확한 원인 파악 가능
+- **Build Time**: 2026-02-10 15:30:00
+
 ## [Alpha V1.094] - 2026-02-10 14:45:00
 
 ### ✨ Feature: 조건검색 (Condition Search) 기능 추가

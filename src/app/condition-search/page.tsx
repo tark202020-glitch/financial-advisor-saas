@@ -50,8 +50,11 @@ export default function ConditionSearchPage() {
         try {
             // 1. Fetch Candidates (Market Cap Ranking - Top N)
             // Currently our API returns KIS Ranking (likely Top 30-100).
-            const res = await fetch('/api/kis/ranking/market-cap');
-            if (!res.ok) throw new Error("API Limit or Error");
+            const res = await fetch('/api/kis/ranking?type=market-cap');
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`API Error: ${res.status} ${res.statusText} - ${errText}`);
+            }
             const rankingData = await res.json();
 
             // setDebugMsg(`Ranking Data: ${JSON.stringify(rankingData?.[0] || 'Empty')}`);
