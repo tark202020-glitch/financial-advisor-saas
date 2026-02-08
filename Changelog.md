@@ -1,3 +1,18 @@
+## [Alpha V1.081] - 2026-02-09 21:15:00
+
+### 🐛 Critical Bug Fix
+- **Summary**: Fix Duplicate fetchPortfolio Calls Causing AbortError
+- **Detail**:
+  - **Issue**: `fetchPortfolio`가 3곳에서 동시 호출되어 서로 중단시키면서 AbortError 발생.
+    - `initialUser` 체크 시
+    - `initSession()` 에서
+    - `onAuthStateChange` 에서
+  - **Fix**: 
+    - `initialUser` 체크에서 fetchPortfolio 호출 제거
+    - `onAuthStateChange`에서 복잡한 조건문 제거, 모든 세션 변경 시 일관되게 fetch
+    - AUTH 이벤트 로깅 추가
+- **Build Time**: 2026-02-09 21:15:00
+
 ## [Alpha V1.080] - 2026-02-09 21:00:00
 
 ### 🚑 Build Fix

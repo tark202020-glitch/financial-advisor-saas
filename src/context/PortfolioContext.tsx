@@ -137,9 +137,10 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     useEffect(() => {
         let mounted = true;
 
-        if (initialUser && mounted) {
-            fetchPortfolio(initialUser.id);
-        }
+        // Don't fetch here - let onAuthStateChange handle it to avoid race conditions
+        // if (initialUser && mounted) {
+        //     fetchPortfolio(initialUser.id);
+        // }
 
         const initSession = async () => {
             try {
@@ -172,16 +173,12 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
             if (!mounted) return;
 
-            // Avoid re-fetching on initial load if we already have it
-            if (event === 'INITIAL_SESSION' && initialUser) return;
+            console.log('[AUTH] Event:', event, 'Session exists:', !!session?.user);
+            setDebugLog(prev => [...prev, `[AUTH] ${event} - User: ${session?.user?.email || 'null'}`]);
 
             setUser(session?.user || null);
             if (session?.user) {
-                if (event === 'SIGNED_IN') {
-                    await fetchPortfolio(session.user.id);
-                } else if (!initialUser) {
-                    await fetchPortfolio(session.user.id);
-                }
+                await fetchPortfolio(session.user.id);
             } else {
                 setAssets([]);
                 setIsLoading(false);
