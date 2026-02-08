@@ -1,3 +1,15 @@
+## [Alpha V1.083] - 2026-02-09 21:45:00
+
+### 🐛 Critical Bug Fix
+- **Summary**: Replace useMemo with useRef for True Singleton
+- **Detail**:
+  - **Issue**: `useMemo`가 React 렌더링 사이클(특히 Strict Mode)에서 클라이언트를 여러 번 생성하여 AbortError 발생.
+  - **Fix**: 
+    - `useRef`로 변경하여 컴포넌트 생명주기 동안 단 한 번만 생성 보장
+    - `supabaseRef.current`로 클라이언트 접근
+  - **Expected**: 이제 클라이언트가 단 1번만 생성되고 AbortError가 사라질 것.
+- **Build Time**: 2026-02-09 21:45:00
+
 ## [Alpha V1.082] - 2026-02-09 21:30:00
 
 ### 🐛 Critical Bug Fix

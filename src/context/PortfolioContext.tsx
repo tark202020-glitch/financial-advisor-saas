@@ -60,8 +60,12 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     const [isInitialized, setIsInitialized] = useState(!!initialUser);
     const router = useRouter();
 
-    // Create Supabase client in browser context
-    const supabase = useMemo(() => createClient(), []);
+    // Use useRef for guaranteed singleton - survives re-renders
+    const supabaseRef = React.useRef<ReturnType<typeof createClient> | null>(null);
+    if (!supabaseRef.current) {
+        supabaseRef.current = createClient();
+    }
+    const supabase = supabaseRef.current;
 
     // Define fetchPortfolio BEFORE useEffect (to avoid hoisting issues)
     const fetchPortfolio = useCallback(async (userId: string, retryCount = 0) => {
