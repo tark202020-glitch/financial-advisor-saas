@@ -1,3 +1,12 @@
+## [Alpha V1.079] - 2026-02-09 20:50:00
+
+### 🚑 Build Fix
+- **Summary**: Fix TypeScript Build Error
+- **Detail**:
+  - **Issue**: `update-password/page.tsx`에서 `session` 파라미터 타입 미지정으로 빌드 실패.
+  - **Fix**: `session` 파라미터에 `any` 타입 추가.
+- **Build Time**: 2026-02-09 20:50:00
+
 ## [Alpha V1.078] - 2026-02-09 20:45:00
 
 ### 🐛 Critical Bug Fix

@@ -16,7 +16,7 @@ export default function UpdatePasswordPage() {
 
     // Initial check to ensure session exists (Supabase auto-logins via link)
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(({ data: { session } }: any) => {
             if (!session) {
                 setMessage({ type: 'error', text: 'Invalid or expired session. Please request a new reset link.' });
             }
