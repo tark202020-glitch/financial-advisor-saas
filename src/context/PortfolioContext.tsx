@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useMe
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { getMarketType } from '@/utils/market';
+import FullPageLoader from '@/components/ui/FullPageLoader';
 
 export interface TradeRecord {
     id: number; // DB ID is bigint
@@ -327,24 +328,26 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         router.push('/login');
     };
 
-    const totalInvested = assets.reduce((sum, asset) => sum + (asset.pricePerShare * asset.quantity), 0);
+    // Blocking Loader with Minimum 3s Delay
+    // We combine the actual initialization check with a minimum 3s timer
+    const [minLoadComplete, setMinLoadComplete] = useState(false);
 
-    if (!isInitialized) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-slate-500 font-medium animate-pulse">Initializing Financial Advisor...</p>
-                </div>
-            </div>
-        );
+    useEffect(() => {
+        const timer = setTimeout(() => setMinLoadComplete(true), 3000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const showGlobalLoader = !isInitialized || !minLoadComplete;
+
+    if (showGlobalLoader) {
+        return <FullPageLoader message="자산 정보를 불러오는 중입니다..." />;
     }
 
     return (
         <PortfolioContext.Provider value={{
             assets,
             totalInvested,
-            isLoading,
+            isLoading, // Keep this for internal spinners if needed, but global loader covers init
             error,
             debugLog,
             user,
