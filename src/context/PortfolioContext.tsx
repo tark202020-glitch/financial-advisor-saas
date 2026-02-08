@@ -35,6 +35,7 @@ interface PortfolioContextType {
     assets: Asset[];
     totalInvested: number;
     isLoading: boolean;
+    error: string | null;
     user: any | null;
     addAsset: (asset: Omit<Asset, 'id'>) => Promise<void>;
     removeAsset: (id: number) => Promise<void>;
@@ -50,6 +51,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [user, setUser] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [isInitialized, setIsInitialized] = useState(false); // Global Init State
     const router = useRouter();
     const supabase = createClient();
@@ -124,6 +126,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
     const fetchPortfolio = async (userId: string) => {
         setIsLoading(true);
+        setError(null);
         try {
             // Fetch Portfolios with Trades
             const { data: portfolios, error } = await supabase
@@ -163,8 +166,9 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
                 setAssets(loadedAssets);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching portfolio:', error);
+            setError(error.message || "데이터를 불러오는데 실패했습니다.");
         } finally {
             setIsLoading(false);
         }
@@ -317,6 +321,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             assets,
             totalInvested,
             isLoading,
+            error,
             user,
             addAsset,
             removeAsset,

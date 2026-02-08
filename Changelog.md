@@ -1,3 +1,13 @@
+## [Alpha V1.057] - 2026-02-09 15:00:00
+
+### 🐛 Data Sync Debugging
+- **Summary**: Improve Error Visibility for Portfolio Sync
+- **Detail**:
+  - **Issue**: "내 주식일지" 데이터가 로그인 후에도 보이지 않는 현상.
+  - **Fix**: `PortfolioContext`에 에러 상태(`error`)를 추가하고, 데이터 로딩 실패 시 UI에 에러 메시지를 표시하도록 `PortfolioTable` 수정.
+  - **Purpose**: 데이터가 없는 것인지, 로딩에 실패한 것인지 명확히 구분하여 디버깅 용이성 확보.
+- **Build Time**: 2026-02-09 15:00:00
+
 ## [Alpha V1.056] - 2026-02-09 14:45:00
 
 ### 🔄 User Flow Optimization

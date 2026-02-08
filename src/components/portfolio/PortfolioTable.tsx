@@ -9,7 +9,19 @@ import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 type SortOption = 'newest' | 'value' | 'name';
 
 export default function PortfolioTable() {
-    const { assets, isLoading } = usePortfolio();
+    const { assets, isLoading, error } = usePortfolio();
+
+    // Debugging Log
+    // console.log("[PortfolioTable] assets:", assets.length, "isLoading:", isLoading, "error:", error);
+
+    if (error) {
+        return (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-center">
+                <p className="font-medium">데이터를 불러오지 못했습니다.</p>
+                <p className="text-sm mt-1">{error}</p>
+            </div>
+        );
+    }
 
     // 1. Extract Symbols for Batch Fetching
     const { krSymbols, usSymbols } = useMemo(() => {
