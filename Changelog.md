@@ -1,3 +1,13 @@
+## [Alpha V1.058] - 2026-02-09 15:15:00
+
+### 🔍 Server-Side Verification
+- **Summary**: Add Debug Info for Portfolio Sync
+- **Detail**:
+  - **Feature**: `PortfolioPage`를 서버 컴포넌트로 전환하고, 서버 사이드에서 직접 DB의 포트폴리오 개수(`count`)를 조회하여 화면에 표시.
+  - **Purpose**: 클라이언트(`Context`)와 서버(`DB/RLS`) 간의 데이터 불일치 원인을 파악하기 위함.
+  - **UI**: 페이지 상단에 노란색 디버그 박스로 서버 측 조회 결과(User Email, DB Count) 표시.
+- **Build Time**: 2026-02-09 15:15:00
+
 ## [Alpha V1.057] - 2026-02-09 15:00:00
 
 ### 🐛 Data Sync Debugging
