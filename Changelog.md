@@ -1,3 +1,13 @@
+## [Alpha V1.037] - 2026-02-09 07:00:00
+
+### 🧭 Sidebar Navigation
+- **Summary**: Implement Collapsible Sidebar & Layout
+- **Detail**:
+  - **Sidebar**: 좌측에 접고 펼 수 있는 사이드바(일일체크, 내주식일지, 설정, 내정보, 로그아웃) 추가
+  - **Layout**: Dashboard 및 Portfolio 페이지에 사이드바 레이아웃 적용
+  - **Cleanup**: 상단 헤더의 중복된 버튼 제거 및 UI 정리
+- **Build Time**: 2026-02-09 07:00:00
+
 ## [Alpha V1.036] - 2026-02-09 06:15:00
 
 ### 🎨 UI Refinement & Formatting

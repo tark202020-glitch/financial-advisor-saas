@@ -3,23 +3,19 @@
 import AddAssetForm from '@/components/portfolio/AddAssetForm';
 import PortfolioTable from '@/components/portfolio/PortfolioTable';
 import { usePortfolio } from '@/context/PortfolioContext';
-import Link from 'next/link';
-import { ArrowLeft, Wallet } from 'lucide-react';
+import { Wallet } from 'lucide-react';
+import SidebarLayout from '@/components/SidebarLayout';
 
 export default function PortfolioPage() {
     const { totalInvested } = usePortfolio();
 
     return (
-        <main className="min-h-screen bg-slate-50 font-sans p-6">
-            <div className="max-w-5xl mx-auto space-y-8">
+        <SidebarLayout>
+            <div className="max-w-5xl mx-auto space-y-8 p-6">
 
                 {/* Header */}
                 <header className="flex items-center justify-between">
                     <div>
-                        <Link href="/" className="inline-flex items-center text-sm text-slate-500 hover:text-indigo-600 mb-2 transition">
-                            <ArrowLeft size={16} className="mr-1" />
-                            대시보드로 돌아가기
-                        </Link>
                         <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
                             <Wallet className="text-indigo-600" />
                             내 자산 관리 (My Asset)
@@ -44,6 +40,6 @@ export default function PortfolioPage() {
                     <PortfolioTable />
                 </section>
             </div>
-        </main>
+        </SidebarLayout>
     );
 }
