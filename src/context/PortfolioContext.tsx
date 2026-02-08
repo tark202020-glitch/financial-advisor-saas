@@ -46,15 +46,18 @@ interface PortfolioContextType {
     logout: () => Promise<void>;
 }
 
+logout: () => Promise<void>;
+}
+
 export const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
-export function PortfolioProvider({ children }: { children: ReactNode }) {
+export function PortfolioProvider({ children, initialUser }: { children: ReactNode; initialUser?: any | null }) {
     const [assets, setAssets] = useState<Asset[]>([]);
-    const [user, setUser] = useState<any | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [user, setUser] = useState<any | null>(initialUser || null);
+    const [isLoading, setIsLoading] = useState(!initialUser); // If user provided, not loading initially
     const [error, setError] = useState<string | null>(null);
-    const [debugLog, setDebugLog] = useState<string[]>([]);
-    const [isInitialized, setIsInitialized] = useState(false); // Global Init State
+    const [debugLog, setDebugLog] = useState<string[]>(initialUser ? [`[Init] Hydrated user: ${initialUser.email}`] : []);
+    const [isInitialized, setIsInitialized] = useState(!!initialUser); // Global Init State
     const router = useRouter();
     const supabase = createClient();
 
@@ -62,7 +65,13 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         let mounted = true;
 
+        if (initialUser && mounted) {
+            // Already hydrated, just fetch data
+            fetchPortfolio(initialUser.id);
+        }
+
         const initSession = async () => {
+            // ... (rest of logic)
             try {
                 // console.log("Initializing Session...");
                 const { data: { session }, error } = await supabase.auth.getSession();
