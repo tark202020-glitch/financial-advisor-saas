@@ -1,10 +1,10 @@
 ## [Alpha V1.070] - 2026-02-09 18:35:00
 
 ### 🚑 Build Fix
-- **Summary**: Fix Duplicate Declarations
+- **Summary**: Fix Duplicate Declarations & Missing Property
 - **Detail**:
-  - **Issue**: `PortfolioContext.tsx` 내 `fetchPortfolio`, `refreshPortfolio` 함수가 중복 선언되어 빌드 실패.
-  - **Fix**: 중복된 함수 정의 제거 및 파일 구조 정리.
+  - **Issue**: `PortfolioContext.tsx` 내 `fetchPortfolio`, `refreshPortfolio` 함수가 중복 선언되어 빌드 실패. 이후 Provider에서 `refreshPortfolio` 누락.
+  - **Fix**: 중복된 함수 정의 제거 및 Provider value에 `refreshPortfolio` 추가.
 - **Build Time**: 2026-02-09 18:35:00
 
 ## [Alpha V1.069] - 2026-02-09 18:25:00

@@ -367,6 +367,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             addTradeLog,
             removeTradeLog,
             logout,
+            refreshPortfolio,
         }}>
             {children}
         </PortfolioContext.Provider>
