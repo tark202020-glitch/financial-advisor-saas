@@ -1,3 +1,13 @@
+## [Alpha V1.041] - 2026-02-09 10:45:00
+
+### 🛡️ Auth Logic Hardening
+- **Summary**: Improve Session Fetching & Logout
+- **Detail**:
+  - **Session**: `getSession`(로컬)과 `getUser`(서버) 이중 체크로 로그인 정보 로딩 속도 및 안정성 강화
+  - **State**: 데이터 로딩 중 'Loading...' 표시 추가 (Guest 깜빡임 방지)
+  - **Logout**: `onAuthStateChange` 이벤트를 통한 확실한 리다이렉트 처리
+- **Build Time**: 2026-02-09 10:45:00
+
 ## [Alpha V1.040] - 2026-02-09 09:30:00
 
 ### 🎨 Sidebar Profile Update

@@ -24,25 +24,35 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const supabase = createClient();
+    const [supabase] = useState(() => createClient());
     const [user, setUser] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const getUser = async () => {
-            try {
-                const { data: { user } } = await supabase.auth.getUser();
-                setUser(user);
-            } catch (e) {
-                // silently fail
+        const initAuth = async () => {
+            // 1. Try fetching session first (faster)
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                setUser(session.user);
             }
+
+            // 2. Validate with server
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                setUser(user);
+            }
+
+            setLoading(false);
         };
-        getUser();
+        initAuth();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
                 setUser(session.user);
-            } else {
+            } else if (event === 'SIGNED_OUT') {
                 setUser(null);
+                router.push('/login');
+                router.refresh();
             }
         });
 
@@ -52,14 +62,8 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
     }, []);
 
     const handleLogout = async () => {
-        try {
-            await supabase.auth.signOut();
-        } catch (error) {
-            // ignore error
-        } finally {
-            router.push("/login");
-            router.refresh();
-        }
+        await supabase.auth.signOut();
+        router.refresh();
     };
 
     const navItems = [
@@ -129,12 +133,18 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                     </div>
                     {!isCollapsed && (
                         <div className="flex flex-col text-left overflow-hidden">
-                            <span className="text-sm font-bold text-slate-800 truncate">
-                                {user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"}
-                            </span>
-                            <span className="text-xs text-slate-500 truncate max-w-[140px]">
-                                {user?.email || "No Email"}
-                            </span>
+                            {loading ? (
+                                <span className="text-xs text-slate-400 animate-pulse">Loading...</span>
+                            ) : (
+                                <>
+                                    <span className="text-sm font-bold text-slate-800 truncate" title={user?.email}>
+                                        {user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"}
+                                    </span>
+                                    <span className="text-xs text-slate-500 truncate max-w-[140px]" title={user?.email}>
+                                        {user?.email || "No Email"}
+                                    </span>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>
