@@ -1,3 +1,13 @@
+## [Alpha V1.076] - 2026-02-09 20:15:00
+
+### 🔍 Debug Test
+- **Summary**: Remove trade_logs Join to Isolate Hang Issue
+- **Detail**:
+  - **Issue**: Supabase 쿼리가 `trade_logs` 조인 후 완료되지 않고 hang됨.
+  - **Test**: `trade_logs` 조인을 임시 제거하고 `portfolios`만 조회하여 문제 원인 파악.
+  - **Note**: 이는 임시 디버깅 버전. 성공 시 trade_logs를 별도 쿼리로 가져오도록 수정 예정.
+- **Build Time**: 2026-02-09 20:15:00
+
 ## [Alpha V1.075] - 2026-02-09 20:00:00
 
 ### 🐛 Critical Bug Fix

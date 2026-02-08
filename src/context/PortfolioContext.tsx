@@ -73,10 +73,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             setDebugLog(prev => [...prev, `[Fetch] Running Supabase query...`]);
             const { data: portfolios, error } = await supabase
                 .from('portfolios')
-                .select(`
-                    *,
-                    trade_logs (*)
-                `)
+                .select('*')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: true });
 
@@ -108,14 +105,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                         memo: p.memo,
                         targetPriceLower: p.buy_target,
                         targetPriceUpper: p.sell_target,
-                        trades: p.trade_logs ? p.trade_logs.map((t: any) => ({
-                            id: t.id,
-                            date: t.trade_date,
-                            type: t.type,
-                            price: t.price,
-                            quantity: t.quantity,
-                            memo: t.memo,
-                        })) : []
+                        trades: [] // Temporarily disabled to debug query hang
                     }));
 
                 setDebugLog(prev => [...prev, `[Process] Loaded Assets: ${loadedAssets.length}`]);
