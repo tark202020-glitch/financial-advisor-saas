@@ -1,17 +1,23 @@
 "use client";
 
-import { useStockPrice } from '@/hooks/useStockPrice';
+// import { useStockPrice } from '@/hooks/useStockPrice';
 import { Asset, usePortfolio } from '@/context/PortfolioContext';
 import { useState } from 'react';
 import StockDetailChartModal from '../modals/StockDetailChartModal';
 
 interface PortfolioCardProps {
     asset: Asset;
+    stockData: {
+        price: number;
+        change: number;
+        changePercent: number;
+        time?: string;
+    } | null;
 }
 
-export default function PortfolioCard({ asset }: PortfolioCardProps) {
+export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) {
     const { updateAsset } = usePortfolio();
-    const stockData = useStockPrice(asset.symbol, asset.pricePerShare, asset.category);
+    // const stockData = useStockPrice(asset.symbol, asset.pricePerShare, asset.category);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     // Current Price Logic
@@ -23,7 +29,7 @@ export default function PortfolioCard({ asset }: PortfolioCardProps) {
     // Valuation Logic
     const totalPurchase = asset.pricePerShare * asset.quantity;
     const currentValuation = currentPrice * asset.quantity;
-    const profitLoss = currentValuation - totalPurchase;
+    const profitLoss = stockData ? (currentValuation - totalPurchase) : 0;
 
     // Calculate Return Rate (Handle Division by Zero)
     const rawReturnRate = totalPurchase === 0 ? 0 : (profitLoss / totalPurchase) * 100;

@@ -1,3 +1,13 @@
+## [Alpha V1.044] - 2026-02-09 11:45:00
+
+### 🚑 Deep Fix (Portfolio Data)
+- **Summary**: Resolve Missing Profit/Loss & Return Rate (0%)
+- **Detail**:
+  - **Refactor**: 포트폴리오 데이터 조회 방식을 개별 호출(`useStockPrice`)에서 **일괄 조회(`useBatchStockPrice`)**로 변경하여 API 과부하 및 500 에러 원천 차단
+  - **Symbol Fix**: 국내 주식 심볼(`.KS`) 처리 로직 개선으로 실시간 데이터 매칭 정확도 향상
+  - **Performance**: 불필요한 리렌더링 감소 및 데이터 로딩 속도 개선
+- **Build Time**: 2026-02-09 11:45:00
+
 ## [Alpha V1.043] - 2026-02-09 11:30:00
 
 ### 🔍 Portfolio UX Upgrade
