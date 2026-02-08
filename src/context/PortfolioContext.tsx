@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { getMarketType } from '@/utils/market';
 import { signout } from '@/app/login/actions';
+import FullPageLoader from '@/components/ui/FullPageLoader';
 
 export interface TradeRecord {
     id: number;
@@ -53,6 +54,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     const [assets, setAssets] = useState<Asset[]>([]);
     const [user, setUser] = useState<any | null>(initialUser || null);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadingMessage, setLoadingMessage] = useState<string | null>("FinAdvisor을 시작합니다...");
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
@@ -107,9 +109,13 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         let mounted = true;
 
         const init = async () => {
+            setLoadingMessage("사용자 정보를 확인하고 있습니다...");
+
             // If server already provided user, fetch immediately
             if (initialUser) {
+                setLoadingMessage("나의 주식 목록을 불러오고 있습니다...");
                 await fetchPortfolio(initialUser.id);
+                if (mounted) setLoadingMessage(null);
                 return;
             }
 
@@ -118,6 +124,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 const { data: { session } } = await supabase.auth.getSession();
                 if (mounted && session?.user) {
                     setUser(session.user);
+                    setLoadingMessage("나의 주식 목록을 불러오고 있습니다...");
                     await fetchPortfolio(session.user.id);
                 } else if (mounted) {
                     setIsLoading(false);
@@ -125,6 +132,8 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             } catch (err) {
                 console.error("Session init failed:", err);
                 if (mounted) setIsLoading(false);
+            } finally {
+                if (mounted) setLoadingMessage(null);
             }
         };
 
@@ -134,11 +143,17 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
             if (!mounted) return;
 
-            setUser(session?.user || null);
-            if (session?.user) {
-                await fetchPortfolio(session.user.id);
-            } else {
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                if (session?.user) {
+                    setUser(session.user);
+                    setLoadingMessage("로그인 정보를 동기화하고 있습니다...");
+                    await fetchPortfolio(session.user.id);
+                    setLoadingMessage(null);
+                }
+            } else if (event === 'SIGNED_OUT') {
+                setUser(null);
                 setAssets([]);
+                setLoadingMessage(null);
                 setIsLoading(false);
             }
         });
@@ -307,7 +322,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             logout,
             refreshPortfolio,
         }}>
-            {children}
+            {loadingMessage ? <FullPageLoader message={loadingMessage} /> : children}
         </PortfolioContext.Provider>
     );
 }
