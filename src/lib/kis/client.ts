@@ -1,4 +1,4 @@
-import { KisTokenResponse, KisDomStockPrice, KisOvStockPrice, KisResponse, KisDomIndexPrice, KisWebSocketApprovalResponse, KisIndexChartResponse } from './types';
+import { KisTokenResponse, KisDomStockPrice, KisOvStockPrice, KisResponse, KisDomIndexPrice, KisWebSocketApprovalResponse, KisIndexChartResponse, KisMarketCapItem } from './types';
 import { getUSExchangeCode } from './exchange';
 import { kisRateLimiter } from './rateLimiter';
 
@@ -613,3 +613,48 @@ async function fetchGenericFinance(tr_id: string, path: string, symbol: string):
 }
 // ... existing export generic functions
 
+// ... existing export generic functions
+
+export async function getMarketCapRanking(limit: number = 30): Promise<KisMarketCapItem[]> {
+    const token = await getAccessToken();
+
+    // TR_ID: FHPST01730000 (Market Cap Ranking)
+    // URL: /uapi/domestic-stock/v1/ranking/market-cap
+    // Params:
+    // FID_COND_MRKT_DIV_CODE=J (J: KOSPI, Q: KOSDAQ)
+    // FID_COND_SCR_DIV_CODE=20173
+    // FID_INPUT_ISCD=0000 (All)
+    // FID_DIV_CLS_CODE=0 (All)
+    // FID_BLNG_CLS_CODE=0 (Average?) -> 0: Ordinary
+    // FID_TRGT_CLS_CODE=111111111 (Target Class: 1=Include, 0=Exclude. 111111111 includes most)
+    // FID_TRGT_XCLS_CODE=000000000 (Exclude Class: 0=None)
+    // FID_INPUT_PRICE_1= (Empty)
+    // FID_INPUT_PRICE_2= (Empty)
+    // FID_VOL_CLS_CODE= (Empty)
+    // FID_INPUT_DATE_1= (Empty)
+
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/ranking/market-cap?FID_COND_MRKT_DIV_CODE=J&FID_COND_SCR_DIV_CODE=20173&FID_INPUT_ISCD=0000&FID_DIV_CLS_CODE=0&FID_BLNG_CLS_CODE=0&FID_TRGT_CLS_CODE=111111111&FID_TRGT_XCLS_CODE=000000000&FID_INPUT_PRICE_1=&FID_INPUT_PRICE_2=&FID_VOL_CLS_CODE=&FID_INPUT_DATE_1=`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "FHPST01730000",
+            "custtype": "P"
+        },
+    }));
+
+    if (!response.ok) {
+        console.error(`Failed to fetch Market Cap Ranking:`, await response.text());
+        return [];
+    }
+
+    const data = await response.json();
+    if (data.rt_cd !== "0") {
+        console.error(`KIS API Error (Ranking): ${data.msg1}`);
+        return [];
+    }
+
+    return data.output || [];
+}

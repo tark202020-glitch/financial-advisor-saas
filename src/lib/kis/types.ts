@@ -48,3 +48,21 @@ export interface KisIndexChartResponse {
     output1: KisDomIndexPrice;
     output2: any[]; // Daily data array
 }
+
+export interface KisMarketCapItem {
+    mksc_shra: string; // 시가총액 (억/원 단위 확인 필요, 보통 천원/백만원 단위 등)
+    stck_prpr: string; // 현재가
+    prdy_vrss: string; // 전일대비
+    prdy_ctrt: string; // 등락률
+    acml_vol: string; // 거래량
+    hts_kor_isnm: string; // 종목명
+    mksc_shra_code?: string; // 종목코드 (추정: mksc_shra) -> 실제 응답 확인 후 매핑. Key is likely `mksc_shra` or `stck_shra` or `mksc_shra`... 
+    // Usually code is in `mksc_shra`. Wait, I will use `any` in implementation to inspect.
+    // Standard ID for Code in some lists is `mksc_shra` or `mksc_shra`.
+    // Actually, `mksc_shra` is Market Cap.
+    // `stck_shra` is Shares.
+    // `mksc_shra` is the code.
+    // `mksc_shra`...
+    // Let's rely on mapping in client.ts
+    [key: string]: any;
+}

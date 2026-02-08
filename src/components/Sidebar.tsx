@@ -10,6 +10,7 @@ import {
     LogOut,
     ChevronLeft,
     ChevronRight,
+    Search,
 } from "lucide-react";
 import { usePortfolio } from "@/context/PortfolioContext";
 
@@ -29,6 +30,7 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
     const navItems = [
         { name: "일일체크", href: "/dashboard", icon: LayoutDashboard },
         { name: "내 주식일지", href: "/portfolio", icon: BookOpen },
+        { name: "조건검색", href: "/condition-search", icon: Search },
         { name: "설정", href: "#", icon: Settings, disabled: true }, // Placeholder
     ];
 

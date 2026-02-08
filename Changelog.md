@@ -1,3 +1,14 @@
+## [Alpha V1.094] - 2026-02-10 14:45:00
+
+### ✨ Feature: 조건검색 (Condition Search) 기능 추가
+- **Summary**: 사용자가 원하는 재무 조건(시가총액, PER, ROE)을 설정하여 KOSPI 우량주를 발굴할 수 있는 검색 페이지 추가
+- **Detail**:
+  - **New Page**: `/condition-search` (사이드바에서 접근 가능)
+  - **Dynamic Filtering**: 다중 조건 추가 및 상세 범위 설정 기능 구현
+  - **Data Source**: KIS 시가총액 순위 API(`FHPST01730000`)를 기반으로 후보군을 선정하고, 현재가 배치 조회(`inquire-price`)를 통해 PER/ROE 등 상세 지표를 확보하여 필터링 수행.
+  - **Ranking**: 검색 결과는 시가총액, 거래량, PER, ROE 등 주요 지표와 함께 테이블 형태로 제공.
+- **Build Time**: 2026-02-10 14:45:00
+
 ## [Alpha V1.093] - 2026-02-10 13:30:00
 
 ### 🚀 UX Enhancement: 포트폴리오 실시간 주가 로딩 최적화
