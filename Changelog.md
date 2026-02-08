@@ -1,3 +1,13 @@
+## [Alpha V1.043] - 2026-02-09 11:30:00
+
+### 🔍 Portfolio UX Upgrade
+- **Summary**: Implement Filtering & Sorting with Real-time Valuation
+- **Detail**:
+  - **Filtering**: 국내/해외/거래완료(수량0) 필터 추가 및 각 항목별 자산 개수(Count) 표시 기능 구현
+  - **Sorting**: 최신순, 가나다순, **평가금액순** 정렬 기능 추가 (평가금액은 실시간 시세 반영하여 정렬)
+  - **UI**: 필터 및 정렬 컨트롤 바 추가로 포트폴리오 관리 편의성 증대
+- **Build Time**: 2026-02-09 11:30:00
+
 ## [Alpha V1.042] - 2026-02-09 11:00:00
 
 ### 💰 Portfolio Refactor & Fixes
