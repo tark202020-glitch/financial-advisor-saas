@@ -46,8 +46,7 @@ interface PortfolioContextType {
     logout: () => Promise<void>;
 }
 
-logout: () => Promise<void>;
-}
+
 
 export const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
