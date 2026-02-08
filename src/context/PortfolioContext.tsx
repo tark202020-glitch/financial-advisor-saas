@@ -77,8 +77,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                     trade_logs (*)
                 `)
                 .eq('user_id', userId)
-                .order('created_at', { ascending: true })
-                .abortSignal(AbortSignal.timeout(10000)); // 10s timeout to prevent hanging
+                .order('created_at', { ascending: true });
 
             if (error) {
                 // Retry on AbortError or Network Error

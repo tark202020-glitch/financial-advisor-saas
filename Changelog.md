@@ -1,3 +1,12 @@
+## [Alpha V1.072] - 2026-02-09 19:15:00
+
+### 🐛 Critical Bug Fix
+- **Summary**: Remove Timeout Causing AbortError
+- **Detail**:
+  - **Issue**: 10초 timeout이 너무 짧아서 68개 주식 + 거래기록 조인 쿼리가 완료되기 전에 abort됨. 모든 요청이 "AbortError: signal is aborted without reason"로 실패.
+  - **Fix**: `abortSignal(AbortSignal.timeout(10000))` 제거. Supabase 자체 timeout에 의존.
+- **Build Time**: 2026-02-09 19:15:00
+
 ## [Alpha V1.071] - 2026-02-09 19:00:00
 
 ### 🐛 Critical Bug Fix
