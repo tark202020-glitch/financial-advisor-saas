@@ -21,8 +21,8 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
             if (symbols.length === 0) return;
             setIsLoading(true);
 
-            // Split into chunks of 4 to be safe (client-side throttling)
-            const chunkSize = 4;
+            // Split into chunks of 6 (Requested: 3 * 2 grid)
+            const chunkSize = 6;
             const chunks = [];
             for (let i = 0; i < symbols.length; i += chunkSize) {
                 chunks.push(symbols.slice(i, i + chunkSize));

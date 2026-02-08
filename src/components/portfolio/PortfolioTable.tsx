@@ -38,9 +38,10 @@ export default function PortfolioTable() {
             }
         });
 
+        // Reverse to fetch Newest (Top of list) first
         return {
-            krSymbols: Array.from(kr),
-            usSymbols: Array.from(us)
+            krSymbols: Array.from(kr).reverse(),
+            usSymbols: Array.from(us).reverse()
         };
     }, [assets]);
 
