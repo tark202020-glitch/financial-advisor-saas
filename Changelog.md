@@ -1,3 +1,17 @@
+## [Alpha V1.082] - 2026-02-09 21:30:00
+
+### 🐛 Critical Bug Fix
+- **Summary**: Fix Supabase Client SSR Initialization Issue
+- **Detail**:
+  - **Issue**: `client.ts`에서 module-level `export const supabase = createClient()`가 SSR 중에도 실행되어 문제 발생.
+  - **Fix**: 
+    - Module-level singleton export 제거
+    - `createClient()` 함수만 export
+    - `PortfolioContext`에서 `useMemo`로 브라우저 컨텍스트에서만 생성
+    - 초기화 로그 강화 (`[SUPABASE-INIT]`)
+  - **Expected**: 이제 브라우저에서만 클라이언트가 생성되고 정상 작동할 것.
+- **Build Time**: 2026-02-09 21:30:00
+
 ## [Alpha V1.081] - 2026-02-09 21:15:00
 
 ### 🐛 Critical Bug Fix

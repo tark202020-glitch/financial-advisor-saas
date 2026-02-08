@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
-import { supabase } from '@/utils/supabase/client';
+import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { getMarketType } from '@/utils/market';
 import FullPageLoader from '@/components/ui/FullPageLoader';
@@ -59,6 +59,9 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     const [debugLog, setDebugLog] = useState<string[]>(initialUser ? [`[Init] Hydrated user: ${initialUser.email}`] : []);
     const [isInitialized, setIsInitialized] = useState(!!initialUser);
     const router = useRouter();
+
+    // Create Supabase client in browser context
+    const supabase = useMemo(() => createClient(), []);
 
     // Define fetchPortfolio BEFORE useEffect (to avoid hoisting issues)
     const fetchPortfolio = useCallback(async (userId: string, retryCount = 0) => {

@@ -5,14 +5,12 @@ let supabaseClientInstance: ReturnType<typeof createBrowserClient> | null = null
 
 export function createClient() {
     if (!supabaseClientInstance) {
+        console.log('[SUPABASE-INIT] Creating client...');
         supabaseClientInstance = createBrowserClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
-        console.log('[SUPABASE] Client created');
+        console.log('[SUPABASE-INIT] Client created successfully');
     }
     return supabaseClientInstance;
 }
-
-// Export the singleton directly
-export const supabase = createClient();
