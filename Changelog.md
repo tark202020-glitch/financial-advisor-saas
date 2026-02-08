@@ -1,3 +1,12 @@
+## [Alpha V1.074] - 2026-02-09 19:45:00
+
+### 🔍 Debug Enhancement
+- **Summary**: Add Detailed Debug Logs
+- **Detail**:
+  - **Issue**: `[Fetch] Starting` 이후 로그가 전혀 없어 문제 파악 불가.
+  - **Fix**: Supabase 쿼리 실행 전후, 데이터 처리 과정에 상세 로그 추가.
+- **Build Time**: 2026-02-09 19:45:00
+
 ## [Alpha V1.073] - 2026-02-09 19:30:00
 
 ### 🐛 Critical Bug Fix

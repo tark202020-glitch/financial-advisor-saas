@@ -70,6 +70,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         setDebugLog(prev => [...prev, `[Fetch] Starting for userId: ${userId} (Attempt: ${retryCount + 1})`]);
 
         try {
+            setDebugLog(prev => [...prev, `[Fetch] Running Supabase query...`]);
             const { data: portfolios, error } = await supabase
                 .from('portfolios')
                 .select(`
@@ -78,6 +79,8 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 `)
                 .eq('user_id', userId)
                 .order('created_at', { ascending: true });
+
+            setDebugLog(prev => [...prev, `[Fetch] Query completed, error: ${error ? 'YES' : 'NO'}, data: ${portfolios ? 'YES' : 'NO'}`]);
 
             if (error) {
                 // Retry on AbortError or Network Error
@@ -117,10 +120,12 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
 
                 setDebugLog(prev => [...prev, `[Process] Loaded Assets: ${loadedAssets.length}`]);
                 setAssets(loadedAssets);
+                setDebugLog(prev => [...prev, `[Process] setAssets called successfully`]);
             } else {
                 setDebugLog(prev => [...prev, `[Fetch] portfolios is null`]);
             }
         } catch (error: any) {
+            setDebugLog(prev => [...prev, `[Fetch Exception] ${error.name}: ${error.message}`]);
             if (error.name === 'AbortError' && retryCount < 2) {
                 setDebugLog(prev => [...prev, `[Fetch Retry] Aborted. Retrying...`]);
                 setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500);
