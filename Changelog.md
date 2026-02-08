@@ -1,3 +1,13 @@
+## [Alpha V1.091] - 2026-02-10 11:30:00
+
+### 🐛 Bug Fix: 포트폴리오 화면 로딩 상태 유지 버그 수정
+- **Summary**: "내 주식일지" 페이지에서 스켈레톤 로더가 사라지지 않는 문제 해결
+- **Detail**:
+  - **Issue**: `PortfolioContext` 초기화 최적화 로직에서, 사용자 정보가 이미 존재하는 경우(`initialUser` 매칭) `loadingMessage`만 해제하고 `isLoading` 상태를 `false`로 변경하지 않음.
+  - **Fix**: `initialUser` 매칭 시 `setIsLoading(false)`를 명시적으로 호출하여 데이터 로딩 완료 상태로 전환.
+  - **Result**: 페이지 진입 시 정상적으로 데이터 목록이 표시됨.
+- **Build Time**: 2026-02-10 11:30:00
+
 ## [Alpha V1.090] - 2026-02-10 10:25:00
 
 ### 🐛 Bug Fix: 로딩 화면 무한 로딩 수정

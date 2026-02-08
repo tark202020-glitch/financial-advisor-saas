@@ -113,7 +113,10 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             if (initialUser) {
                 // Case A: User ID matches (Already synced or first render with correct state)
                 if (user?.id === initialUser.id) {
-                    if (mounted) setLoadingMessage(null);
+                    if (mounted) {
+                        setLoadingMessage(null);
+                        setIsLoading(false);
+                    }
                     return;
                 }
 
