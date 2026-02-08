@@ -135,9 +135,10 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             setError(error.message || "데이터를 불러오는데 실패했습니다.");
         } finally {
             setIsLoading(false);
+            setIsInitialized(true);
             setDebugLog(prev => [...prev, `[Fetch] Completed`]);
         }
-    }, [supabase]);
+    }, []);
 
     // 1. Auth & Data Fetching
     useEffect(() => {
@@ -207,7 +208,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             authListener.subscription.unsubscribe();
             clearTimeout(timeoutId);
         };
-    }, [fetchPortfolio, initialUser, supabase]);
+    }, []);
 
     // 2. Actions
     const addAsset = async (newAsset: Omit<Asset, 'id'>) => {

@@ -1,3 +1,14 @@
+## [Alpha V1.075] - 2026-02-09 20:00:00
+
+### 🐛 Critical Bug Fix
+- **Summary**: Fix Infinite useEffect Loop and Hanging Query
+- **Detail**:
+  - **Issue**: `fetchPortfolio`의 useCallback 의존성에 `supabase`가 포함되어 있어 fetchPortfolio가 변경될 때마다 useEffect가 재실행. 또한 Supabase 쿼리가 완료되지 않고 hang됨.
+  - **Fix**: 
+    - `useCallback`과 `useEffect` 의존성 배열을 `[]`로 변경하여 최초 1회만 실행
+    - `finally` 블록에 `setIsInitialized(true)` 추가하여 초기화 보장
+- **Build Time**: 2026-02-09 20:00:00
+
 ## [Alpha V1.074] - 2026-02-09 19:45:00
 
 ### 🔍 Debug Enhancement
