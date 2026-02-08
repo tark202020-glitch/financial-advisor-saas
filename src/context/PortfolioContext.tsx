@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import { getMarketType } from '@/utils/market';
 
 export interface TradeRecord {
     id: number; // DB ID is bigint
@@ -102,7 +103,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                     id: p.id,
                     symbol: p.symbol,
                     name: p.name,
-                    category: 'KR',
+                    category: getMarketType(p.symbol), // Dynamic Category
                     quantity: p.quantity,
                     pricePerShare: p.buy_price || 0,
                     memo: p.memo,
@@ -244,7 +245,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const removeTradeLog = async (tradeId: number, assetId: number) => {
         if (!user) return;
         try {
-            await supabase.from('trade_logs').delete().eq('id', tradeId);
+            const { error } = await supabase.from('trade_logs').delete().eq('id', tradeId);
             await fetchPortfolio(user.id);
         } catch (e) { console.error(e) }
     };
