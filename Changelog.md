@@ -1,3 +1,12 @@
+## [Alpha V1.052] - 2026-02-09 13:45:00
+
+### 🛡️ Data Fetching Stability
+- **Summary**: Prevent Dashboard Crash/Empty State
+- **Detail**:
+  - **Issue**: 일부 데이터 오류(Symbol 누락 등) 시 전체 포트폴리오 로드가 실패하여 빈 화면이 나올 수 있는 문제 방지
+  - **Fix**: `getMarketType` 안전성 강화 및 포트폴리오 매핑 시 예외 처리 추가
+- **Build Time**: 2026-02-09 13:45:00
+
 ## [Alpha V1.051] - 2026-02-09 13:30:00
 
 ### 🔄 Login Process Refactor

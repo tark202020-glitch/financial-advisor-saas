@@ -50,6 +50,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [user, setUser] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isInitialized, setIsInitialized] = useState(false); // Global Init State
     const router = useRouter();
     const supabase = createClient();
 
@@ -64,6 +65,8 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                 setAssets([]);
                 setIsLoading(false);
             }
+            // Mark initialized
+            setIsInitialized(true);
         };
 
         initSession();
@@ -71,7 +74,13 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
             setUser(session?.user || null);
             if (session?.user) {
-                await fetchPortfolio(session.user.id);
+                if (event === 'SIGNED_IN') {
+                    setIsInitialized(false);
+                    await fetchPortfolio(session.user.id);
+                    setIsInitialized(true);
+                } else {
+                    await fetchPortfolio(session.user.id);
+                }
             } else {
                 setAssets([]);
                 setIsLoading(false);
@@ -99,25 +108,29 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             if (error) throw error;
 
             if (portfolios) {
-                const loadedAssets: Asset[] = portfolios.map((p: any) => ({
-                    id: p.id,
-                    symbol: p.symbol,
-                    name: p.name,
-                    category: getMarketType(p.symbol), // Dynamic Category
-                    quantity: p.quantity,
-                    pricePerShare: p.buy_price || 0,
-                    memo: p.memo,
-                    targetPriceLower: p.buy_target,
-                    targetPriceUpper: p.sell_target,
-                    trades: p.trade_logs ? p.trade_logs.map((t: any) => ({
-                        id: t.id,
-                        date: t.trade_date,
-                        type: t.type,
-                        price: t.price,
-                        quantity: t.quantity,
-                        memo: t.memo,
-                    })) : []
-                }));
+                const loadedAssets: Asset[] = portfolios.map((p: any) => {
+                    if (!p.symbol) return null;
+                    return {
+                        id: p.id,
+                        symbol: p.symbol,
+                        name: p.name,
+                        category: getMarketType(p.symbol),
+                        quantity: p.quantity,
+                        pricePerShare: p.buy_price || 0,
+                        memo: p.memo,
+                        targetPriceLower: p.buy_target,
+                        targetPriceUpper: p.sell_target,
+                        trades: p.trade_logs ? p.trade_logs.map((t: any) => ({
+                            id: t.id,
+                            date: t.trade_date,
+                            type: t.type,
+                            price: t.price,
+                            quantity: t.quantity,
+                            memo: t.memo,
+                        })) : []
+                    };
+                }).filter((a: any) => a !== null);
+
                 setAssets(loadedAssets);
             }
         } catch (error) {
@@ -256,6 +269,18 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     };
 
     const totalInvested = assets.reduce((sum, asset) => sum + (asset.pricePerShare * asset.quantity), 0);
+
+    // Blocking Loader
+    if (!isInitialized) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-slate-500 font-medium animate-pulse">Initializing Financial Advisor...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <PortfolioContext.Provider value={{

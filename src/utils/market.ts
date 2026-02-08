@@ -6,6 +6,8 @@
  * - Alphabet (and others without enough digits): US (Overseas)
  */
 export function getMarketType(symbol: string): 'KR' | 'US' {
+    if (!symbol || typeof symbol !== 'string') return 'US';
+
     // Strip suffix for checking
     const clean = symbol.replace(/\.(KS|KQ|ks|kq)$/, '');
 
