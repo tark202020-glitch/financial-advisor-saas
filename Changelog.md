@@ -1,3 +1,12 @@
+## [Alpha V1.080] - 2026-02-09 21:00:00
+
+### 🚑 Build Fix
+- **Summary**: Fix TypeScript Build Error in PortfolioContext
+- **Detail**:
+  - **Issue**: `PortfolioContext.tsx` line 172의 `onAuthStateChange` 콜백에서 `event`, `session` 파라미터 타입 미지정으로 빌드 실패.
+  - **Fix**: `event: any`, `session: any` 타입 추가.
+- **Build Time**: 2026-02-09 21:00:00
+
 ## [Alpha V1.079] - 2026-02-09 20:50:00
 
 ### 🚑 Build Fix
