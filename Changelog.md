@@ -1,3 +1,15 @@
+## [Alpha V1.085] - 2026-02-08 17:50:00
+
+### 🧹 Code Cleanup: 내 주식일지 페이지 재구축
+- **Summary**: Portfolio 페이지 디버그 코드 전면 제거 및 코드 단순화
+- **Detail**:
+  - **PortfolioContext.tsx**: 완전 재작성 — `debugLog` 상태, `AbortError` 재시도, 3초 최소 로딩, `FullPageLoader` 글로벌 블로커, `isInitialized` 이중 체크 등 V1.051~V1.084 디버깅 과정에서 누적된 코드 전면 제거. 세션 초기화를 `initialUser` 기반으로 단순화.
+  - **PortfolioClientPage.tsx**: 서버/클라이언트 동기화 디버그 패널, Client Debug Logs 패널 제거. 깔끔한 AddAssetForm + PortfolioTable 레이아웃만 유지.
+  - **portfolio/page.tsx**: `serverDebugInfo` 수집 로직 제거, 단순 렌더링 컴포넌트로 변환.
+  - **client.ts**: 불필요한 `console.log` 제거.
+  - **기능 보존**: CRUD, 가격 조회, WebSocket, 필터/정렬 등 모든 핵심 기능 100% 유지.
+- **Build Time**: 2026-02-08 17:50:00
+
 ## [Alpha V1.084] - 2026-02-09 22:00:00
 
 ### 🐛 Critical Bug Fix

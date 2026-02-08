@@ -1,13 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { getMarketType } from '@/utils/market';
-import FullPageLoader from '@/components/ui/FullPageLoader';
 
 export interface TradeRecord {
-    id: number; // DB ID is bigint
+    id: number;
     date: string;
     type: 'BUY' | 'SELL';
     price: number;
@@ -17,7 +16,7 @@ export interface TradeRecord {
 }
 
 export interface Asset {
-    id: number; // DB ID is bigint
+    id: number;
     symbol: string;
     name: string;
     category: 'KR' | 'US';
@@ -27,8 +26,8 @@ export interface Asset {
     purchasePurpose?: string;
     purchaseIndexValue?: number;
     memo?: string;
-    targetPriceLower?: number; // Maps to buy_target
-    targetPriceUpper?: number; // Maps to sell_target
+    targetPriceLower?: number;
+    targetPriceUpper?: number;
     trades?: TradeRecord[];
 }
 
@@ -37,7 +36,6 @@ interface PortfolioContextType {
     totalInvested: number;
     isLoading: boolean;
     error: string | null;
-    debugLog: string[];
     user: any | null;
     addAsset: (asset: Omit<Asset, 'id'>) => Promise<void>;
     removeAsset: (id: number) => Promise<void>;
@@ -53,56 +51,32 @@ export const PortfolioContext = createContext<PortfolioContextType | undefined>(
 export function PortfolioProvider({ children, initialUser }: { children: ReactNode; initialUser?: any | null }) {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [user, setUser] = useState<any | null>(initialUser || null);
-    // Fix: Always start loading true, even if user is hydrated, because we need to fetch assets
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [debugLog, setDebugLog] = useState<string[]>(initialUser ? [`[Init] Hydrated user: ${initialUser.email}`] : []);
-    const [isInitialized, setIsInitialized] = useState(!!initialUser);
     const router = useRouter();
 
-    // Use useRef for guaranteed singleton - survives re-renders
+    // Singleton Supabase client
     const supabaseRef = React.useRef<ReturnType<typeof createClient> | null>(null);
     if (!supabaseRef.current) {
         supabaseRef.current = createClient();
     }
     const supabase = supabaseRef.current;
 
-    // Define fetchPortfolio BEFORE useEffect (to avoid hoisting issues)
-    const fetchPortfolio = useCallback(async (userId: string, retryCount = 0) => {
+    // Core: Fetch portfolio data from Supabase
+    const fetchPortfolio = useCallback(async (userId: string) => {
         setIsLoading(true);
         setError(null);
-        setDebugLog(prev => [...prev, `[Fetch] Starting for userId: ${userId} (Attempt: ${retryCount + 1})`]);
 
         try {
-            console.log('[DEBUG] fetchPortfolio called, userId:', userId);
-            console.log('[DEBUG] supabase client:', supabase);
-            setDebugLog(prev => [...prev, `[Fetch] Running Supabase query...`]);
-
-            console.log('[DEBUG] About to execute query...');
-            const { data: portfolios, error } = await supabase
+            const { data: portfolios, error: queryError } = await supabase
                 .from('portfolios')
                 .select('*')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: true });
 
-            console.log('[DEBUG] Query returned, data:', portfolios, 'error:', error);
-
-            setDebugLog(prev => [...prev, `[Fetch] Query completed, error: ${error ? 'YES' : 'NO'}, data: ${portfolios ? 'YES' : 'NO'}`]);
-
-            if (error) {
-                // Retry on AbortError or Network Error
-                if ((error.code === '20' || error.message.includes('AbortError')) && retryCount < 2) {
-                    setDebugLog(prev => [...prev, `[Fetch Retry] Retrying due to error: ${error.message}`]);
-                    setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500); // Retry after 500ms
-                    return;
-                }
-                setDebugLog(prev => [...prev, `[Fetch Error] ${error.message} (${error.code})`]);
-                throw error;
-            }
+            if (queryError) throw queryError;
 
             if (portfolios) {
-                setDebugLog(prev => [...prev, `[Fetch Success] Raw count: ${portfolios.length}`]);
-
                 const loadedAssets: Asset[] = portfolios
                     .filter((p: any) => p.symbol)
                     .map((p: any) => ({
@@ -115,73 +89,49 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                         memo: p.memo,
                         targetPriceLower: p.buy_target,
                         targetPriceUpper: p.sell_target,
-                        trades: [] // Temporarily disabled to debug query hang
+                        trades: []
                     }));
-
-                setDebugLog(prev => [...prev, `[Process] Loaded Assets: ${loadedAssets.length}`]);
                 setAssets(loadedAssets);
-                setDebugLog(prev => [...prev, `[Process] setAssets called successfully`]);
-            } else {
-                setDebugLog(prev => [...prev, `[Fetch] portfolios is null`]);
             }
-        } catch (error: any) {
-            setDebugLog(prev => [...prev, `[Fetch Exception] ${error.name}: ${error.message}`]);
-            if (error.name === 'AbortError' && retryCount < 2) {
-                setDebugLog(prev => [...prev, `[Fetch Retry] Aborted. Retrying...`]);
-                setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500);
-                return;
-            }
-            console.error('Error fetching portfolio:', error);
-            setError(error.message || "데이터를 불러오는데 실패했습니다.");
+        } catch (err: any) {
+            console.error('Error fetching portfolio:', err);
+            setError(err.message || "데이터를 불러오는데 실패했습니다.");
         } finally {
             setIsLoading(false);
-            setIsInitialized(true);
-            setDebugLog(prev => [...prev, `[Fetch] Completed`]);
         }
-    }, []);
+    }, [supabase]);
 
-    // 1. Auth & Data Fetching
+    // Auth & Data Initialization
     useEffect(() => {
         let mounted = true;
 
-        // Don't fetch here - let onAuthStateChange handle it to avoid race conditions
-        // if (initialUser && mounted) {
-        //     fetchPortfolio(initialUser.id);
-        // }
+        const init = async () => {
+            // If server already provided user, fetch immediately
+            if (initialUser) {
+                await fetchPortfolio(initialUser.id);
+                return;
+            }
 
-        const initSession = async () => {
+            // Otherwise check session client-side
             try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                if (error) console.error("Session Error:", error);
-
-                if (mounted) {
-                    setUser(session?.user || null);
-                    if (session?.user && !initialUser) {
-                        await fetchPortfolio(session.user.id);
-                    } else if (!session?.user && !initialUser) {
-                        setAssets([]);
-                        setIsLoading(false);
-                        setIsInitialized(true);
-                    }
+                const { data: { session } } = await supabase.auth.getSession();
+                if (mounted && session?.user) {
+                    setUser(session.user);
+                    await fetchPortfolio(session.user.id);
+                } else if (mounted) {
+                    setIsLoading(false);
                 }
             } catch (err) {
-                console.error("Init Session Failed:", err);
-            } finally {
-                if (mounted && !initialUser) {
-                    setIsInitialized(true);
-                }
+                console.error("Session init failed:", err);
+                if (mounted) setIsLoading(false);
             }
         };
 
-        if (!initialUser) {
-            initSession();
-        }
+        init();
 
+        // Listen for auth changes (login/logout)
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
             if (!mounted) return;
-
-            console.log('[AUTH] Event:', event, 'Session exists:', !!session?.user);
-            setDebugLog(prev => [...prev, `[AUTH] ${event} - User: ${session?.user?.email || 'null'}`]);
 
             setUser(session?.user || null);
             if (session?.user) {
@@ -192,22 +142,13 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             }
         });
 
-        const timeoutId = setTimeout(() => {
-            if (mounted && !isInitialized) {
-                console.warn("Initialization timed out. Forcing completion.");
-                setIsInitialized(true);
-                setIsLoading(false);
-            }
-        }, 3000);
-
         return () => {
             mounted = false;
             authListener.subscription.unsubscribe();
-            clearTimeout(timeoutId);
         };
     }, []);
 
-    // 2. Actions
+    // CRUD: Add Asset
     const addAsset = async (newAsset: Omit<Asset, 'id'>) => {
         if (!user) {
             alert("로그인이 필요합니다.");
@@ -252,13 +193,13 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             }
 
             await fetchPortfolio(user.id);
-
         } catch (error: any) {
             console.error("Error adding asset:", error);
             alert(`저장 실패: ${error.message}`);
         }
     };
 
+    // CRUD: Update Asset
     const updateAsset = async (id: number, updates: Partial<Asset>) => {
         if (!user) return;
 
@@ -284,6 +225,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         }
     };
 
+    // CRUD: Remove Asset
     const removeAsset = async (id: number) => {
         if (!user) return;
         try {
@@ -295,6 +237,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         }
     };
 
+    // CRUD: Add Trade Log
     const addTradeLog = async (assetId: number, trade: Omit<TradeRecord, 'id'>) => {
         if (!user) return;
         try {
@@ -316,52 +259,40 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             }
 
             await fetchPortfolio(user.id);
-        } catch (e) { console.error(e) }
+        } catch (e) { console.error(e); }
     };
 
+    // CRUD: Remove Trade Log
     const removeTradeLog = async (tradeId: number, assetId: number) => {
         if (!user) return;
         try {
             const { error } = await supabase.from('trade_logs').delete().eq('id', tradeId);
+            if (error) throw error;
             await fetchPortfolio(user.id);
-        } catch (e) { console.error(e) }
+        } catch (e) { console.error(e); }
     };
 
+    // Auth: Logout
     const logout = async () => {
         await supabase.auth.signOut();
         router.push('/login');
     };
 
+    // Refresh
     const refreshPortfolio = async () => {
         if (user) {
             await fetchPortfolio(user.id);
         }
     };
 
-    // Blocking Loader with Minimum 3s Delay
-    // We combine the actual initialization check with a minimum 3s timer
-    const [minLoadComplete, setMinLoadComplete] = useState(false);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setMinLoadComplete(true), 3000);
-        return () => clearTimeout(timer);
-    }, []);
-
     const totalInvested = assets.reduce((sum, asset) => sum + (asset.pricePerShare * asset.quantity), 0);
-
-    const showGlobalLoader = !isInitialized || !minLoadComplete;
-
-    if (showGlobalLoader) {
-        return <FullPageLoader message="자산 정보를 불러오는 중입니다..." />;
-    }
 
     return (
         <PortfolioContext.Provider value={{
             assets,
             totalInvested,
-            isLoading, // Keep this for internal spinners if needed, but global loader covers init
+            isLoading,
             error,
-            debugLog,
             user,
             addAsset,
             removeAsset,
