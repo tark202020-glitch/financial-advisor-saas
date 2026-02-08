@@ -129,7 +129,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                 // We need YYYY-MM-DD to match trade.date
                                 const d = item.stck_bsop_date;
                                 const formattedDate = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-                                map[formattedDate] = item.stck_clpr;
+                                map[formattedDate] = item.bstp_nmix_prpr;
                             });
                             setKospiMap(map);
                         }
