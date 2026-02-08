@@ -111,25 +111,21 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         const init = async () => {
             // 1. Server-side User Injection (Priority)
             if (initialUser) {
-                // Case A: User ID matches (Already synced or first render with correct state)
-                if (user?.id === initialUser.id) {
-                    if (mounted) {
-                        setLoadingMessage(null);
-                        setIsLoading(false);
-                    }
-                    return;
+                if (user?.id !== initialUser.id) {
+                    setUser(initialUser);
                 }
 
-                // Case B: New User detected
-                setUser(initialUser);
-                setLoadingMessage("회원 정보를 불러오는 중...");
+                setLoadingMessage("나의 주식일지를 불러오고 있습니다...");
 
                 try {
                     await fetchPortfolio(initialUser.id);
                 } catch (e) {
                     console.error("Init fetch failed:", e);
                 } finally {
-                    if (mounted) setLoadingMessage(null);
+                    if (mounted) {
+                        setLoadingMessage(null);
+                        setIsLoading(false);
+                    }
                 }
                 return;
             }
