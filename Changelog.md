@@ -1,3 +1,13 @@
+## [Alpha V1.086] - 2026-02-09 23:30:00
+
+### 🐛 Critical Bug Fix: 로그인 세션 동기화
+- **Summary**: `client.ts` 인증 스토리지 설정을 쿠키 기반으로 변경
+- **Detail**:
+  - **Issue**: `client.ts`가 `localStorage`를 강제하고 있어, Server Action 로그인(쿠키 설정) 결과를 클라이언트가 인식하지 못함. 이로 인해 로그인 직후 "내 주식일지" 데이터가 보이지 않음.
+  - **Fix**: `storage: window.localStorage` 및 `storageKey` 설정을 제거하여 `@supabase/ssr`의 기본값(Cookie)을 사용하도록 수정.
+  - **Effect**: 이제 Server Action 로그인 -> 클라이언트 세션 동기화가 즉시 이루어지며, RLS 에러 없이 포트폴리오 데이터가 정상 조회됨.
+- **Build Time**: 2026-02-09 23:30:00
+
 ## [Alpha V1.085] - 2026-02-08 17:50:00
 
 ### 🧹 Code Cleanup: 내 주식일지 페이지 재구축

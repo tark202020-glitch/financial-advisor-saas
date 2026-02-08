@@ -13,8 +13,6 @@ export function createClient() {
                     detectSessionInUrl: false,
                     persistSession: true,
                     autoRefreshToken: true,
-                    storage: window.localStorage,
-                    storageKey: 'sb-auth-token',
                     flowType: 'pkce'
                 }
             }
