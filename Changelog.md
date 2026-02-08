@@ -1,3 +1,13 @@
+## [Alpha V1.049] - 2026-02-09 12:45:00
+
+### 🔄 Market Logic Updates (Refined)
+- **Summary**: Refined Domestic Stock Distinction Rule
+- **Detail**:
+  - **Rule Update**: 국내 주식(KR) 구분 조건 확대
+  - **New Rule**: 숫자 6자리 또는 "숫자 5개 + 알파벳 1개" (총 6자리) 패턴을 포함 (예: `0080G0`)
+  - **Coverage**: 상장지수증권(ETN) 및 신형 우선주 등 혼합형 코드 지원
+- **Build Time**: 2026-02-09 12:45:00
+
 ## [Alpha V1.048] - 2026-02-09 12:35:00
 
 ### 🔄 Market Logic Updates

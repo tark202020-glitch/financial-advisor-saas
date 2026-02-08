@@ -2,27 +2,23 @@
  * Determine market type based on symbol pattern.
  * Rule:
  * - 6 digits: KR (Domestic)
- * - Alphabet (and others): US (Overseas)
+ * - 5 digits + 1 alphabet (length 6): KR (Domestic)
+ * - Alphabet (and others without enough digits): US (Overseas)
  */
 export function getMarketType(symbol: string): 'KR' | 'US' {
-    // Check if symbol consists of exactly 6 digits
-    // Some KR symbols might be 6 digits + suffix (e.g., preference shares), but standard is 6.
-    // User specified "6 digits visible" -> likely wants standard codes.
-    // Regex: ^\d{6}$ matches exactly 6 digits.
-    // However, some might have .KS or .KQ suffix stored? 
-    // If stored with suffix, we should strip it first or handle it.
-    // Let's assume input might be raw symbol.
+    // Strip suffix for checking
+    const clean = symbol.replace(/\.(KS|KQ|ks|kq)$/, '');
 
-    // Strict 6-digit check for KR
-    if (/^\d{6}$/.test(symbol)) {
-        return 'KR';
+    // Rule:
+    // KR: Length 6 AND (All Digits OR At least 5 Digits for codes like 0080G0)
+    if (clean.length === 6) {
+        // Count digits
+        const digitCount = (clean.match(/\d/g) || []).length;
+        if (digitCount >= 5) {
+            return 'KR';
+        }
     }
 
-    // Check with suffix .KS/.KQ just in case
-    if (/^\d{6}\.(KS|KQ|ks|kq)$/.test(symbol)) {
-        return 'KR';
-    }
-
-    // Default to US for everything else (Alphabets, ETFs like LIT)
+    // Default to US for everything else (Alphabets, shorter/longer codes)
     return 'US';
 }
