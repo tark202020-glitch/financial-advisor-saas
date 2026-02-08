@@ -1,3 +1,13 @@
+## [Alpha V1.051] - 2026-02-09 13:30:00
+
+### 🔄 Login Process Refactor
+- **Summary**: Implement Global Initialization Loader (Splash Screen)
+- **Detail**:
+  - **Issue**: 로그인 후 데이터가 로드되기 전 대시보드가 먼저 노출되는 현상 수정
+  - **Fix**: `PortfolioProvider`에 `isInitialized` 상태 추가. 세션 및 포트폴리오 데이터가 모두 준비될 때까지 전역 로딩 화면 표시.
+  - **Flow**: 로그인 -> Initializing... (데이터 로드) -> 대시보드 진입
+- **Build Time**: 2026-02-09 13:30:00
+
 ## [Alpha V1.050] - 2026-02-09 13:00:00
 
 ### ⏳ Sidebar Loading Fix
