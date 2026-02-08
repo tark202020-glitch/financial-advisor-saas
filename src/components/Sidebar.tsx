@@ -88,20 +88,7 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                 </button>
             </div>
 
-            {/* User Info (Top) */}
-            <div className={`px-4 py-6 border-b border-slate-50 flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
-                <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                    <User size={20} />
-                </div>
-                {!isCollapsed && user && (
-                    <div className="overflow-hidden">
-                        <div className="font-bold text-slate-800 truncate text-sm">
-                            {user.user_metadata?.full_name || user.email?.split('@')[0]}
-                        </div>
-                        <div className="text-xs text-slate-400 truncate max-w-[140px]">{user.email}</div>
-                    </div>
-                )}
-            </div>
+
 
             {/* Navigation */}
             <nav className="flex-1 py-4 px-3 space-y-2 overflow-y-auto">
@@ -130,15 +117,27 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                 <div className="my-4 border-t border-slate-100 mx-2"></div>
 
                 {/* My Info & Logout */}
-                <button
+                {/* My Info & Logout */}
+                <div
                     className={`
-                        w-full flex items-center gap-3 px-3 py-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200 group
-                        ${isCollapsed ? "justify-center" : ""}
+                        w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
+                        ${isCollapsed ? "justify-center" : "bg-slate-50"}
                     `}
                 >
-                    <User size={20} className="group-hover:text-slate-700" />
-                    {!isCollapsed && <span>내정보</span>}
-                </button>
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                        <User size={16} />
+                    </div>
+                    {!isCollapsed && (
+                        <div className="flex flex-col text-left overflow-hidden">
+                            <span className="text-sm font-bold text-slate-800 truncate">
+                                {user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"}
+                            </span>
+                            <span className="text-xs text-slate-500 truncate max-w-[140px]">
+                                {user?.email || "No Email"}
+                            </span>
+                        </div>
+                    )}
+                </div>
 
                 <button
                     onClick={handleLogout}

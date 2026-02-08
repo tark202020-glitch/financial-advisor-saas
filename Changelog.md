@@ -1,3 +1,12 @@
+## [Alpha V1.040] - 2026-02-09 09:30:00
+
+### 🎨 Sidebar Profile Update
+- **Summary**: Refactor User Info Display
+- **Detail**:
+  - **Cleanup**: 상단 중복 프로필 영역 제거
+  - **Profile**: 하단 '내정보' 메뉴를 실제 사용자 정보(닉네임/이메일) 표시 영역으로 변경 (요청사항 반영)
+- **Build Time**: 2026-02-09 09:30:00
+
 ## [Alpha V1.039] - 2026-02-09 08:30:00
 
 ### 🔧 Critical Fix: Middleware & Session
