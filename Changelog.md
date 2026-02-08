@@ -1,3 +1,12 @@
+## [Alpha V1.038] - 2026-02-09 07:45:00
+
+### 🚑 Authentication Fix
+- **Summary**: Fix Sidebar User State
+- **Detail**:
+  - **Sidebar**: `onAuthStateChange` 리스너 추가로 로그인 직후 사용자 정보 미표시 현상 수정
+  - **Redirect**: 로그아웃 시 로그인 페이지로 즉시 이동하도록 로직 강화
+- **Build Time**: 2026-02-09 07:45:00
+
 ## [Alpha V1.037] - 2026-02-09 07:00:00
 
 ### 🧭 Sidebar Navigation

@@ -33,6 +33,18 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
             setUser(user);
         };
         getUser();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session?.user) {
+                setUser(session.user);
+            } else {
+                setUser(null);
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     const handleLogout = async () => {
