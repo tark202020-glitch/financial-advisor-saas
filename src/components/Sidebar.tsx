@@ -30,28 +30,29 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
 
     useEffect(() => {
         const initAuth = async () => {
-            // 1. Try fetching session first (faster)
+            // 1. Get initial session
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
                 setUser(session.user);
             }
-
-            // 2. Validate with server
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                setUser(user);
-            }
-
+            // If no session, wait for onAuthStateChange or just stop loading
             setLoading(false);
         };
         initAuth();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            // console.log("[Sidebar] Auth Event:", event, session?.user?.email);
             if (session?.user) {
                 setUser(session.user);
-            } else if (event === 'SIGNED_OUT') {
+            } else {
                 setUser(null);
+            }
+
+            if (event === 'SIGNED_OUT') {
                 router.push('/login');
+                router.refresh();
+            } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                // Ensure data is fresh
                 router.refresh();
             }
         });
@@ -59,7 +60,7 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
         return () => {
             subscription.unsubscribe();
         };
-    }, []);
+    }, [supabase, router]);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();

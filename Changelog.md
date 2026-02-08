@@ -1,3 +1,12 @@
+## [Alpha V1.047] - 2026-02-09 12:20:00
+
+### 👤 User Info Sync Fix
+- **Summary**: Fix user info not displaying immediately after login
+- **Detail**:
+  - **Auth State**: `Sidebar` 컴포넌트의 인증 상태 동기화 로직 개선
+  - **Event Handling**: 로그인(`SIGNED_IN`) 및 초기 세션(`INITIAL_SESSION`) 이벤트 발생 시 즉시 UI 갱신(`router.refresh`)하도록 수정
+- **Build Time**: 2026-02-09 12:20:00
+
 ## [Alpha V1.046] - 2026-02-09 12:10:00
 
 ### 🌍 Overseas Stock Data Fix
