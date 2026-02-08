@@ -1,3 +1,12 @@
+## [Alpha V1.073] - 2026-02-09 19:30:00
+
+### 🐛 Critical Bug Fix
+- **Summary**: Fix useEffect Dependency Causing Abort Loop
+- **Detail**:
+  - **Issue**: `useEffect` 의존성 배열에 `isInitialized`가 포함되어 있어, 이 값이 변경될 때마다 useEffect가 재실행되면서 이미 진행 중인 fetch를 중단(abort)하고 새로운 fetch를 시작. 무한 abort 루프 발생.
+  - **Fix**: `isInitialized`를 useEffect 의존성 배열에서 제거.
+- **Build Time**: 2026-02-09 19:30:00
+
 ## [Alpha V1.072] - 2026-02-09 19:15:00
 
 ### 🐛 Critical Bug Fix

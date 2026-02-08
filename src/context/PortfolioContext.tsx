@@ -202,7 +202,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             authListener.subscription.unsubscribe();
             clearTimeout(timeoutId);
         };
-    }, [fetchPortfolio, initialUser, supabase, isInitialized]);
+    }, [fetchPortfolio, initialUser, supabase]);
 
     // 2. Actions
     const addAsset = async (newAsset: Omit<Asset, 'id'>) => {
