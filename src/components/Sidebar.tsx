@@ -132,18 +132,13 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                         <User size={16} />
                     </div>
                     {!isCollapsed && (
-                        <div className="flex flex-col text-left overflow-hidden">
+                        <div className="flex flex-col text-left overflow-hidden w-full">
                             {loading ? (
                                 <span className="text-xs text-slate-400 animate-pulse">Loading...</span>
                             ) : (
-                                <>
-                                    <span className="text-sm font-bold text-slate-800 truncate" title={user?.email}>
-                                        {user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"}
-                                    </span>
-                                    <span className="text-xs text-slate-500 truncate max-w-[140px]" title={user?.email}>
-                                        {user?.email || "No Email"}
-                                    </span>
-                                </>
+                                <span className="text-sm font-medium text-slate-700 truncate w-full" title={`${user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"} / ${user?.email || "No Email"}`}>
+                                    {user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"} / {user?.email || "No Email"}
+                                </span>
                             )}
                         </div>
                     )}

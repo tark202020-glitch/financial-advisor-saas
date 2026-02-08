@@ -20,10 +20,14 @@ export default function PortfolioCard({ asset }: PortfolioCardProps) {
     const changeAmount = stockData?.change || 0;
 
     // Valuation Logic
+    // Valuation Logic
     const totalPurchase = asset.pricePerShare * asset.quantity;
     const currentValuation = currentPrice * asset.quantity;
     const profitLoss = currentValuation - totalPurchase;
-    const returnRate = (profitLoss / totalPurchase) * 100;
+
+    // Calculate Return Rate (Handle Division by Zero)
+    const rawReturnRate = totalPurchase === 0 ? 0 : (profitLoss / totalPurchase) * 100;
+    const returnRate = isNaN(rawReturnRate) ? 0 : rawReturnRate;
 
     // Local state for inputs to prevent jitters, sync on blur
     const [memo, setMemo] = useState(asset.memo || '');
