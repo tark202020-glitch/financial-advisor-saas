@@ -169,7 +169,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             initSession();
         }
 
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
             if (!mounted) return;
 
             // Avoid re-fetching on initial load if we already have it
