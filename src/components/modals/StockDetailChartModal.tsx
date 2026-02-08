@@ -112,7 +112,11 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                 // Let's use range [minDate, maxDate] or [minDate, today].
 
                 const minDate = new Date(minTime).toISOString().slice(0, 10).replace(/-/g, "");
-                const maxDate = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // Fetch up to today to comprise all
+
+                // Calculate Max Date usage KST (UTC+9) to ensure we cover 'today' even in early morning KST
+                const now = new Date();
+                const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+                const maxDate = kstDate.toISOString().slice(0, 10).replace(/-/g, ""); // Fetch up to today KST
 
                 // Fetch KOSPI (0001)
                 fetch(`/api/kis/index/domestic/0001?startDate=${minDate}&endDate=${maxDate}`)
