@@ -1,3 +1,13 @@
+## [Alpha V1.056] - 2026-02-09 14:45:00
+
+### 🔄 User Flow Optimization
+- **Summary**: Fix User Info Missing / Login Loading Issue
+- **Detail**:
+  - **Issue**: 사이드바 사용자 정보가 'Guest'로 뜨거나 로그인 프로세스 중 로딩 화면이 생략되는 문제
+  - **Fix**: `Sidebar` 컴포넌트가 `PortfolioContext`의 전역 사용자 상태(`user`, `logout`)를 직접 사용하도록 리팩토링. (Single Source of Truth 적용)
+  - **Effect**: 전역 로딩(`Initializing...`)이 완료되면 사이드바에도 정확한 사용자 정보가 즉시 표시됨.
+- **Build Time**: 2026-02-09 14:45:00
+
 ## [Alpha V1.055] - 2026-02-09 14:30:00
 
 ### 🛡️ Initialization Stability

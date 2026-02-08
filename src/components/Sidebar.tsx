@@ -1,20 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
     LayoutDashboard,
     BookOpen,
     Settings,
     User,
     LogOut,
-    Menu,
     ChevronLeft,
     ChevronRight,
-    Wallet
 } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { usePortfolio } from "@/context/PortfolioContext";
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -23,64 +20,10 @@ interface SidebarProps {
 
 export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
     const pathname = usePathname();
-    const router = useRouter();
-    const [supabase] = useState(() => createClient());
-    const [user, setUser] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        let mounted = true;
-
-        const initAuth = async () => {
-            // 1. Get initial session
-            const { data: { session } } = await supabase.auth.getSession();
-            if (mounted) {
-                if (session?.user) {
-                    setUser(session.user);
-                }
-                // Stop loading after initial check
-                setLoading(false);
-            }
-        };
-        initAuth();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (!mounted) return;
-
-            // console.log("[Sidebar] Auth Event:", event, session?.user?.email);
-            if (session?.user) {
-                setUser(session.user);
-            } else {
-                setUser(null);
-            }
-
-            // Always stop loading on any auth event
-            setLoading(false);
-
-            if (event === 'SIGNED_OUT') {
-                router.push('/login');
-                router.refresh();
-            } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-                // Ensure data is fresh
-                router.refresh();
-            }
-        });
-
-        // Safety fallback: Force stop loading after 2 seconds
-        const timeout = setTimeout(() => {
-            if (mounted) setLoading(false);
-        }, 2000);
-
-        return () => {
-            mounted = false;
-            subscription.unsubscribe();
-            clearTimeout(timeout);
-        };
-    }, [supabase, router]);
+    const { user, logout } = usePortfolio();
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
-        router.refresh();
+        await logout();
     };
 
     const navItems = [
@@ -109,8 +52,6 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                 </button>
             </div>
 
-
-
             {/* Navigation */}
             <nav className="flex-1 py-4 px-3 space-y-2 overflow-y-auto">
                 {navItems.map((item) => {
@@ -138,7 +79,6 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                 <div className="my-4 border-t border-slate-100 mx-2"></div>
 
                 {/* My Info & Logout */}
-                {/* My Info & Logout */}
                 <div
                     className={`
                         w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
@@ -150,13 +90,9 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                     </div>
                     {!isCollapsed && (
                         <div className="flex flex-col text-left overflow-hidden w-full">
-                            {loading ? (
-                                <span className="text-xs text-slate-400 animate-pulse">Loading...</span>
-                            ) : (
-                                <span className="text-sm font-medium text-slate-700 truncate w-full" title={`${user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"} / ${user?.email || "No Email"}`}>
-                                    {user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"} / {user?.email || "No Email"}
-                                </span>
-                            )}
+                            <span className="text-sm font-medium text-slate-700 truncate w-full" title={`${user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"} / ${user?.email || "No Email"}`}>
+                                {user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"} / {user?.email || "No Email"}
+                            </span>
                         </div>
                     )}
                 </div>
