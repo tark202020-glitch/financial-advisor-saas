@@ -108,9 +108,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             if (error) throw error;
 
             if (portfolios) {
-                const loadedAssets: Asset[] = portfolios.map((p: any) => {
-                    if (!p.symbol) return null;
-                    return {
+                // Fix: Filter null symbols first to ensure type safety map -> Asset[]
+                const loadedAssets: Asset[] = portfolios
+                    .filter((p: any) => p.symbol) // Filter out items without symbol
+                    .map((p: any) => ({
                         id: p.id,
                         symbol: p.symbol,
                         name: p.name,
@@ -128,8 +129,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                             quantity: t.quantity,
                             memo: t.memo,
                         })) : []
-                    };
-                }).filter((a): a is Asset => a !== null);
+                    }));
 
                 setAssets(loadedAssets);
             }
