@@ -1,3 +1,12 @@
+## [Alpha V1.050] - 2026-02-09 13:00:00
+
+### ⏳ Sidebar Loading Fix
+- **Summary**: Fix infinite loading state in Sidebar
+- **Detail**:
+  - **Issue**: 로그인 직후 사이드바의 사용자 정보가 'Loading...' 상태로 멈추는 현상 수정
+  - **Fix**: Auth 이벤트 발생 시 강제로 로딩 상태를 해제(`setLoading(false)`)하고, 안전장치(Timeout 2s)를 추가하여 무한 로딩 방지
+- **Build Time**: 2026-02-09 13:00:00
+
 ## [Alpha V1.049] - 2026-02-09 12:45:00
 
 ### 🔄 Market Logic Updates (Refined)

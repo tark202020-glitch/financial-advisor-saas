@@ -29,24 +29,33 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        let mounted = true;
+
         const initAuth = async () => {
             // 1. Get initial session
             const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                setUser(session.user);
+            if (mounted) {
+                if (session?.user) {
+                    setUser(session.user);
+                }
+                // Stop loading after initial check
+                setLoading(false);
             }
-            // If no session, wait for onAuthStateChange or just stop loading
-            setLoading(false);
         };
         initAuth();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (!mounted) return;
+
             // console.log("[Sidebar] Auth Event:", event, session?.user?.email);
             if (session?.user) {
                 setUser(session.user);
             } else {
                 setUser(null);
             }
+
+            // Always stop loading on any auth event
+            setLoading(false);
 
             if (event === 'SIGNED_OUT') {
                 router.push('/login');
@@ -57,8 +66,15 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
             }
         });
 
+        // Safety fallback: Force stop loading after 2 seconds
+        const timeout = setTimeout(() => {
+            if (mounted) setLoading(false);
+        }, 2000);
+
         return () => {
+            mounted = false;
             subscription.unsubscribe();
+            clearTimeout(timeout);
         };
     }, [supabase, router]);
 
