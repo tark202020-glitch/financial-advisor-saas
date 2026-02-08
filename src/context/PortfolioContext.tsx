@@ -129,6 +129,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const fetchPortfolio = async (userId: string) => {
         setIsLoading(true);
         setError(null);
+        setDebugLog(prev => [...prev, `[Fetch] Starting for userId: ${userId}`]);
         try {
             // Fetch Portfolios with Trades
             const { data: portfolios, error } = await supabase
@@ -140,9 +141,14 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                 .eq('user_id', userId)
                 .order('created_at', { ascending: true });
 
-            if (error) throw error;
+            if (error) {
+                setDebugLog(prev => [...prev, `[Fetch Error] ${error.message} (${error.code})`]);
+                throw error;
+            }
 
             if (portfolios) {
+                setDebugLog(prev => [...prev, `[Fetch Success] Raw count: ${portfolios.length}`]);
+
                 // Fix: Filter null symbols first to ensure type safety map -> Asset[]
                 const loadedAssets: Asset[] = portfolios
                     .filter((p: any) => p.symbol) // Filter out items without symbol
@@ -166,13 +172,17 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                         })) : []
                     }));
 
+                setDebugLog(prev => [...prev, `[Process] Loaded Assets: ${loadedAssets.length}`]);
                 setAssets(loadedAssets);
+            } else {
+                setDebugLog(prev => [...prev, `[Fetch] portfolios is null`]);
             }
         } catch (error: any) {
             console.error('Error fetching portfolio:', error);
             setError(error.message || "데이터를 불러오는데 실패했습니다.");
         } finally {
             setIsLoading(false);
+            setDebugLog(prev => [...prev, `[Fetch] Completed`]);
         }
     };
 
@@ -324,6 +334,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             totalInvested,
             isLoading,
             error,
+            debugLog,
             user,
             addAsset,
             removeAsset,

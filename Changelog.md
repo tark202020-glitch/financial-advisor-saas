@@ -1,3 +1,12 @@
+## [Alpha V1.060] - 2026-02-09 15:45:00
+
+### 🚑 Build Fix
+- **Summary**: Fix PortfolioContext Type Error
+- **Detail**:
+  - **Issue**: V1.059 빌드 시 `PortfolioContextType`에 정의된 `debugLog` 속성이 Provider value에서 누락되었다는 타입 에러 발생.
+  - **Fix**: `PortfolioContext.Provider`의 `value` 객체에 `debugLog`를 명시적으로 전달하도록 코드 수정 및 재적용.
+- **Build Time**: 2026-02-09 15:45:00
+
 ## [Alpha V1.059] - 2026-02-09 15:30:00
 
 ### 🔬 Client-Side Deep Debugging
