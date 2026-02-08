@@ -200,6 +200,37 @@ export async function getDomesticIndex(symbol: string): Promise<KisDomIndexPrice
     return data.output1;
 }
 
+export async function getDomesticIndexHistory(symbol: string, startDate: string, endDate: string): Promise<any[] | null> {
+    const token = await getAccessToken();
+
+    // TR ID: FHKUP03500100 (Daily Chart)
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${startDate}&FID_INPUT_DATE_2=${endDate}&FID_PERIOD_DIV_CODE=D`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "FHKUP03500100",
+        },
+    }));
+
+    if (!response.ok) {
+        console.error(`Failed to fetch DOM Index History for ${symbol}:`, await response.text());
+        return null;
+    }
+
+    const data: KisIndexChartResponse = await response.json();
+
+    if (data.rt_cd !== "0") {
+        console.error(`KIS API Error (DOM Index History): ${data.msg1}`);
+        return null;
+    }
+
+    // output2 contains the daily list
+    return data.output2 || [];
+}
+
 let cachedApprovalKey: string | null = null;
 
 export async function getWebSocketApprovalKey(): Promise<string> {

@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDomesticIndex } from '@/lib/kis/client';
+import { getDomesticIndex, getDomesticIndexHistory } from '@/lib/kis/client';
 
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ symbol: string }> }
 ) {
     const symbol = (await params).symbol;
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     try {
-        const data = await getDomesticIndex(symbol);
+        let data;
+        if (startDate && endDate) {
+            data = await getDomesticIndexHistory(symbol, startDate, endDate);
+        } else {
+            data = await getDomesticIndex(symbol);
+        }
 
         if (!data) {
             return NextResponse.json({ error: 'Failed to fetch index' }, { status: 500 });

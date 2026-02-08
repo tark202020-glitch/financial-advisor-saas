@@ -1,3 +1,12 @@
+## [Alpha V1.097] - 2026-02-10 17:00:00
+
+### ✨ New Feature: 거래내역 KOSPI 지수 연동
+- **Summary**: 종목 상세 모달의 거래내역에서 각 거래일의 KOSPI 지수를 함께 표시
+- **Detail**:
+  - **API Update**: `/api/kis/index/domestic/[symbol]` API에 기간 조회(`startDate`, `endDate`) 기능 추가
+  - **UI Update**: 종목 상세 모달 내 거래내역 테이블에 'KOSPI' 컬럼 추가 및 해당 일자의 KOSPI 종가 표시
+- **Build Time**: 2026-02-10 17:00:00
+
 ## [Alpha V1.096] - 2026-02-10 16:15:00
 
 ### 🐛 Bug Fix: 거래내역 미표시 문제 수정

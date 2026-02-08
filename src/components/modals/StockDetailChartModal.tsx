@@ -42,6 +42,9 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
     const [history, setHistory] = useState<CandleData[]>([]);
     const [chartLoading, setChartLoading] = useState(true);
 
+    // Local State for KOSPI Index Map
+    const [kospiMap, setKospiMap] = useState<Record<string, string>>({});
+
     // Local State for Inputs (Goals)
     const [memo, setMemo] = useState(asset.memo || '');
     const [targetLower, setTargetLower] = useState(asset.targetPriceLower?.toString() || '');
@@ -57,7 +60,6 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
         memo: ''
     });
     const [isAddingLog, setIsAddingLog] = useState(false);
-
     // --- Effects ---
 
     // 1. Fetch Chart Data
@@ -99,6 +101,37 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
             setMemo(asset.memo || '');
             setTargetLower(asset.targetPriceLower?.toString() || '');
             setTargetUpper(asset.targetPriceUpper?.toString() || '');
+
+            // Fetch KOSPI History for Trades
+            if (asset.trades && asset.trades.length > 0) {
+                // Find Min/Max Date
+                const dates = asset.trades.map(t => new Date(t.date).getTime());
+                const minTime = Math.min(...dates);
+                const maxTime = Math.max(...dates); // Use Max trade date? Or Today?
+                // If max trade is old, we need range up to it.
+                // Let's use range [minDate, maxDate] or [minDate, today].
+
+                const minDate = new Date(minTime).toISOString().slice(0, 10).replace(/-/g, "");
+                const maxDate = new Date().toISOString().slice(0, 10).replace(/-/g, ""); // Fetch up to today to comprise all
+
+                // Fetch KOSPI (0001)
+                fetch(`/api/kis/index/domestic/0001?startDate=${minDate}&endDate=${maxDate}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (Array.isArray(data)) {
+                            const map: Record<string, string> = {};
+                            data.forEach((item: any) => {
+                                // item.stck_bsop_date is YYYYMMDD
+                                // We need YYYY-MM-DD to match trade.date
+                                const d = item.stck_bsop_date;
+                                const formattedDate = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+                                map[formattedDate] = item.stck_clpr;
+                            });
+                            setKospiMap(map);
+                        }
+                    })
+                    .catch(e => console.error("Failed to fetch KOSPI history:", e));
+            }
         }
     }, [isOpen, asset]);
 
@@ -355,10 +388,11 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
 
                         {/* Trade List Table */}
                         <div className="w-full text-sm text-left">
-                            <div className="grid grid-cols-6 text-slate-500 font-bold border-b border-slate-200 pb-2 mb-2">
+                            <div className="grid grid-cols-7 text-slate-500 font-bold border-b border-slate-200 pb-2 mb-2">
                                 <div>날짜</div>
                                 <div>구분</div>
                                 <div>가격</div>
+                                <div>KOSPI</div> {/* New Column */}
                                 <div className="text-center">수량</div>
                                 <div>메모</div>
                                 <div className="text-right">관리</div>
@@ -366,7 +400,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                             <div className="space-y-3">
                                 {asset.trades && asset.trades.length > 0 ? (
                                     asset.trades.map((trade) => (
-                                        <div key={trade.id} className="grid grid-cols-6 items-center text-slate-700 py-1 hover:bg-slate-50 rounded">
+                                        <div key={trade.id} className="grid grid-cols-7 items-center text-slate-700 py-1 hover:bg-slate-50 rounded">
                                             <div className="font-mono">{trade.date}</div>
                                             <div>
                                                 <span className={`px-2 py-0.5 rounded text-xs font-bold ${trade.type === 'BUY' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
@@ -374,6 +408,11 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                                 </span>
                                             </div>
                                             <div className="font-medium">{trade.price.toLocaleString()}</div>
+                                            <div className="text-xs text-slate-400 font-mono">
+                                                {kospiMap[trade.date] ? (
+                                                    <span>{Number(kospiMap[trade.date]).toLocaleString()}</span>
+                                                ) : '-'}
+                                            </div>
                                             <div className="text-center">{trade.quantity}</div>
                                             <div className="truncate text-slate-500">{trade.memo || '-'}</div>
                                             <div className="text-right">
