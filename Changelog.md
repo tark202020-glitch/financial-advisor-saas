@@ -1,3 +1,13 @@
+## [Alpha V1.055] - 2026-02-09 14:30:00
+
+### 🛡️ Initialization Stability
+- **Summary**: Fix Infinite Loading Issue
+- **Detail**:
+  - **Issue**: 초기화 과정(`initSession` 등)에서 응답이 지연되거나 실패할 경우, 로딩 화면(Initializing...)이 계속 유지되는 현상
+  - **Fix**: `PortfolioContext`에 3초 안전 타임아웃(Safety Timeout) 추가. 초기화가 일정 시간 내에 완료되지 않으면 강제로 로딩을 해제하여 사용자가 앱을 사용할 수 있도록 조치.
+  - **Misc**: 디버깅 로그 추가 및 `try-catch` 블록으로 예외 처리 강화.
+- **Build Time**: 2026-02-09 14:30:00
+
 ## [Alpha V1.054] - 2026-02-09 14:15:00
 
 ### 🚑 Build Fix (Refined)

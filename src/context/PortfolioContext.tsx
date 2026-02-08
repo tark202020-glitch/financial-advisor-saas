@@ -56,22 +56,41 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
     // 1. Auth & Data Fetching
     useEffect(() => {
+        let mounted = true;
+
         const initSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            setUser(session?.user || null);
-            if (session?.user) {
-                await fetchPortfolio(session.user.id);
-            } else {
-                setAssets([]);
-                setIsLoading(false);
+            try {
+                // console.log("Initializing Session...");
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) console.error("Session Error:", error);
+
+                if (mounted) {
+                    setUser(session?.user || null);
+                    if (session?.user) {
+                        // console.log("User found, fetching portfolio...");
+                        await fetchPortfolio(session.user.id);
+                    } else {
+                        // console.log("No user found.");
+                        setAssets([]);
+                        setIsLoading(false);
+                    }
+                }
+            } catch (err) {
+                console.error("Init Session Failed:", err);
+            } finally {
+                if (mounted) {
+                    // console.log("Initialization Complete.");
+                    setIsInitialized(true);
+                }
             }
-            // Mark initialized
-            setIsInitialized(true);
         };
 
         initSession();
 
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (!mounted) return;
+            // console.log("Auth State Change:", event);
+
             setUser(session?.user || null);
             if (session?.user) {
                 if (event === 'SIGNED_IN') {
@@ -87,10 +106,21 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
             }
         });
 
+        // Safety Timeout to prevent infinite loading
+        const timeoutId = setTimeout(() => {
+            if (mounted && !isInitialized) {
+                console.warn("Initialization timed out. Forcing completion.");
+                setIsInitialized(true);
+                setIsLoading(false);
+            }
+        }, 3000); // 3 seconds timeout
+
         return () => {
+            mounted = false;
             authListener.subscription.unsubscribe();
+            clearTimeout(timeoutId);
         };
-    }, []);
+    }, []); // Removed isInitialized from deps to avoid re-running
 
     const fetchPortfolio = async (userId: string) => {
         setIsLoading(true);
