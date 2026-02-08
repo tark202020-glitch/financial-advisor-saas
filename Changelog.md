@@ -1,3 +1,12 @@
+## [Alpha V1.066] - 2026-02-09 17:40:00
+
+### 🚑 Build Fix
+- **Summary**: Restore Missing Variable
+- **Detail**:
+  - **Issue**: `PortfolioContext.tsx` 수정 중 `totalInvested` 변수 선언이 누락되어 빌드 실패.
+  - **Fix**: `totalInvested` 계산 로직 복구.
+- **Build Time**: 2026-02-09 17:40:00
+
 ## [Alpha V1.065] - 2026-02-09 17:20:00
 
 ### 🎨 UX Upgrade: Global Loading

@@ -337,6 +337,8 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         return () => clearTimeout(timer);
     }, []);
 
+    const totalInvested = assets.reduce((sum, asset) => sum + (asset.pricePerShare * asset.quantity), 0);
+
     const showGlobalLoader = !isInitialized || !minLoadComplete;
 
     if (showGlobalLoader) {
