@@ -70,12 +70,18 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         setDebugLog(prev => [...prev, `[Fetch] Starting for userId: ${userId} (Attempt: ${retryCount + 1})`]);
 
         try {
+            console.log('[DEBUG] fetchPortfolio called, userId:', userId);
+            console.log('[DEBUG] supabase client:', supabase);
             setDebugLog(prev => [...prev, `[Fetch] Running Supabase query...`]);
+
+            console.log('[DEBUG] About to execute query...');
             const { data: portfolios, error } = await supabase
                 .from('portfolios')
                 .select('*')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: true });
+
+            console.log('[DEBUG] Query returned, data:', portfolios, 'error:', error);
 
             setDebugLog(prev => [...prev, `[Fetch] Query completed, error: ${error ? 'YES' : 'NO'}, data: ${portfolios ? 'YES' : 'NO'}`]);
 

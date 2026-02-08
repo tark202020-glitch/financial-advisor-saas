@@ -1,3 +1,13 @@
+## [Alpha V1.077] - 2026-02-09 20:30:00
+
+### 🔍 Debug Enhancement
+- **Summary**: Add Console Logs for Browser Debugging
+- **Detail**:
+  - **Issue**: trade_logs 제거 후에도 쿼리가 완료되지 않음. 조인이 문제가 아님.
+  - **Fix**: console.log 추가하여 브라우저 콘솔에서 Supabase 클라이언트 상태와 쿼리 실행 여부 확인.
+  - **Note**: F12 Console 탭에서 [DEBUG] 로그 확인 필요.
+- **Build Time**: 2026-02-09 20:30:00
+
 ## [Alpha V1.076] - 2026-02-09 20:15:00
 
 ### 🔍 Debug Test
