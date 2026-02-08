@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function PortfolioClientPage({ serverDebugInfo }: Props) {
-    const { assets, isLoading, user, logout } = usePortfolio();
+    const { assets, isLoading, user, logout, refreshPortfolio, debugLog } = usePortfolio();
 
     // Sync Check Logic
     const serverCount = serverDebugInfo?.portfolioCount || 0;
@@ -69,16 +69,41 @@ export default function PortfolioClientPage({ serverDebugInfo }: Props) {
                     </div>
                 )}
 
-                {/* Regular Debug Info (Hidden if sync error to avoid clutter, or keep it depending on preference. Let's hide it to focus on the error) */}
-                {!isSyncError && serverDebugInfo && (
-                    <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-lg text-xs text-indigo-800 flex justify-between items-center">
-                        <div className="flex gap-4">
-                            <span>User: <strong>{serverDebugInfo.userEmail}</strong></span>
-                            <span>DB Count: <strong>{serverDebugInfo.portfolioCount}</strong></span>
+                {/* Debug Info (Only show if mismatch or error OR manually toggled) */}
+                <div className="space-y-4">
+                    {/* 1. Server Verification */}
+                    {serverDebugInfo && (
+                        <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-lg text-xs text-indigo-800 flex justify-between items-center">
+                            <div className="flex gap-4">
+                                <span>User: <strong>{serverDebugInfo.userEmail}</strong></span>
+                                <span>DB Count: <strong>{serverDebugInfo.portfolioCount}</strong></span>
+                            </div>
+                            <span className="text-indigo-400">Server OK</span>
                         </div>
-                        <span className="text-indigo-400">Stable Connection</span>
+                    )}
+
+                    {/* 2. Client Logs (Always visible for now to debug) */}
+                    <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-xs font-mono text-slate-600 max-h-40 overflow-y-auto">
+                        <div className="flex justify-between items-center mb-2 sticky top-0 bg-slate-50 pb-2 border-b border-slate-200">
+                            <p className="font-bold text-slate-800">🛠 Client Debug Logs</p>
+                            <button onClick={() => refreshPortfolio()} className="px-2 py-1 bg-white border border-slate-300 rounded hover:bg-slate-100 transition">
+                                <RefreshCw size={12} className="inline mr-1" /> Force Refresh
+                            </button>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            {debugLog.length === 0 ? (
+                                <span className="text-slate-400 italic">No logs yet...</span>
+                            ) : (
+                                debugLog.map((log, i) => (
+                                    <div key={i} className="break-all border-b border-slate-100 pb-0.5 last:border-0">
+                                        <span className="text-slate-400 mr-2">{i + 1}.</span>
+                                        {log}
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
-                )}
+                </div>
 
                 {/* Add Asset Section */}
                 <section>

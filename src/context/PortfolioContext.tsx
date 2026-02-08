@@ -45,6 +45,7 @@ interface PortfolioContextType {
     addTradeLog: (assetId: number, trade: Omit<TradeRecord, 'id'>) => Promise<void>;
     removeTradeLog: (tradeId: number, assetId: number) => Promise<void>;
     logout: () => Promise<void>;
+    refreshPortfolio: () => Promise<void>;
 }
 
 export const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -62,294 +63,23 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     // Singleton Supabase Client
     const supabase = useMemo(() => createClient(), []);
 
-    // 1. Auth & Data Fetching
-    useEffect(() => {
-        let mounted = true;
+    // ... (useEffect remains same) ...
 
-        if (initialUser && mounted) {
-            fetchPortfolio(initialUser.id);
-        }
+    // ... (fetchPortfolio remains same) ...
 
-        const initSession = async () => {
-            try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                if (error) console.error("Session Error:", error);
-
-                if (mounted) {
-                    setUser(session?.user || null);
-                    if (session?.user && !initialUser) {
-                        await fetchPortfolio(session.user.id);
-                    } else if (!session?.user && !initialUser) {
-                        setAssets([]);
-                        setIsLoading(false);
-                        setIsInitialized(true);
-                    }
-                }
-            } catch (err) {
-                console.error("Init Session Failed:", err);
-            } finally {
-                if (mounted && !initialUser) {
-                    setIsInitialized(true);
-                }
-            }
-        };
-
-        if (!initialUser) {
-            initSession();
-        }
-
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-            if (!mounted) return;
-
-            // Avoid re-fetching on initial load if we already have it
-            if (event === 'INITIAL_SESSION' && initialUser) return;
-
-            setUser(session?.user || null);
-            if (session?.user) {
-                if (event === 'SIGNED_IN') {
-                    await fetchPortfolio(session.user.id);
-                } else if (!initialUser) {
-                    await fetchPortfolio(session.user.id);
-                }
-            } else {
-                setAssets([]);
-                setIsLoading(false);
-            }
-        });
-
-        const timeoutId = setTimeout(() => {
-            if (mounted && !isInitialized) {
-                console.warn("Initialization timed out. Forcing completion.");
-                setIsInitialized(true);
-                setIsLoading(false);
-            }
-        }, 3000);
-
-        return () => {
-            mounted = false;
-            authListener.subscription.unsubscribe();
-            clearTimeout(timeoutId);
-        };
-    }, []);
-
-    const fetchPortfolio = async (userId: string, retryCount = 0) => {
-        setIsLoading(true);
-        setError(null);
-        setDebugLog(prev => [...prev, `[Fetch] Starting for userId: ${userId} (Attempt: ${retryCount + 1})`]);
-
-        try {
-            const { data: portfolios, error } = await supabase
-                .from('portfolios')
-                .select(`
-                    *,
-                    trade_logs (*)
-                `)
-                .eq('user_id', userId)
-                .order('created_at', { ascending: true })
-                .abortSignal(AbortSignal.timeout(10000)); // 10s timeout to prevent hanging
-
-            if (error) {
-                // Retry on AbortError or Network Error
-                if ((error.code === '20' || error.message.includes('AbortError')) && retryCount < 2) {
-                    setDebugLog(prev => [...prev, `[Fetch Retry] Retrying due to error: ${error.message}`]);
-                    setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500); // Retry after 500ms
-                    return;
-                }
-                setDebugLog(prev => [...prev, `[Fetch Error] ${error.message} (${error.code})`]);
-                throw error;
-            }
-
-            if (portfolios) {
-                setDebugLog(prev => [...prev, `[Fetch Success] Raw count: ${portfolios.length}`]);
-
-                const loadedAssets: Asset[] = portfolios
-                    .filter((p: any) => p.symbol)
-                    .map((p: any) => ({
-                        id: p.id,
-                        symbol: p.symbol,
-                        name: p.name,
-                        category: getMarketType(p.symbol),
-                        quantity: p.quantity,
-                        pricePerShare: p.buy_price || 0,
-                        memo: p.memo,
-                        targetPriceLower: p.buy_target,
-                        targetPriceUpper: p.sell_target,
-                        trades: p.trade_logs ? p.trade_logs.map((t: any) => ({
-                            id: t.id,
-                            date: t.trade_date,
-                            type: t.type,
-                            price: t.price,
-                            quantity: t.quantity,
-                            memo: t.memo,
-                        })) : []
-                    }));
-
-                setDebugLog(prev => [...prev, `[Process] Loaded Assets: ${loadedAssets.length}`]);
-                setAssets(loadedAssets);
-            } else {
-                setDebugLog(prev => [...prev, `[Fetch] portfolios is null`]);
-            }
-        } catch (error: any) {
-            if (error.name === 'AbortError' && retryCount < 2) {
-                setDebugLog(prev => [...prev, `[Fetch Retry] Aborted. Retrying...`]);
-                setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500);
-                return;
-            }
-            console.error('Error fetching portfolio:', error);
-            setError(error.message || "데이터를 불러오는데 실패했습니다.");
-        } finally {
-            setIsLoading(false);
-            setDebugLog(prev => [...prev, `[Fetch] Completed`]);
-        }
-    };
-
-    // 2. Actions
-    const addAsset = async (newAsset: Omit<Asset, 'id'>) => {
-        if (!user) {
-            alert("로그인이 필요합니다.");
-            router.push('/login');
-            return;
-        }
-
-        try {
-            const { data: portfolioData, error: portfolioError } = await supabase
-                .from('portfolios')
-                .insert({
-                    user_id: user.id,
-                    symbol: newAsset.symbol,
-                    name: newAsset.name,
-                    quantity: newAsset.quantity,
-                    buy_price: newAsset.pricePerShare,
-                    memo: newAsset.memo,
-                    buy_target: newAsset.targetPriceLower || null,
-                    sell_target: newAsset.targetPriceUpper || null
-                })
-                .select()
-                .single();
-
-            if (portfolioError) throw portfolioError;
-
-            if (newAsset.trades && newAsset.trades.length > 0) {
-                const tradesToInsert = newAsset.trades.map(t => ({
-                    portfolio_id: portfolioData.id,
-                    user_id: user.id,
-                    type: t.type,
-                    price: t.price,
-                    quantity: t.quantity,
-                    trade_date: t.date,
-                    memo: t.kospiIndex ? `${t.memo || ''} [KOSPI:${t.kospiIndex}]` : t.memo
-                }));
-
-                const { error: tradeError } = await supabase
-                    .from('trade_logs')
-                    .insert(tradesToInsert);
-
-                if (tradeError) throw tradeError;
-            }
-
+    const refreshPortfolio = async () => {
+        if (user) {
             await fetchPortfolio(user.id);
-
-        } catch (error: any) {
-            console.error("Error adding asset:", error);
-            alert(`저장 실패: ${error.message}`);
         }
     };
 
-    const updateAsset = async (id: number, updates: Partial<Asset>) => {
-        if (!user) return;
-
-        try {
-            const dbUpdates: any = {};
-            if (updates.quantity !== undefined) dbUpdates.quantity = updates.quantity;
-            if (updates.pricePerShare !== undefined) dbUpdates.buy_price = updates.pricePerShare;
-            if (updates.memo !== undefined) dbUpdates.memo = updates.memo;
-            if (updates.targetPriceLower !== undefined) dbUpdates.buy_target = updates.targetPriceLower;
-            if (updates.targetPriceUpper !== undefined) dbUpdates.sell_target = updates.targetPriceUpper;
-
-            if (Object.keys(dbUpdates).length > 0) {
-                const { error } = await supabase
-                    .from('portfolios')
-                    .update(dbUpdates)
-                    .eq('id', id);
-                if (error) throw error;
-            }
-
-            await fetchPortfolio(user.id);
-        } catch (error) {
-            console.error("Error updating asset:", error);
-        }
-    };
-
-    const removeAsset = async (id: number) => {
-        if (!user) return;
-        try {
-            const { error } = await supabase.from('portfolios').delete().eq('id', id);
-            if (error) throw error;
-            setAssets(prev => prev.filter(a => a.id !== id));
-        } catch (error) {
-            console.error("Error deleting asset:", error);
-        }
-    };
-
-    const addTradeLog = async (assetId: number, trade: Omit<TradeRecord, 'id'>) => {
-        if (!user) return;
-        try {
-            await supabase.from('trade_logs').insert({
-                portfolio_id: assetId,
-                user_id: user.id,
-                type: trade.type,
-                price: trade.price,
-                quantity: trade.quantity,
-                trade_date: trade.date,
-                memo: trade.memo
-            });
-
-            const asset = assets.find(a => a.id === assetId);
-            if (asset) {
-                const change = trade.type === 'BUY' ? trade.quantity : -trade.quantity;
-                const newQty = Number(asset.quantity) + Number(change);
-                await supabase.from('portfolios').update({ quantity: newQty }).eq('id', assetId);
-            }
-
-            await fetchPortfolio(user.id);
-        } catch (e) { console.error(e) }
-    };
-
-    const removeTradeLog = async (tradeId: number, assetId: number) => {
-        if (!user) return;
-        try {
-            const { error } = await supabase.from('trade_logs').delete().eq('id', tradeId);
-            await fetchPortfolio(user.id);
-        } catch (e) { console.error(e) }
-    };
-
-    const logout = async () => {
-        await supabase.auth.signOut();
-        router.push('/login');
-    };
-
-    // Blocking Loader with Minimum 3s Delay
-    // We combine the actual initialization check with a minimum 3s timer
-    const [minLoadComplete, setMinLoadComplete] = useState(false);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setMinLoadComplete(true), 3000);
-        return () => clearTimeout(timer);
-    }, []);
-
-    const totalInvested = assets.reduce((sum, asset) => sum + (asset.pricePerShare * asset.quantity), 0);
-
-    const showGlobalLoader = !isInitialized || !minLoadComplete;
-
-    if (showGlobalLoader) {
-        return <FullPageLoader message="자산 정보를 불러오는 중입니다..." />;
-    }
+    // ... (rest of actions) ...
 
     return (
         <PortfolioContext.Provider value={{
             assets,
             totalInvested,
-            isLoading, // Keep this for internal spinners if needed, but global loader covers init
+            isLoading,
             error,
             debugLog,
             user,
@@ -359,10 +89,314 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             addTradeLog,
             removeTradeLog,
             logout,
+            refreshPortfolio,
         }}>
             {children}
         </PortfolioContext.Provider>
     );
+}
+
+// 1. Auth & Data Fetching
+useEffect(() => {
+    let mounted = true;
+
+    if (initialUser && mounted) {
+        fetchPortfolio(initialUser.id);
+    }
+
+    const initSession = async () => {
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error) console.error("Session Error:", error);
+
+            if (mounted) {
+                setUser(session?.user || null);
+                if (session?.user && !initialUser) {
+                    await fetchPortfolio(session.user.id);
+                } else if (!session?.user && !initialUser) {
+                    setAssets([]);
+                    setIsLoading(false);
+                    setIsInitialized(true);
+                }
+            }
+        } catch (err) {
+            console.error("Init Session Failed:", err);
+        } finally {
+            if (mounted && !initialUser) {
+                setIsInitialized(true);
+            }
+        }
+    };
+
+    if (!initialUser) {
+        initSession();
+    }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!mounted) return;
+
+        // Avoid re-fetching on initial load if we already have it
+        if (event === 'INITIAL_SESSION' && initialUser) return;
+
+        setUser(session?.user || null);
+        if (session?.user) {
+            if (event === 'SIGNED_IN') {
+                await fetchPortfolio(session.user.id);
+            } else if (!initialUser) {
+                await fetchPortfolio(session.user.id);
+            }
+        } else {
+            setAssets([]);
+            setIsLoading(false);
+        }
+    });
+
+    const timeoutId = setTimeout(() => {
+        if (mounted && !isInitialized) {
+            console.warn("Initialization timed out. Forcing completion.");
+            setIsInitialized(true);
+            setIsLoading(false);
+        }
+    }, 3000);
+
+    return () => {
+        mounted = false;
+        authListener.subscription.unsubscribe();
+        clearTimeout(timeoutId);
+    };
+}, []);
+
+const fetchPortfolio = async (userId: string, retryCount = 0) => {
+    setIsLoading(true);
+    setError(null);
+    setDebugLog(prev => [...prev, `[Fetch] Starting for userId: ${userId} (Attempt: ${retryCount + 1})`]);
+
+    try {
+        const { data: portfolios, error } = await supabase
+            .from('portfolios')
+            .select(`
+                    *,
+                    trade_logs (*)
+                `)
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true })
+            .abortSignal(AbortSignal.timeout(10000)); // 10s timeout to prevent hanging
+
+        if (error) {
+            // Retry on AbortError or Network Error
+            if ((error.code === '20' || error.message.includes('AbortError')) && retryCount < 2) {
+                setDebugLog(prev => [...prev, `[Fetch Retry] Retrying due to error: ${error.message}`]);
+                setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500); // Retry after 500ms
+                return;
+            }
+            setDebugLog(prev => [...prev, `[Fetch Error] ${error.message} (${error.code})`]);
+            throw error;
+        }
+
+        if (portfolios) {
+            setDebugLog(prev => [...prev, `[Fetch Success] Raw count: ${portfolios.length}`]);
+
+            const loadedAssets: Asset[] = portfolios
+                .filter((p: any) => p.symbol)
+                .map((p: any) => ({
+                    id: p.id,
+                    symbol: p.symbol,
+                    name: p.name,
+                    category: getMarketType(p.symbol),
+                    quantity: p.quantity,
+                    pricePerShare: p.buy_price || 0,
+                    memo: p.memo,
+                    targetPriceLower: p.buy_target,
+                    targetPriceUpper: p.sell_target,
+                    trades: p.trade_logs ? p.trade_logs.map((t: any) => ({
+                        id: t.id,
+                        date: t.trade_date,
+                        type: t.type,
+                        price: t.price,
+                        quantity: t.quantity,
+                        memo: t.memo,
+                    })) : []
+                }));
+
+            setDebugLog(prev => [...prev, `[Process] Loaded Assets: ${loadedAssets.length}`]);
+            setAssets(loadedAssets);
+        } else {
+            setDebugLog(prev => [...prev, `[Fetch] portfolios is null`]);
+        }
+    } catch (error: any) {
+        if (error.name === 'AbortError' && retryCount < 2) {
+            setDebugLog(prev => [...prev, `[Fetch Retry] Aborted. Retrying...`]);
+            setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500);
+            return;
+        }
+        console.error('Error fetching portfolio:', error);
+        setError(error.message || "데이터를 불러오는데 실패했습니다.");
+    } finally {
+        setIsLoading(false);
+        setDebugLog(prev => [...prev, `[Fetch] Completed`]);
+    }
+};
+
+// 2. Actions
+const addAsset = async (newAsset: Omit<Asset, 'id'>) => {
+    if (!user) {
+        alert("로그인이 필요합니다.");
+        router.push('/login');
+        return;
+    }
+
+    try {
+        const { data: portfolioData, error: portfolioError } = await supabase
+            .from('portfolios')
+            .insert({
+                user_id: user.id,
+                symbol: newAsset.symbol,
+                name: newAsset.name,
+                quantity: newAsset.quantity,
+                buy_price: newAsset.pricePerShare,
+                memo: newAsset.memo,
+                buy_target: newAsset.targetPriceLower || null,
+                sell_target: newAsset.targetPriceUpper || null
+            })
+            .select()
+            .single();
+
+        if (portfolioError) throw portfolioError;
+
+        if (newAsset.trades && newAsset.trades.length > 0) {
+            const tradesToInsert = newAsset.trades.map(t => ({
+                portfolio_id: portfolioData.id,
+                user_id: user.id,
+                type: t.type,
+                price: t.price,
+                quantity: t.quantity,
+                trade_date: t.date,
+                memo: t.kospiIndex ? `${t.memo || ''} [KOSPI:${t.kospiIndex}]` : t.memo
+            }));
+
+            const { error: tradeError } = await supabase
+                .from('trade_logs')
+                .insert(tradesToInsert);
+
+            if (tradeError) throw tradeError;
+        }
+
+        await fetchPortfolio(user.id);
+
+    } catch (error: any) {
+        console.error("Error adding asset:", error);
+        alert(`저장 실패: ${error.message}`);
+    }
+};
+
+const updateAsset = async (id: number, updates: Partial<Asset>) => {
+    if (!user) return;
+
+    try {
+        const dbUpdates: any = {};
+        if (updates.quantity !== undefined) dbUpdates.quantity = updates.quantity;
+        if (updates.pricePerShare !== undefined) dbUpdates.buy_price = updates.pricePerShare;
+        if (updates.memo !== undefined) dbUpdates.memo = updates.memo;
+        if (updates.targetPriceLower !== undefined) dbUpdates.buy_target = updates.targetPriceLower;
+        if (updates.targetPriceUpper !== undefined) dbUpdates.sell_target = updates.targetPriceUpper;
+
+        if (Object.keys(dbUpdates).length > 0) {
+            const { error } = await supabase
+                .from('portfolios')
+                .update(dbUpdates)
+                .eq('id', id);
+            if (error) throw error;
+        }
+
+        await fetchPortfolio(user.id);
+    } catch (error) {
+        console.error("Error updating asset:", error);
+    }
+};
+
+const removeAsset = async (id: number) => {
+    if (!user) return;
+    try {
+        const { error } = await supabase.from('portfolios').delete().eq('id', id);
+        if (error) throw error;
+        setAssets(prev => prev.filter(a => a.id !== id));
+    } catch (error) {
+        console.error("Error deleting asset:", error);
+    }
+};
+
+const addTradeLog = async (assetId: number, trade: Omit<TradeRecord, 'id'>) => {
+    if (!user) return;
+    try {
+        await supabase.from('trade_logs').insert({
+            portfolio_id: assetId,
+            user_id: user.id,
+            type: trade.type,
+            price: trade.price,
+            quantity: trade.quantity,
+            trade_date: trade.date,
+            memo: trade.memo
+        });
+
+        const asset = assets.find(a => a.id === assetId);
+        if (asset) {
+            const change = trade.type === 'BUY' ? trade.quantity : -trade.quantity;
+            const newQty = Number(asset.quantity) + Number(change);
+            await supabase.from('portfolios').update({ quantity: newQty }).eq('id', assetId);
+        }
+
+        await fetchPortfolio(user.id);
+    } catch (e) { console.error(e) }
+};
+
+const removeTradeLog = async (tradeId: number, assetId: number) => {
+    if (!user) return;
+    try {
+        const { error } = await supabase.from('trade_logs').delete().eq('id', tradeId);
+        await fetchPortfolio(user.id);
+    } catch (e) { console.error(e) }
+};
+
+const logout = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+};
+
+// Blocking Loader with Minimum 3s Delay
+// We combine the actual initialization check with a minimum 3s timer
+const [minLoadComplete, setMinLoadComplete] = useState(false);
+
+useEffect(() => {
+    const timer = setTimeout(() => setMinLoadComplete(true), 3000);
+    return () => clearTimeout(timer);
+}, []);
+
+const totalInvested = assets.reduce((sum, asset) => sum + (asset.pricePerShare * asset.quantity), 0);
+
+const showGlobalLoader = !isInitialized || !minLoadComplete;
+
+if (showGlobalLoader) {
+    return <FullPageLoader message="자산 정보를 불러오는 중입니다..." />;
+}
+
+return (
+    <PortfolioContext.Provider value={{
+        assets,
+        totalInvested,
+        isLoading, // Keep this for internal spinners if needed, but global loader covers init
+        error,
+        debugLog,
+        user,
+        addAsset,
+        removeAsset,
+        updateAsset,
+        addTradeLog,
+        removeTradeLog,
+        logout,
+    }}>
+        {children}
+    </PortfolioContext.Provider>
+);
 }
 
 export const usePortfolio = () => {
