@@ -1,3 +1,12 @@
+## [Alpha V1.053] - 2026-02-09 14:00:00
+
+### 🚑 Build Fix
+- **Summary**: Fix TypeScript Build Error
+- **Detail**:
+  - **Issue**: `PortfolioContext`에서 `null` 체크 로직의 타입 추론 실패로 인한 빌드 에러 (`Type 'null' is not assignable to type 'Asset'`)
+  - **Fix**: `.filter()`에 Type Predicate(`asset is Asset`)를 적용하여 타입 안정성 확보
+- **Build Time**: 2026-02-09 14:00:00
+
 ## [Alpha V1.052] - 2026-02-09 13:45:00
 
 ### 🛡️ Data Fetching Stability

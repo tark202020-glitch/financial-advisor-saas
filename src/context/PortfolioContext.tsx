@@ -129,7 +129,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
                             memo: t.memo,
                         })) : []
                     };
-                }).filter((a: any) => a !== null);
+                }).filter((a): a is Asset => a !== null);
 
                 setAssets(loadedAssets);
             }
