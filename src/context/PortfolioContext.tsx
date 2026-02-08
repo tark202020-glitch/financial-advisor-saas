@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { getMarketType } from '@/utils/market';
@@ -46,70 +46,67 @@ interface PortfolioContextType {
     logout: () => Promise<void>;
 }
 
-
-
 export const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
 export function PortfolioProvider({ children, initialUser }: { children: ReactNode; initialUser?: any | null }) {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [user, setUser] = useState<any | null>(initialUser || null);
-    const [isLoading, setIsLoading] = useState(!initialUser); // If user provided, not loading initially
+    const [isLoading, setIsLoading] = useState(!initialUser);
     const [error, setError] = useState<string | null>(null);
     const [debugLog, setDebugLog] = useState<string[]>(initialUser ? [`[Init] Hydrated user: ${initialUser.email}`] : []);
-    const [isInitialized, setIsInitialized] = useState(!!initialUser); // Global Init State
+    const [isInitialized, setIsInitialized] = useState(!!initialUser);
     const router = useRouter();
-    const supabase = createClient();
+
+    // Singleton Supabase Client
+    const supabase = useMemo(() => createClient(), []);
 
     // 1. Auth & Data Fetching
     useEffect(() => {
         let mounted = true;
 
         if (initialUser && mounted) {
-            // Already hydrated, just fetch data
             fetchPortfolio(initialUser.id);
         }
 
         const initSession = async () => {
-            // ... (rest of logic)
             try {
-                // console.log("Initializing Session...");
                 const { data: { session }, error } = await supabase.auth.getSession();
                 if (error) console.error("Session Error:", error);
 
                 if (mounted) {
                     setUser(session?.user || null);
-                    if (session?.user) {
-                        // console.log("User found, fetching portfolio...");
+                    if (session?.user && !initialUser) {
                         await fetchPortfolio(session.user.id);
-                    } else {
-                        // console.log("No user found.");
+                    } else if (!session?.user && !initialUser) {
                         setAssets([]);
                         setIsLoading(false);
+                        setIsInitialized(true);
                     }
                 }
             } catch (err) {
                 console.error("Init Session Failed:", err);
             } finally {
-                if (mounted) {
-                    // console.log("Initialization Complete.");
+                if (mounted && !initialUser) {
                     setIsInitialized(true);
                 }
             }
         };
 
-        initSession();
+        if (!initialUser) {
+            initSession();
+        }
 
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!mounted) return;
-            // console.log("Auth State Change:", event);
+
+            // Avoid re-fetching on initial load if we already have it
+            if (event === 'INITIAL_SESSION' && initialUser) return;
 
             setUser(session?.user || null);
             if (session?.user) {
                 if (event === 'SIGNED_IN') {
-                    setIsInitialized(false);
                     await fetchPortfolio(session.user.id);
-                    setIsInitialized(true);
-                } else {
+                } else if (!initialUser) {
                     await fetchPortfolio(session.user.id);
                 }
             } else {
@@ -118,28 +115,27 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             }
         });
 
-        // Safety Timeout to prevent infinite loading
         const timeoutId = setTimeout(() => {
             if (mounted && !isInitialized) {
                 console.warn("Initialization timed out. Forcing completion.");
                 setIsInitialized(true);
                 setIsLoading(false);
             }
-        }, 3000); // 3 seconds timeout
+        }, 3000);
 
         return () => {
             mounted = false;
             authListener.subscription.unsubscribe();
             clearTimeout(timeoutId);
         };
-    }, []); // Removed isInitialized from deps to avoid re-running
+    }, []);
 
-    const fetchPortfolio = async (userId: string) => {
+    const fetchPortfolio = async (userId: string, retryCount = 0) => {
         setIsLoading(true);
         setError(null);
-        setDebugLog(prev => [...prev, `[Fetch] Starting for userId: ${userId}`]);
+        setDebugLog(prev => [...prev, `[Fetch] Starting for userId: ${userId} (Attempt: ${retryCount + 1})`]);
+
         try {
-            // Fetch Portfolios with Trades
             const { data: portfolios, error } = await supabase
                 .from('portfolios')
                 .select(`
@@ -147,9 +143,16 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                     trade_logs (*)
                 `)
                 .eq('user_id', userId)
-                .order('created_at', { ascending: true });
+                .order('created_at', { ascending: true })
+                .abortSignal(AbortSignal.timeout(10000)); // 10s timeout to prevent hanging
 
             if (error) {
+                // Retry on AbortError or Network Error
+                if ((error.code === '20' || error.message.includes('AbortError')) && retryCount < 2) {
+                    setDebugLog(prev => [...prev, `[Fetch Retry] Retrying due to error: ${error.message}`]);
+                    setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500); // Retry after 500ms
+                    return;
+                }
                 setDebugLog(prev => [...prev, `[Fetch Error] ${error.message} (${error.code})`]);
                 throw error;
             }
@@ -157,9 +160,8 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             if (portfolios) {
                 setDebugLog(prev => [...prev, `[Fetch Success] Raw count: ${portfolios.length}`]);
 
-                // Fix: Filter null symbols first to ensure type safety map -> Asset[]
                 const loadedAssets: Asset[] = portfolios
-                    .filter((p: any) => p.symbol) // Filter out items without symbol
+                    .filter((p: any) => p.symbol)
                     .map((p: any) => ({
                         id: p.id,
                         symbol: p.symbol,
@@ -186,6 +188,11 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 setDebugLog(prev => [...prev, `[Fetch] portfolios is null`]);
             }
         } catch (error: any) {
+            if (error.name === 'AbortError' && retryCount < 2) {
+                setDebugLog(prev => [...prev, `[Fetch Retry] Aborted. Retrying...`]);
+                setTimeout(() => fetchPortfolio(userId, retryCount + 1), 500);
+                return;
+            }
             console.error('Error fetching portfolio:', error);
             setError(error.message || "데이터를 불러오는데 실패했습니다.");
         } finally {
@@ -203,7 +210,6 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         }
 
         try {
-            // 2.1 Insert Portfolio
             const { data: portfolioData, error: portfolioError } = await supabase
                 .from('portfolios')
                 .insert({
@@ -221,7 +227,6 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
 
             if (portfolioError) throw portfolioError;
 
-            // 2.2 Insert Initial Trades if any
             if (newAsset.trades && newAsset.trades.length > 0) {
                 const tradesToInsert = newAsset.trades.map(t => ({
                     portfolio_id: portfolioData.id,
@@ -297,7 +302,6 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 memo: trade.memo
             });
 
-            // Update Quantity Simple Logic
             const asset = assets.find(a => a.id === assetId);
             if (asset) {
                 const change = trade.type === 'BUY' ? trade.quantity : -trade.quantity;
@@ -324,7 +328,6 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
 
     const totalInvested = assets.reduce((sum, asset) => sum + (asset.pricePerShare * asset.quantity), 0);
 
-    // Blocking Loader
     if (!isInitialized) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">

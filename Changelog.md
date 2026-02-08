@@ -1,3 +1,14 @@
+## [Alpha V1.063] - 2026-02-09 16:45:00
+
+### 🛡️ Client Stability Upgrade
+- **Summary**: Fix `AbortError` in Portfolio Fetch
+- **Detail**:
+  - **Issue**: `PortfolioContext` 리렌더링 시 Supabase Client가 재생성되거나, 네트워크 상태에 따라 `fetch` 요청이 중단(`AbortError`)되는 현상.
+  - **Fix**:
+    1.  `useMemo`를 사용하여 Supabase Client 인스턴스를 메모이제이션 (싱글톤 유지).
+    2.  `fetchPortfolio` 함수에 `retry` 로직을 추가하여 `AbortError` 또는 일시적 네트워크 오류 발생 시 최대 2회 자동 재시도.
+- **Build Time**: 2026-02-09 16:45:00
+
 ## [Alpha V1.062] - 2026-02-09 16:25:00
 
 ### 🚑 Build Fix
