@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { getMarketType } from '@/utils/market';
+import { signout } from '@/app/login/actions';
 
 export interface TradeRecord {
     id: number;
@@ -274,8 +275,12 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
 
     // Auth: Logout
     const logout = async () => {
-        await supabase.auth.signOut();
-        router.push('/login');
+        // Optimistic UI update
+        setUser(null);
+        setAssets([]);
+
+        // Call Server Action
+        await signout();
     };
 
     // Refresh
