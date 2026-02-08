@@ -109,23 +109,32 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         let mounted = true;
 
         const init = async () => {
-            setLoadingMessage("사용자 정보를 확인하고 있습니다...");
-
-            // If server already provided user, fetch immediately
+            // 1. Server-side User Injection (Priority)
             if (initialUser) {
-                setLoadingMessage("나의 주식 목록을 불러오고 있습니다...");
-                await fetchPortfolio(initialUser.id);
-                if (mounted) setLoadingMessage(null);
+                // Only update if different to avoid loop/flicker
+                if (user?.id !== initialUser.id) {
+                    // console.log("[PortfolioContext] New initialUser detected:", initialUser.email);
+                    setUser(initialUser);
+                    setLoadingMessage("회원 정보를 불러오는 중...");
+
+                    // Fetch data
+                    await fetchPortfolio(initialUser.id);
+
+                    if (mounted) setLoadingMessage(null);
+                }
                 return;
             }
 
-            // Otherwise check session client-side
+            // 2. Client-side Session Check (Fallback)
+            setLoadingMessage("사용자 정보를 확인하고 있습니다...");
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (mounted && session?.user) {
-                    setUser(session.user);
-                    setLoadingMessage("나의 주식 목록을 불러오고 있습니다...");
-                    await fetchPortfolio(session.user.id);
+                    if (user?.id !== session.user.id) {
+                        setUser(session.user);
+                        setLoadingMessage("내 주식일지를 불러오고 있습니다...");
+                        await fetchPortfolio(session.user.id);
+                    }
                 } else if (mounted) {
                     setIsLoading(false);
                 }
@@ -137,14 +146,16 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             }
         };
 
+        // Run init logic when mount or initialUser changes
         init();
 
         // Listen for auth changes (login/logout)
         const { data: authListener } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
             if (!mounted) return;
+            // console.log("[Auth] Event:", event);
 
             if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-                if (session?.user) {
+                if (session?.user && user?.id !== session.user.id) {
                     setUser(session.user);
                     setLoadingMessage("로그인 정보를 동기화하고 있습니다...");
                     await fetchPortfolio(session.user.id);
@@ -162,7 +173,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             mounted = false;
             authListener.subscription.unsubscribe();
         };
-    }, []);
+    }, [initialUser, user, fetchPortfolio, supabase]); // Re-run if server passes new user (e.g. after login redirect)
 
     // CRUD: Add Asset
     const addAsset = async (newAsset: Omit<Asset, 'id'>) => {
