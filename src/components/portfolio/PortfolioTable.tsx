@@ -1,16 +1,40 @@
 "use client";
 
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
-import { useWebSocketContext } from '@/context/WebSocketContext';
 import PortfolioCard from './PortfolioCard';
 import { useState, useMemo } from 'react';
 import { ArrowUpDown, Check } from 'lucide-react';
+import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 
 type SortOption = 'newest' | 'value' | 'name';
 
 export default function PortfolioTable() {
     const { assets, isLoading } = usePortfolio();
-    const { lastData } = useWebSocketContext();
+
+    // 1. Extract Symbols for Batch Fetching
+    const { krSymbols, usSymbols } = useMemo(() => {
+        const kr = new Set<string>();
+        const us = new Set<string>();
+
+        assets.forEach(a => {
+            if (a.category === 'KR') {
+                // Strip .KS suffix for API compatibility
+                const cleanSymbol = a.symbol.replace('.KS', '');
+                kr.add(cleanSymbol);
+            } else if (a.category === 'US') {
+                us.add(a.symbol);
+            }
+        });
+
+        return {
+            krSymbols: Array.from(kr),
+            usSymbols: Array.from(us)
+        };
+    }, [assets]);
+
+    // 2. Batch Fetch Data
+    const { getStockData: getKrData } = useBatchStockPrice(krSymbols, 'KR');
+    const { getStockData: getUsData } = useBatchStockPrice(usSymbols, 'US');
 
     // State
     const [filter, setFilter] = useState({
@@ -45,29 +69,29 @@ export default function PortfolioTable() {
         });
 
         return result.sort((a, b) => {
+            // Helper to get price
+            const getPrice = (asset: Asset) => {
+                const cleanSymbol = asset.symbol.replace('.KS', '');
+                const data = asset.category === 'KR'
+                    ? getKrData(cleanSymbol)
+                    : getUsData(asset.symbol);
+                return data?.price || asset.pricePerShare;
+            };
+
             switch (sort) {
                 case 'name':
                     return a.name.localeCompare(b.name);
                 case 'value':
                     // Calculate current value for sorting
-                    const priceA = lastData.get(a.symbol)?.price || a.pricePerShare;
-                    const valA = priceA * a.quantity;
-
-                    const priceB = lastData.get(b.symbol)?.price || b.pricePerShare;
-                    const valB = priceB * b.quantity;
-
+                    const valA = getPrice(a) * a.quantity;
+                    const valB = getPrice(b) * b.quantity;
                     return valB - valA; // Descending
                 case 'newest':
                 default:
-                    // Assuming higher ID = newer, or create_at if available
-                    // Fallback to simple generic ID comparison or reverse array index (if stable)
-                    // If assets are ordered by created_at from DB (ASC), then reversing or sorting by ID DESC works.
-                    // Context fetches with `order('created_at', { ascending: true })`
-                    // So last item is newest. But standard 'sort' expects comparison.
                     return b.id - a.id;
             }
         });
-    }, [assets, filter, sort, lastData]);
+    }, [assets, filter, sort, getKrData, getUsData]);
 
     if (isLoading) {
         return (
@@ -154,9 +178,21 @@ export default function PortfolioTable() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredAndSortedAssets.map((asset) => (
-                        <PortfolioCard key={asset.id} asset={asset} />
-                    ))}
+                    {filteredAndSortedAssets.map((asset) => {
+                        // Prepare Stock Data prop
+                        const cleanSymbol = asset.symbol.replace('.KS', '');
+                        const stockData = asset.category === 'KR'
+                            ? getKrData(cleanSymbol)
+                            : getUsData(asset.symbol);
+
+                        return (
+                            <PortfolioCard
+                                key={asset.id}
+                                asset={asset}
+                                stockData={stockData}
+                            />
+                        );
+                    })}
                 </div>
             )}
         </div>

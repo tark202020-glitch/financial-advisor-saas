@@ -1,3 +1,12 @@
+## [Alpha V1.045] - 2026-02-09 11:55:00
+
+### 🚑 Hotfix (Build Error)
+- **Summary**: Fix Portfolio Table Build Error
+- **Detail**:
+  - **Fix**: `PortfolioTable`에서 `PortfolioCard`로 `stockData` prop을 전달하지 않아 발생한 빌드 에러 수정
+  - **Cleanup**: 누락된 `useBatchStockPrice` 훅 적용 완료
+- **Build Time**: 2026-02-09 11:55:00
+
 ## [Alpha V1.044] - 2026-02-09 11:45:00
 
 ### 🚑 Deep Fix (Portfolio Data)
