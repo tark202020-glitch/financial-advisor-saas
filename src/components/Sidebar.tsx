@@ -29,12 +29,16 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
 
     useEffect(() => {
         const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                setUser(user);
+            } catch (e) {
+                // silently fail
+            }
         };
         getUser();
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (session?.user) {
                 setUser(session.user);
             } else {
@@ -48,9 +52,14 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
     }, []);
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
-        router.push("/login");
-        router.refresh();
+        try {
+            await supabase.auth.signOut();
+        } catch (error) {
+            // ignore error
+        } finally {
+            router.push("/login");
+            router.refresh();
+        }
     };
 
     const navItems = [
