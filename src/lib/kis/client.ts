@@ -108,26 +108,9 @@ export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice 
     // DNAS: Dollar NASDAQ
     const exchangeCode = getUSExchangeCode(symbol);
 
-    // Initial Request
-    let response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/price?AUTH=&EXCD=${exchangeCode}&SYMB=${symbol}`, {
-        method: "GET",
-        headers: {
-            "content-type": "application/json",
-            "authorization": `Bearer ${token}`,
-            "appkey": APP_KEY!,
-            "appsecret": APP_SECRET!,
-            "tr_id": "HHDFS00000300",
-        },
-    }));
-
-    let data: KisResponse<KisOvStockPrice> = await response.json();
-
-    // 2. Self-Healing: If Output is Empty (e.g. WMT might be NAS in KIS despite being NYSE), Try Alternate Exchange
-    if (data.rt_cd === "0" && (!data.output || !data.output.last || data.output.last === "")) {
-        console.warn(`[KIS] Empty data for ${symbol} (${exchangeCode}). Retrying with alternate exchange...`);
-
-        const altExchange = exchangeCode === 'NYS' ? 'NAS' : 'NYS'; // Toggle
-        response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/price?AUTH=&EXCD=${altExchange}&SYMB=${symbol}`, {
+    // Helper for fetching
+    const fetchPrice = async (exch: string) => {
+        return await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/price?AUTH=&EXCD=${exch}&SYMB=${symbol}`, {
             method: "GET",
             headers: {
                 "content-type": "application/json",
@@ -137,16 +120,41 @@ export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice 
                 "tr_id": "HHDFS00000300",
             },
         }));
+    };
 
-        const altData: KisResponse<KisOvStockPrice> = await response.json();
-        /* If alt worked, use it */
+    // 1. Initial Request
+    let response = await fetchPrice(exchangeCode);
+    let data: KisResponse<KisOvStockPrice> = await response.json();
+
+    // 2. Retry Logic (Aggressive)
+    // Retry if:
+    // a) rt_cd is 0 but output is empty (Success but no data)
+    // b) rt_cd is NOT 0 (Error, potentially "Symbol not found" due to wrong exchange)
+    const shouldRetry = (data.rt_cd === "0" && (!data.output || !data.output.last || data.output.last === "")) ||
+        (data.rt_cd !== "0");
+
+    if (shouldRetry) {
+        console.warn(`[KIS] Failed/Empty for ${symbol} (${exchangeCode}). Retrying with alternate exchange...`);
+
+        const altExchange = exchangeCode === 'NYS' ? 'NAS' : 'NYS'; // Toggle
+        const altResponse = await fetchPrice(altExchange);
+        const altData: KisResponse<KisOvStockPrice> = await altResponse.json();
+
+        // If alt worked, use it. 
+        // We accept altData if it is Success AND has data.
         if (altData.rt_cd === "0" && altData.output && altData.output.last) {
             data = altData;
+        } else {
+            // If alt also failed, logging it but we will return original error/empty below unless alt error is more descriptive?
+            // Let's keep original data if alt failed too, or maybe altData is better?
+            // If original was "Error" and alt is "Error", both are bad.
+            // If original was "Empty" and alt is "Error", probably original was better (wrong exchange but no error).
+            // Actually, if retry failed, we probably want to return null.
         }
     }
 
     if (data.rt_cd !== "0") {
-        console.error(`KIS API Error (OV): ${data.msg1}`);
+        console.error(`KIS API Error (OV) for ${symbol}: ${data.msg1} (Code: ${data.rt_cd})`);
         return null;
     }
 

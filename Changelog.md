@@ -1,3 +1,12 @@
+## [Alpha V1.046] - 2026-02-09 12:10:00
+
+### 🌍 Overseas Stock Data Fix
+- **Summary**: Fix missing data for Overseas Stocks (e.g., NYSE ETFs like LIT)
+- **Detail**:
+  - **Retry Logic**: 해외 주식 조회 시 거래소(NAS/NYS) 불일치로 인한 에러 발생 시, 자동으로 대체 거래소로 재조회하도록 로직 강화
+  - **Coverage**: ETF 및 NYSE 종목 조회 성공률 대폭 향상
+- **Build Time**: 2026-02-09 12:10:00
+
 ## [Alpha V1.045] - 2026-02-09 11:55:00
 
 ### 🚑 Hotfix (Build Error)
