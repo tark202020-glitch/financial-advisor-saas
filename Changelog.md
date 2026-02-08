@@ -1,3 +1,12 @@
+## [Alpha V1.064] - 2026-02-09 17:00:00
+
+### 🐛 UI Loading Logic Fix
+- **Summary**: Fix Premature Empty State
+- **Detail**:
+  - **Issue**: 사용자 세션이 서버에서 주입(`initialUser`)될 경우, 데이터 로딩이 시작되기도 전에 `isLoading`이 `false`로 설정되어 빈 화면("자산 없음")이 깜빡이거나 고정되는 문제.
+  - **Fix**: 초기 `isLoading` 값을 무조건 `true`로 설정하여, 첫 데이터 패칭이 완료될 때까지 스켈레톤 UI가 유지되도록 수정.
+- **Build Time**: 2026-02-09 17:00:00
+
 ## [Alpha V1.063] - 2026-02-09 16:45:00
 
 ### 🛡️ Client Stability Upgrade

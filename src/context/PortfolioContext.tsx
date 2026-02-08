@@ -51,7 +51,8 @@ export const PortfolioContext = createContext<PortfolioContextType | undefined>(
 export function PortfolioProvider({ children, initialUser }: { children: ReactNode; initialUser?: any | null }) {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [user, setUser] = useState<any | null>(initialUser || null);
-    const [isLoading, setIsLoading] = useState(!initialUser);
+    // Fix: Always start loading true, even if user is hydrated, because we need to fetch assets
+    const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [debugLog, setDebugLog] = useState<string[]>(initialUser ? [`[Init] Hydrated user: ${initialUser.email}`] : []);
     const [isInitialized, setIsInitialized] = useState(!!initialUser);
