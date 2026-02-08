@@ -36,6 +36,7 @@ interface PortfolioContextType {
     totalInvested: number;
     isLoading: boolean;
     error: string | null;
+    debugLog: string[];
     user: any | null;
     addAsset: (asset: Omit<Asset, 'id'>) => Promise<void>;
     removeAsset: (id: number) => Promise<void>;
@@ -52,6 +53,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<any | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [debugLog, setDebugLog] = useState<string[]>([]);
     const [isInitialized, setIsInitialized] = useState(false); // Global Init State
     const router = useRouter();
     const supabase = createClient();

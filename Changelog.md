@@ -1,3 +1,12 @@
+## [Alpha V1.059] - 2026-02-09 15:30:00
+
+### 🔬 Client-Side Deep Debugging
+- **Summary**: Expose Client Fetch Logs
+- **Detail**:
+  - **Feature**: `PortfolioContext` 내부에서 발생하는 데이터 패칭 과정(Fetch Start, Success, Error, Loaded Count)을 실시간으로 기록(`debugLog`).
+  - **UI**: "내 주식일지" 페이지 상단 디버그 콘솔에 Server Data와 Client Logs를 동시에 표시하여 비교 가능하게 함.
+- **Build Time**: 2026-02-09 15:30:00
+
 ## [Alpha V1.058] - 2026-02-09 15:15:00
 
 ### 🔍 Server-Side Verification
