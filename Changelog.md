@@ -1,3 +1,16 @@
+## [Alpha V1.078] - 2026-02-09 20:45:00
+
+### 🐛 Critical Bug Fix
+- **Summary**: Fix Supabase Client Singleton Pattern
+- **Detail**:
+  - **Issue**: Supabase 쿼리 Promise가 영원히 resolve되지 않음. `useMemo`로 생성된 클라이언트가 매번 재생성될 가능성.
+  - **Fix**: 
+    - `client.ts`에 진정한 싱글톤 패턴 구현
+    - `PortfolioContext`에서 singleton을 직접 import하여 사용
+    - `useMemo` 제거
+  - **Note**: 콘솔 로그에서 `[DEBUG] Query returned...`가 나타나지 않아 쿼리 hang 확인됨.
+- **Build Time**: 2026-02-09 20:45:00
+
 ## [Alpha V1.077] - 2026-02-09 20:30:00
 
 ### 🔍 Debug Enhancement
