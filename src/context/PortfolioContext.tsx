@@ -47,6 +47,7 @@ interface PortfolioContextType {
     removeTradeLog: (tradeId: number, assetId: number) => Promise<void>;
     logout: () => Promise<void>;
     refreshPortfolio: () => Promise<void>;
+    recalculateAllPortfolios: () => Promise<void>;
 }
 
 export const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -406,6 +407,34 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         }
     };
 
+    // Recalculate All (Migration/Fix)
+    const recalculateAllPortfolios = async () => {
+        if (!user || assets.length === 0) return;
+        setIsLoading(true); // Show global loader
+        setLoadingMessage("전체 포트폴리오 매입단가를 재계산하고 있습니다...");
+        try {
+            console.log("Starting full recalculation...");
+            // 1. Get all asset IDs first to avoid loop issues
+            const assetIds = assets.map(a => a.id);
+
+            // 2. Process sequentially to avoid DB lock/rate limits
+            for (const id of assetIds) {
+                await recalculateAssetMetrics(id);
+            }
+
+            // 3. Refresh final data
+            await fetchPortfolio(user.id);
+            console.log("Recalculation complete");
+            alert("모든 품목의 매입단가 재계산이 완료되었습니다.");
+        } catch (e) {
+            console.error(e);
+            alert("재계산 중 오류가 발생했습니다.");
+        } finally {
+            setLoadingMessage(null);
+            setIsLoading(false);
+        }
+    };
+
     const totalInvested = assets.reduce((sum, asset) => sum + (asset.pricePerShare * asset.quantity), 0);
 
     return (
@@ -423,6 +452,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             removeTradeLog,
             logout,
             refreshPortfolio,
+            recalculateAllPortfolios,
         }}>
             {loadingMessage ? <FullPageLoader message={loadingMessage} /> : children}
         </PortfolioContext.Provider>
