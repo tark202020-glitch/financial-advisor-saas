@@ -1,3 +1,14 @@
+## [Alpha V1.112.2] - 2026-02-09 21:00:00
+
+### 🚑 Hotfix: API Data Access & Crash
+- **Summary**: Fix critical bug where price data was not read correctly, causing 'Price 0' and app crash.
+- **Detail**:
+  - **Issue**: API 응답이 이미 언랩핑(`output` 제거됨)된 상태이나, 프론트엔드에서 `data.output`을 참조하여 데이터가 `undefined`로 처리됨. 이로 인해 가격이 0으로 인식되고, 디버그 로그 출력 시 `slice` 메서드 호출 에러 발생.
+  - **Fix**: 
+    1. `data.output.stck_prpr` -> `data.stck_prpr` (직접 참조)로 수정하여 정상 가격 로딩.
+    2. 디버그 로그 출력 시 `undefined` 데이터에 대한 안전장치(`JSON.stringify(data || {})`) 추가.
+- **Build Time**: 2026-02-09 21:00:00
+
 ## [Alpha V1.112.1] - 2026-02-09 20:45:00
 
 ### 🚑 Hotfix: Price Fetching (Zero Price)

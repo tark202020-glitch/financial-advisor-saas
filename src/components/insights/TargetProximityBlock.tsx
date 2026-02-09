@@ -69,15 +69,14 @@ export default function TargetProximityBlock() {
                     if (res.ok) {
                         let price = 0;
                         if (asset.category === 'US') {
-                            // KIS Overseas: last (current), base (prev close), clos (close?)
-                            // If market closed, 'last' might be 0. Try 'base' or 'clos'.
-                            price = parseFloat(data.output?.last || data.output?.base || data.output?.clos || 0);
+                            // KIS Overseas API (Already unwrapped by route handler): last / base / clos
+                            price = parseFloat(data.last || data.base || data.clos || 0);
                         } else {
-                            // Domestic
-                            price = parseInt(data.output?.stck_prpr || 0);
+                            // Domestic API (Already unwrapped by route handler): stck_prpr / stck_sdpr
+                            price = parseInt(data.stck_prpr || 0);
                             // Fallback to Previous Close (stck_sdpr) if current is 0
                             if (price === 0) {
-                                price = parseInt(data.output?.stck_sdpr || 0);
+                                price = parseInt(data.stck_sdpr || 0);
                             }
                         }
 
@@ -85,7 +84,8 @@ export default function TargetProximityBlock() {
                             priceMap.set(asset.symbol, price);
                         } else {
                             // Still 0?
-                            const rawStr = JSON.stringify(data.output).slice(0, 100);
+                            // Safely stringify
+                            const rawStr = JSON.stringify(data || {}).slice(0, 100);
                             console.warn(`[PriceZero] ${asset.symbol}: ${rawStr}`);
                             errors.push(`${asset.symbol}: Price 0 (Check Market Status)`);
                         }
