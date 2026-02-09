@@ -305,11 +305,6 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
 
     if (asset.pricePerShare > domainMax) {
         purchaseLineY = chartMax; // Pin to top
-        purchaseLineLabel = `매입단가 ${asset.pricePerShare.toLocaleString()} (▼)`; // Purchase is higher, so it's above chart. Wait.
-        // User said: "매입단가가 그래프의 세로축 범위 밖에 있다면--> 그래프 최 하단 또는 최상단에 매입단가와 실가격을 표기"
-        // If PricePerShare (57,170) > ChartMax (say 50,000). The line should be at TOP.
-        // Label should indicate it's above. (▲) might be confusing if looking at chart. 
-        // Let's use text only: "매입단가 57,170 (범위 밖 ▲)"
         purchaseLineLabel = `매입단가 ${asset.pricePerShare.toLocaleString()} (▲)`;
         isOutOfBounds = true;
     } else if (asset.pricePerShare < domainMin) {
@@ -652,7 +647,9 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                     <thead className="bg-slate-50 text-slate-500 font-medium">
                                         <tr className="border-b border-slate-200">
                                             <th className="px-4 py-3 text-left">거래일자</th>
+                                            <th className="px-4 py-3">수량</th>
                                             <th className="px-4 py-3">매수가</th>
+                                            <th className="px-4 py-3">합계금액</th>
                                             <th className="px-4 py-3">현재가</th>
                                             <th className="px-4 py-3 border-l border-slate-100 bg-indigo-50/30 text-indigo-900">지수(매수당시)</th>
                                             <th className="px-4 py-3 bg-indigo-50/30 text-indigo-900">지수(현재)</th>
@@ -667,11 +664,14 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                             const stockReturn = trade.price ? ((currentPrice - trade.price) / trade.price) * 100 : 0;
                                             const indexReturn = (buyIndex && currentIndex) ? ((currentIndex - buyIndex) / buyIndex) * 100 : null;
                                             const alpha = indexReturn !== null ? stockReturn - indexReturn : null;
+                                            const totalAmount = trade.price * trade.quantity;
 
                                             return (
                                                 <tr key={trade.id || idx} className="hover:bg-slate-50 transition group">
                                                     <td className="px-4 py-3 text-left font-mono text-slate-600 whitespace-nowrap">{trade.date}</td>
+                                                    <td className="px-4 py-3 text-slate-700">{trade.quantity.toLocaleString()}</td>
                                                     <td className="px-4 py-3 font-medium text-slate-700">{trade.price.toLocaleString()}</td>
+                                                    <td className="px-4 py-3 text-slate-600 font-medium">{totalAmount.toLocaleString()}</td>
                                                     <td className="px-4 py-3 text-slate-500">{currentPrice.toLocaleString()}</td>
                                                     <td className="px-4 py-3 border-l border-slate-100 bg-indigo-50/10 text-slate-800 font-medium">{buyIndex ? buyIndex.toLocaleString() : '-'}</td>
                                                     <td className="px-4 py-3 bg-indigo-50/10 text-slate-500">{currentIndex ? currentIndex.toLocaleString() : '-'}</td>
@@ -690,7 +690,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                         })}
                                         {(!asset.trades || asset.trades.filter((t: any) => t.type === 'BUY').length === 0) && (
                                             <tr>
-                                                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                                                <td colSpan={10} className="px-4 py-8 text-center text-slate-400">
                                                     매수 기록이 없습니다.
                                                 </td>
                                             </tr>

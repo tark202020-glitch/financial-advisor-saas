@@ -1,3 +1,12 @@
+## [Alpha V1.109] - 2026-02-09 15:35:00
+
+### 📊 Feature: Index Comparison Columns
+- **Summary**: Added 'Quantity' and 'Total Amount' to Index Comparison Modal.
+- **Detail**:
+  - **Columns**: 거래내역 비교 테이블에 **수량(Quantity)** 및 **합계금액(Total Amount)** 컬럼 추가.
+  - **Logic**: 각 거래별 `매수가 * 수량`을 계산하여 총 매수 금액을 표시, 투자 규모 파악 용이.
+- **Build Time**: 2026-02-09 15:35:00
+
 ## [Alpha V1.108] - 2026-02-09 15:15:00
 
 ### 🎨 UX Improvement: Index Comparison Modal
