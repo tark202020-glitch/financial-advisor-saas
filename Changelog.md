@@ -1,3 +1,13 @@
+## [Alpha V1.117] - 2026-02-09 22:50:00
+
+### 🐛 Fix: Condition Search
+- **Summary**: Fixed layout and search logic issues in Condition Search page.
+- **Detail**:
+  - **Layout**: Missing `SidebarLayout` applied.
+  - **Logic**: Lowered default Market Cap filter to 100 Billion KRW (1000억) to ensure results.
+  - **Debug**: Added detailed logs to troubleshoot API data mapping.
+- **Build Time**: 2026-02-09 22:50:00
+
 ## [Alpha V1.116] - 2026-02-09 22:20:00
 
 ### 📊 Feature: Portfolio Composition Analysis
