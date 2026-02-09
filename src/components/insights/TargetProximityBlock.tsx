@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { usePortfolio } from '@/context/PortfolioContext';
 import { useWebSocketContext } from '@/context/WebSocketContext';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell } from 'recharts';
@@ -8,74 +8,88 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLin
 export default function TargetProximityBlock() {
     const { assets } = usePortfolio();
     const { subscribe, lastData } = useWebSocketContext();
-    const [initialPrices, setInitialPrices] = React.useState<Map<string, number>>(new Map());
-    const [isLoading, setIsLoading] = React.useState(true);
 
-    // 0. Subscribe and Fetch Initial Data
+    // Progressive Loading State
+    const [initialPrices, setInitialPrices] = useState<Map<string, number>>(new Map());
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadingProgress, setLoadingProgress] = useState(0); // 0-100
+    const [loadingStatus, setLoadingStatus] = useState("데이터 준비 중...");
+
+    // 0. Initial Progressive Fetch
     useEffect(() => {
-        if (assets && assets.length > 0) {
-            // Subscribe WS
+        let isMounted = true;
+
+        const loadData = async () => {
+            if (!assets || assets.length === 0) {
+                if (isMounted) setIsLoading(false);
+                return;
+            }
+
+            const priceMap = new Map<string, number>();
+            const total = assets.length;
+
+            // Subscribe to WS for future updates
             assets.forEach(asset => {
-                if (asset.symbol) {
-                    subscribe(asset.symbol, asset.category);
-                }
+                if (asset.symbol) subscribe(asset.symbol, asset.category);
             });
 
-            // Fetch Initial Snapshot (for off-hours or immediate display)
-            const fetchPrices = async () => {
-                const priceMap = new Map<string, number>();
+            // Iterate sequentially or in small batches to update progress UI
+            for (let i = 0; i < total; i++) {
+                const asset = assets[i];
+                if (!asset.symbol) continue;
 
-                await Promise.all(assets.map(async (asset) => {
-                    try {
-                        if (!asset.symbol) return;
+                if (isMounted) {
+                    setLoadingStatus(`${asset.name} (${asset.symbol}) 시세 조회 중...`);
+                    // Calculate progress based on (i / total) * 100
+                    // Start from small % and reach near 100%
+                    setLoadingProgress(Math.round(((i) / total) * 100));
+                }
 
-                        // Clean symbol (remove exchange suffix if present, e.g., 005930.KS -> 005930)
-                        let cleanSymbol = asset.symbol;
-                        if (asset.symbol.includes('.')) {
-                            cleanSymbol = asset.symbol.split('.')[0];
-                        }
+                try {
+                    // Clean symbol (remove exchange suffix if present, e.g., 005930.KS -> 005930)
+                    let cleanSymbol = asset.symbol;
+                    if (asset.symbol.includes('.')) {
+                        cleanSymbol = asset.symbol.split('.')[0];
+                    }
 
-                        // Use domestic/overseas generic endpoint logic or specific
-                        const endpoint = asset.category === 'US'
-                            ? `/api/kis/price/overseas/${cleanSymbol}`
-                            : `/api/kis/price/domestic/${cleanSymbol}`;
+                    const endpoint = asset.category === 'US'
+                        ? `/api/kis/price/overseas/${cleanSymbol}`
+                        : `/api/kis/price/domestic/${cleanSymbol}`;
 
-                        const res = await fetch(endpoint);
-
-                        if (!res.ok) {
-                            // Suppress logs for common 404/500 to avoid console spam, but useful for debug
-                            // console.warn(`Price fetch failed for ${asset.symbol}: ${res.status}`);
-                            return;
-                        }
-
+                    const res = await fetch(endpoint);
+                    if (res.ok) {
                         const data = await res.json();
-
-                        // Parse Price
                         let price = 0;
                         if (asset.category === 'US') {
-                            // Overseas format might vary
                             price = parseFloat(data.output?.last || data.output?.base || 0);
                         } else {
-                            // Domestic
                             price = parseInt(data.output?.stck_prpr || 0);
                         }
-
-                        if (price > 0) {
-                            priceMap.set(asset.symbol, price);
-                        }
-                    } catch (e) {
-                        // Silent fail
+                        if (price > 0) priceMap.set(asset.symbol, price);
                     }
-                }));
+                } catch (e) {
+                    // Silent fail for individual fetch error
+                }
 
-                setInitialPrices(priceMap);
-                setIsLoading(false);
-            };
+                // Small delay to make the UI update perceptible if desired, or just async nature
+                // await new Promise(r => setTimeout(r, 100)); 
+            }
 
-            fetchPrices();
-        } else {
-            setIsLoading(false);
-        }
+            if (isMounted) {
+                setLoadingProgress(100);
+                // Slight delay at 100% before showing content
+                setTimeout(() => {
+                    if (isMounted) {
+                        setInitialPrices(priceMap);
+                        setIsLoading(false);
+                    }
+                }, 500);
+            }
+        };
+
+        loadData();
+
+        return () => { isMounted = false; };
     }, [assets, subscribe]);
 
     // 1. Prepare Data
@@ -83,7 +97,7 @@ export default function TargetProximityBlock() {
         return assets
             .map(asset => {
                 const liveData = lastData.get(asset.symbol);
-                // Prefer Live WS > Initial Fetch > Fallback
+                // Prefer Live WS > Initial Fetch
                 const currentPrice = liveData?.price || initialPrices.get(asset.symbol);
 
                 if (!currentPrice) return null; // Skip if no price data yet
@@ -93,12 +107,10 @@ export default function TargetProximityBlock() {
                 let upperDistance = null;
 
                 if (asset.targetPriceLower) {
-                    // (Current - Lower) / Current * 100
                     lowerDistance = ((currentPrice - asset.targetPriceLower) / currentPrice) * 100;
                 }
 
                 if (asset.targetPriceUpper) {
-                    // (Upper - Current) / Current * 100
                     upperDistance = ((asset.targetPriceUpper - currentPrice) / currentPrice) * 100;
                 }
 
@@ -106,10 +118,8 @@ export default function TargetProximityBlock() {
                 const distL = lowerDistance !== null ? Math.abs(lowerDistance) : Infinity;
                 const distU = upperDistance !== null ? Math.abs(upperDistance) : Infinity;
 
-                // We pick the closer one.
                 const closestDist = Math.min(distL, distU);
-
-                const MAX_RANGE = 30; // Max percentage to visualize (e.g. 30% away)
+                const MAX_RANGE = 30; // Max percentage to visualize
 
                 let lowerBar = 0;
                 let upperBar = 0;
@@ -122,7 +132,6 @@ export default function TargetProximityBlock() {
                     upperBar = MAX_RANGE - Math.abs(upperDistance);
                 }
 
-                // Filtering: Only show if valid targets exist
                 if (lowerDistance === null && upperDistance === null) return null;
 
                 return {
@@ -141,7 +150,6 @@ export default function TargetProximityBlock() {
                 };
             })
             .filter((item): item is NonNullable<typeof item> => item !== null)
-            // Sort: Smallest absolute distance first (closest to 0)
             .sort((a, b) => a.closestDist - b.closestDist);
     }, [assets, lastData, initialPrices]);
 
@@ -170,10 +178,26 @@ export default function TargetProximityBlock() {
         return null;
     };
 
+    // Render Loading State
     if (isLoading) {
         return (
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 text-center text-slate-400 h-[500px] flex items-center justify-center">
-                데이터를 불러오는 중입니다...
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 h-[500px] flex flex-col items-center justify-center space-y-6">
+                {/* Spinner or Icon */}
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+
+                <div className="w-full max-w-xs space-y-2 text-center">
+                    <p className="text-slate-800 font-medium text-lg">포트폴리오 분석 중...</p>
+                    <p className="text-slate-500 text-sm animate-pulse">{loadingStatus}</p>
+
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-4">
+                        <div
+                            className="bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${loadingProgress}%` }}
+                        ></div>
+                    </div>
+                    <p className="text-xs text-slate-400 text-right mt-1">{loadingProgress}%</p>
+                </div>
             </div>
         )
     }
@@ -196,7 +220,7 @@ export default function TargetProximityBlock() {
     }
 
     return (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative">
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative animate-in fade-in zoom-in duration-500">
             <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                 <span className="text-indigo-600">🎯</span> 목표가 달성 순위
             </h2>
