@@ -28,23 +28,35 @@ export default function TargetProximityBlock() {
                 await Promise.all(assets.map(async (asset) => {
                     try {
                         if (!asset.symbol) return;
+
+                        // Clean symbol (remove exchange suffix if present, e.g., 005930.KS -> 005930)
+                        let cleanSymbol = asset.symbol;
+                        if (asset.symbol.includes('.')) {
+                            cleanSymbol = asset.symbol.split('.')[0];
+                        }
+
                         // Use domestic/overseas generic endpoint logic or specific
                         const endpoint = asset.category === 'US'
-                            ? `/api/kis/price/overseas/${asset.symbol}`
-                            : `/api/kis/price/domestic/${asset.symbol}`;
+                            ? `/api/kis/price/overseas/${cleanSymbol}`
+                            : `/api/kis/price/domestic/${cleanSymbol}`;
 
                         const res = await fetch(endpoint);
+
+                        if (!res.ok) {
+                            // Suppress logs for common 404/500 to avoid console spam, but useful for debug
+                            // console.warn(`Price fetch failed for ${asset.symbol}: ${res.status}`);
+                            return;
+                        }
+
                         const data = await res.json();
 
                         // Parse Price
                         let price = 0;
                         if (asset.category === 'US') {
-                            // Overseas format might vary, check structure
-                            // data.output.last (price)
+                            // Overseas format might vary
                             price = parseFloat(data.output?.last || data.output?.base || 0);
                         } else {
                             // Domestic
-                            // data.output.stck_prpr
                             price = parseInt(data.output?.stck_prpr || 0);
                         }
 
@@ -52,7 +64,7 @@ export default function TargetProximityBlock() {
                             priceMap.set(asset.symbol, price);
                         }
                     } catch (e) {
-                        console.error(`Failed to fetch price for ${asset.symbol}`, e);
+                        // Silent fail
                     }
                 }));
 
