@@ -14,6 +14,7 @@ export default function TargetProximityBlock() {
     const [isLoading, setIsLoading] = useState(true);
     const [loadingProgress, setLoadingProgress] = useState(0); // 0-100
     const [loadingStatus, setLoadingStatus] = useState("데이터 준비 중...");
+    const [fetchErrors, setFetchErrors] = useState<string[]>([]);
 
     // 0. Initial Progressive Fetch
     useEffect(() => {
@@ -214,9 +215,19 @@ export default function TargetProximityBlock() {
 
     if (data.length === 0) {
         return (
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 text-center text-slate-400 h-[500px] flex items-center justify-center">
-                표시할 데이터가 없거나 시세 정보를 불러오지 못했습니다. <br />
-                (목표가를 설정했는지 확인해주세요)
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 text-center text-slate-400 h-[500px] flex flex-col items-center justify-center space-y-4">
+                <p>표시할 데이터가 (유효한 목표가 설정 종목) 없습니다.</p>
+                {fetchErrors.length > 0 && (
+                    <div className="w-full max-w-md bg-red-50 p-4 rounded-lg text-left overflow-y-auto max-h-40">
+                        <p className="text-red-600 font-bold mb-2 text-xs">오류 상세 리포트:</p>
+                        <ul className="list-disc list-inside text-xs text-red-500 space-y-1">
+                            {fetchErrors.map((err, idx) => (
+                                <li key={idx}>{err}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+                <p className="text-xs text-slate-400">(목표가를 설정했는지, 보유 수량이 0 이상인지 확인해주세요)</p>
             </div>
         )
     }
@@ -241,6 +252,21 @@ export default function TargetProximityBlock() {
                     <span className="w-16 h-2 rounded-full bg-gradient-to-r from-red-500 to-transparent"></span>
                 </div>
             </div>
+
+            {/* Error Banner if Partial Errors exist but some data is shown */}
+            {fetchErrors.length > 0 && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600">
+                    <p className="font-bold">⚠ 일부 종목 시세 조회 실패 ({fetchErrors.length}건)</p>
+                    <details className="mt-1 cursor-pointer">
+                        <summary>상세 보기</summary>
+                        <ul className="list-disc list-inside mt-2 space-y-1 text-red-500">
+                            {fetchErrors.map((err, idx) => (
+                                <li key={idx}>{err}</li>
+                            ))}
+                        </ul>
+                    </details>
+                </div>
+            )}
 
             {/* Chart Container */}
             <div className="h-[500px] w-full">
