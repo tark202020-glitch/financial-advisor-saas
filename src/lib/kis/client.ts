@@ -673,46 +673,145 @@ export async function fetchGenericFinance(tr_id: string, path: string, symbol: s
 
 // ... existing export generic functions
 
+// Pre-defined top KOSPI stocks by market cap (fallback for off-market hours)
+const TOP_KOSPI_STOCKS: { symbol: string; name: string }[] = [
+    { symbol: '005930', name: '삼성전자' },
+    { symbol: '000660', name: 'SK하이닉스' },
+    { symbol: '373220', name: 'LG에너지솔루션' },
+    { symbol: '207940', name: '삼성바이오로직스' },
+    { symbol: '005380', name: '현대자동차' },
+    { symbol: '000270', name: '기아' },
+    { symbol: '068270', name: '셀트리온' },
+    { symbol: '005490', name: 'POSCO홀딩스' },
+    { symbol: '035420', name: 'NAVER' },
+    { symbol: '055550', name: '신한지주' },
+    { symbol: '105560', name: 'KB금융' },
+    { symbol: '003670', name: '포스코퓨처엠' },
+    { symbol: '006400', name: '삼성SDI' },
+    { symbol: '012330', name: '현대모비스' },
+    { symbol: '028260', name: '삼성물산' },
+    { symbol: '035720', name: '카카오' },
+    { symbol: '066570', name: 'LG전자' },
+    { symbol: '051910', name: 'LG화학' },
+    { symbol: '003550', name: 'LG' },
+    { symbol: '032830', name: '삼성생명' },
+    { symbol: '034730', name: 'SK' },
+    { symbol: '096770', name: 'SK이노베이션' },
+    { symbol: '030200', name: 'KT' },
+    { symbol: '000810', name: '삼성화재' },
+    { symbol: '086790', name: '하나금융지주' },
+    { symbol: '017670', name: 'SK텔레콤' },
+    { symbol: '316140', name: '우리금융지주' },
+    { symbol: '009150', name: '삼성전기' },
+    { symbol: '034020', name: '두산에너빌리티' },
+    { symbol: '033780', name: 'KT&G' },
+    { symbol: '138040', name: '메리츠금융지주' },
+    { symbol: '011200', name: 'HMM' },
+    { symbol: '010130', name: '고려아연' },
+    { symbol: '018260', name: '삼성에스디에스' },
+    { symbol: '036570', name: '엔씨소프트' },
+    { symbol: '015760', name: '한국전력' },
+    { symbol: '047050', name: '포스코인터내셔널' },
+    { symbol: '003490', name: '대한항공' },
+    { symbol: '259960', name: '크래프톤' },
+    { symbol: '010950', name: 'S-Oil' },
+    { symbol: '024110', name: '기업은행' },
+    { symbol: '011170', name: '롯데케미칼' },
+    { symbol: '090430', name: '아모레퍼시픽' },
+    { symbol: '352820', name: '하이브' },
+    { symbol: '161390', name: '한국타이어앤테크놀로지' },
+    { symbol: '326030', name: 'SK바이오팜' },
+    { symbol: '004020', name: '현대제철' },
+    { symbol: '267250', name: 'HD현대' },
+    { symbol: '009540', name: '한국조선해양' },
+    { symbol: '010140', name: '삼성중공업' },
+];
+
 export async function getMarketCapRanking(limit: number = 30): Promise<KisMarketCapItem[]> {
     const token = await getAccessToken();
 
     // TR_ID: FHPST01730000 (Market Cap Ranking)
     // URL: /uapi/domestic-stock/v1/ranking/market-cap
-    // Params:
-    // FID_COND_MRKT_DIV_CODE=J (J: KOSPI, Q: KOSDAQ)
-    // FID_COND_SCR_DIV_CODE=20173
-    // FID_INPUT_ISCD=0000 (All)
-    // FID_DIV_CLS_CODE=0 (All)
-    // FID_BLNG_CLS_CODE=0 (Average?) -> 0: Ordinary
-    // FID_TRGT_CLS_CODE=111111111 (Target Class: 1=Include, 0=Exclude. 111111111 includes most)
-    // FID_TRGT_XCLS_CODE=000000000 (Exclude Class: 0=None)
-    // FID_INPUT_PRICE_1= (Empty)
-    // FID_INPUT_PRICE_2= (Empty)
-    // FID_VOL_CLS_CODE= (Empty)
-    // FID_INPUT_DATE_1= (Empty)
+    // NOTE: This API only returns data during market hours (09:00~15:30 KST).
+    //       For off-market hours, we use a fallback with pre-defined stocks.
 
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/ranking/market-cap?FID_COND_MRKT_DIV_CODE=J&FID_COND_SCR_DIV_CODE=20173&FID_INPUT_ISCD=0000&FID_DIV_CLS_CODE=0&FID_BLNG_CLS_CODE=0&FID_TRGT_CLS_CODE=111111111&FID_TRGT_XCLS_CODE=000000000&FID_INPUT_PRICE_1=&FID_INPUT_PRICE_2=&FID_VOL_CLS_CODE=&FID_INPUT_DATE_1=`, {
-        method: "GET",
-        headers: {
-            "content-type": "application/json",
-            "authorization": `Bearer ${token}`,
-            "appkey": APP_KEY!,
-            "appsecret": APP_SECRET!,
-            "tr_id": "FHPST01730000",
-            "custtype": "P"
-        },
-    }));
+    try {
+        const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/ranking/market-cap?FID_COND_MRKT_DIV_CODE=J&FID_COND_SCR_DIV_CODE=20173&FID_INPUT_ISCD=0000&FID_DIV_CLS_CODE=0&FID_BLNG_CLS_CODE=0&FID_TRGT_CLS_CODE=111111111&FID_TRGT_XCLS_CODE=000000000&FID_INPUT_PRICE_1=&FID_INPUT_PRICE_2=&FID_VOL_CLS_CODE=&FID_INPUT_DATE_1=`, {
+            method: "GET",
+            headers: {
+                "content-type": "application/json",
+                "authorization": `Bearer ${token}`,
+                "appkey": APP_KEY!,
+                "appsecret": APP_SECRET!,
+                "tr_id": "FHPST01730000",
+                "custtype": "P"
+            },
+        }));
 
-    if (!response.ok) {
-        console.error(`Failed to fetch Market Cap Ranking:`, await response.text());
-        return [];
+        if (response.ok) {
+            const data = await response.json();
+            if (data.rt_cd === "0" && Array.isArray(data.output) && data.output.length > 0) {
+                console.log(`[MarketCapRanking] Live data: ${data.output.length} items`);
+                return data.output.slice(0, limit);
+            }
+            console.warn(`[MarketCapRanking] API returned rt_cd="${data.rt_cd}", msg="${data.msg1}" — likely off-market hours. Using fallback.`);
+        } else {
+            console.warn(`[MarketCapRanking] HTTP ${response.status} — Using fallback.`);
+        }
+    } catch (e) {
+        console.warn(`[MarketCapRanking] Exception:`, e, '— Using fallback.');
     }
 
-    const data = await response.json();
-    if (data.rt_cd !== "0") {
-        console.error(`KIS API Error (Ranking): ${data.msg1}`);
-        return [];
+    // === FALLBACK: Use pre-defined stocks and fetch individual prices ===
+    console.log(`[MarketCapRanking] Fallback mode: fetching ${Math.min(limit, TOP_KOSPI_STOCKS.length)} individual stocks...`);
+    const fallbackStocks = TOP_KOSPI_STOCKS.slice(0, limit);
+    const results: KisMarketCapItem[] = [];
+
+    // Fetch in chunks of 5 to avoid rate limiting
+    const chunkSize = 5;
+    for (let i = 0; i < fallbackStocks.length; i += chunkSize) {
+        const chunk = fallbackStocks.slice(i, i + chunkSize);
+        const promises = chunk.map(async (stock) => {
+            try {
+                const res = await kisRateLimiter.add(() => fetch(
+                    `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${stock.symbol}`, {
+                    method: "GET",
+                    headers: {
+                        "content-type": "application/json",
+                        "authorization": `Bearer ${token}`,
+                        "appkey": APP_KEY!,
+                        "appsecret": APP_SECRET!,
+                        "tr_id": "FHKST01010100",
+                    },
+                }));
+
+                if (!res.ok) return null;
+                const data = await res.json();
+                if (data.rt_cd !== "0") return null;
+
+                const output = data.output;
+                return {
+                    mksc_shrn_iscd: stock.symbol,
+                    mksc_shra: stock.symbol,
+                    hts_kor_isnm: stock.name,
+                    stck_prpr: output.stck_prpr || '0',
+                    prdy_vrss: output.prdy_vrss || '0',
+                    prdy_ctrt: output.prdy_ctrt || '0',
+                    acml_vol: output.acml_vol || '0',
+                    stck_avls: output.hts_avls || '0',
+                    lstn_stcn: output.lstn_stcn || '0',
+                    per: output.per || '0',
+                    pbr: output.pbr || '0',
+                } as KisMarketCapItem;
+            } catch {
+                return null;
+            }
+        });
+
+        const chunkResults = await Promise.all(promises);
+        chunkResults.forEach(r => { if (r) results.push(r); });
     }
 
-    return data.output || [];
+    console.log(`[MarketCapRanking] Fallback returned ${results.length} items`);
+    return results;
 }
