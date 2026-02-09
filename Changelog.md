@@ -1,3 +1,14 @@
+## [Alpha V1.112] - 2026-02-09 17:35:00
+
+### 📊 Feature: Stock Insights (Target Proximity)
+- **Summary**: Added 'Stock Insights' page with 'Target Price Proximity' block.
+- **Detail**:
+  - **New Page**: `내 주식 인사이트` (/insights) 페이지 추가.
+  - **Feature**: 보유 종목의 하한/상한 목표가 근접도를 시각화 (Diverging Bar Chart).
+  - **Logic**: 목표가까지 남은 거리가 가까울수록 막대가 길어지며, 중앙(0%)에 가까운 순서대로 정렬됨.
+  - **Real-time**: WebSocket 실시간 시세 연동.
+- **Build Time**: 2026-02-09 17:35:00
+
 ## [Alpha V1.111] - 2026-02-09 16:00:00
 
 ### 🎨 UI/UX: Rename & Enhance Button
