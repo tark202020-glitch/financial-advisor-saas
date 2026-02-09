@@ -1,3 +1,15 @@
+## [Alpha V1.108] - 2026-02-09 15:15:00
+
+### 🎨 UX Improvement: Index Comparison Modal
+- **Summary**: Refined the Index Comparison UI for better readability.
+- **Detail**:
+  - **Change**: 기존 인라인(Accordion) 방식에서 **별도의 오버레이 팝업(Overlay Modal)** 방식으로 변경.
+  - **Benefit**:
+    - **Spacing**: 좁은 공간에 구겨져 있던 테이블을 넓은 화면(Wide Layout)에서 편안하게 조회 가능.
+    - **Clarity**: 글자 크기 확대 및 여백 확보로 데이터 가독성 대폭 향상.
+    - **Focus**: 주변 요소(차트 등)에 방해받지 않고 비교 데이터에만 집중할 수 있는 환경 제공.
+- **Build Time**: 2026-02-09 15:15:00
+
 ## [Alpha V1.107] - 2026-02-09 14:00:00
 
 ### 📈 Feature: Market Index Comparison

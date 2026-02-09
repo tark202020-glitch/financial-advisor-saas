@@ -463,58 +463,11 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                     <span className="text-lg ml-2 font-medium">{isPositive ? '▲' : '▼'} {Math.abs(returnRate).toFixed(2)}%</span>
                                 </div>
                                 <button
-                                    onClick={() => setShowIndexComparison(!showIndexComparison)}
+                                    onClick={() => setShowIndexComparison(true)}
                                     className="mt-4 text-xs font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition"
                                 >
-                                    {showIndexComparison ? '▲ 접기' : '▼ 지수변화 참조'}
+                                    ▼ 지수변화 참조
                                 </button>
-
-                                {showIndexComparison && (
-                                    <div className="mt-4 bg-slate-50 rounded-xl p-4 border border-slate-200 text-sm animate-in fade-in zoom-in-95 duration-200">
-                                        <h4 className="font-bold text-slate-700 mb-2 text-xs flex justify-between">
-                                            <span>{benchmarkName} 지수 비교</span>
-                                            <span className="text-slate-500 font-normal">현재 지수: {currentIndex ? currentIndex.toLocaleString() : '-'}</span>
-                                        </h4>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-right text-xs">
-                                                <thead>
-                                                    <tr className="text-slate-500 border-b border-slate-200">
-                                                        <th className="pb-2 text-left">일자</th>
-                                                        <th className="pb-2">매수가</th>
-                                                        <th className="pb-2">현재가</th>
-                                                        <th className="pb-2">지수(당시)</th>
-                                                        <th className="pb-2">지수(현재)</th>
-                                                        <th className="pb-2">주가%</th>
-                                                        <th className="pb-2">지수%</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100">
-                                                    {asset.trades?.filter((t: any) => t.type === 'BUY').map((trade: any, idx: number) => {
-                                                        const buyIndex = trade.kospiIndex ? Number(trade.kospiIndex) : (kospiMap[trade.date] ? Number(kospiMap[trade.date]) : null);
-                                                        const stockReturn = trade.price ? ((currentPrice - trade.price) / trade.price) * 100 : 0;
-                                                        const indexReturn = (buyIndex && currentIndex) ? ((currentIndex - buyIndex) / buyIndex) * 100 : null;
-
-                                                        return (
-                                                            <tr key={trade.id || idx} className="hover:bg-slate-100 transition">
-                                                                <td className="py-2 text-left font-mono whitespace-nowrap">{trade.date}</td>
-                                                                <td className="py-2">{trade.price.toLocaleString()}</td>
-                                                                <td className="py-2">{currentPrice.toLocaleString()}</td>
-                                                                <td className="py-2">{buyIndex ? buyIndex.toLocaleString() : '-'}</td>
-                                                                <td className="py-2">{currentIndex ? currentIndex.toLocaleString() : '-'}</td>
-                                                                <td className={`py-2 font-bold ${stockReturn >= 0 ? 'text-red-500' : 'text-blue-600'}`}>
-                                                                    {stockReturn.toFixed(2)}%
-                                                                </td>
-                                                                <td className={`py-2 font-bold ${indexReturn !== null ? (indexReturn >= 0 ? 'text-red-500' : 'text-blue-600') : 'text-slate-400'}`}>
-                                                                    {indexReturn !== null ? `${indexReturn.toFixed(2)}%` : '-'}
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
@@ -672,6 +625,86 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                     </div>
                 </div>
             </div>
+
+            {/* Index Comparison Overlay Modal */}
+            {showIndexComparison && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white z-10">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                    <span className="text-indigo-600">📊</span> {benchmarkName} 지수 비교
+                                </h3>
+                                <p className="text-slate-500 text-sm mt-1">
+                                    매수 시점의 시장 지수와 현재 지수를 비교하여 성과를 분석합니다. (현재 지수: <span className="font-bold text-slate-800">{currentIndex ? currentIndex.toLocaleString() : '-'}</span>)
+                                </p>
+                            </div>
+                            <button onClick={() => setShowIndexComparison(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 p-2 rounded-full transition">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 overflow-y-auto bg-slate-50">
+                            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                                <table className="w-full text-right text-sm">
+                                    <thead className="bg-slate-50 text-slate-500 font-medium">
+                                        <tr className="border-b border-slate-200">
+                                            <th className="px-4 py-3 text-left">거래일자</th>
+                                            <th className="px-4 py-3">매수가</th>
+                                            <th className="px-4 py-3">현재가</th>
+                                            <th className="px-4 py-3 border-l border-slate-100 bg-indigo-50/30 text-indigo-900">지수(매수당시)</th>
+                                            <th className="px-4 py-3 bg-indigo-50/30 text-indigo-900">지수(현재)</th>
+                                            <th className="px-4 py-3 border-l border-slate-100">주가 수익률</th>
+                                            <th className="px-4 py-3">지수 수익률</th>
+                                            <th className="px-4 py-3 bg-slate-100 text-slate-700">초과 성과</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {asset.trades?.filter((t: any) => t.type === 'BUY').map((trade: any, idx: number) => {
+                                            const buyIndex = trade.kospiIndex ? Number(trade.kospiIndex) : (kospiMap[trade.date] ? Number(kospiMap[trade.date]) : null);
+                                            const stockReturn = trade.price ? ((currentPrice - trade.price) / trade.price) * 100 : 0;
+                                            const indexReturn = (buyIndex && currentIndex) ? ((currentIndex - buyIndex) / buyIndex) * 100 : null;
+                                            const alpha = indexReturn !== null ? stockReturn - indexReturn : null;
+
+                                            return (
+                                                <tr key={trade.id || idx} className="hover:bg-slate-50 transition group">
+                                                    <td className="px-4 py-3 text-left font-mono text-slate-600 whitespace-nowrap">{trade.date}</td>
+                                                    <td className="px-4 py-3 font-medium text-slate-700">{trade.price.toLocaleString()}</td>
+                                                    <td className="px-4 py-3 text-slate-500">{currentPrice.toLocaleString()}</td>
+                                                    <td className="px-4 py-3 border-l border-slate-100 bg-indigo-50/10 text-slate-800 font-medium">{buyIndex ? buyIndex.toLocaleString() : '-'}</td>
+                                                    <td className="px-4 py-3 bg-indigo-50/10 text-slate-500">{currentIndex ? currentIndex.toLocaleString() : '-'}</td>
+
+                                                    <td className={`px-4 py-3 border-l border-slate-100 font-bold ${stockReturn >= 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                                                        {stockReturn > 0 ? '+' : ''}{stockReturn.toFixed(2)}%
+                                                    </td>
+                                                    <td className={`px-4 py-3 font-bold ${indexReturn !== null ? (indexReturn >= 0 ? 'text-red-500' : 'text-blue-600') : 'text-slate-400'}`}>
+                                                        {indexReturn !== null ? `${indexReturn > 0 ? '+' : ''}${indexReturn.toFixed(2)}%` : '-'}
+                                                    </td>
+                                                    <td className={`px-4 py-3 font-bold bg-slate-50 ${alpha !== null ? (alpha >= 0 ? 'text-red-600' : 'text-blue-600') : 'text-slate-400'}`}>
+                                                        {alpha !== null ? `${alpha > 0 ? '+' : ''}${alpha.toFixed(2)}%p` : '-'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {(!asset.trades || asset.trades.filter((t: any) => t.type === 'BUY').length === 0) && (
+                                            <tr>
+                                                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                                                    매수 기록이 없습니다.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="mt-4 text-xs text-slate-400 text-right">
+                                * 초과 성과 = 주가 수익률 - 지수 수익률 (시장을 얼마나 이겼는지 보여줍니다)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
