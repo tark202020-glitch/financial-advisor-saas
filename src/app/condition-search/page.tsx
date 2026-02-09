@@ -1,198 +1,210 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import SidebarLayout from "@/components/SidebarLayout";
+import { createClient } from '@/utils/supabase/client';
 
-interface Condition {
-    id: string;
-    field: 'market_cap' | 'per' | 'roe';
+// === Types ===
+interface ConditionRange {
     min: string;
     max: string;
 }
 
-interface StockResult {
-    symbol: string;
-    name: string;
-    price: number;
-    change: number;
-    changeRate: number;
-    volume: number;
-    marketCap: number; // 억 원 단위
-    per?: number;
-    roe?: number;
+interface SimpleConditions {
+    revenueGrowth: ConditionRange;
+    opGrowth: ConditionRange;
+    roe: ConditionRange;
+    peg: ConditionRange;
+    per: ConditionRange;
+    pbr: ConditionRange;
+    debt: ConditionRange;
+    dividend: ConditionRange;
+    marketCap: ConditionRange;
+    volume: ConditionRange;
 }
 
+interface Preset {
+    id: string;
+    name: string;
+    conditions: SimpleConditions;
+    created_at: string;
+    updated_at: string;
+}
+
+// === Default Conditions ===
+const DEFAULT_CONDITIONS: SimpleConditions = {
+    revenueGrowth: { min: '', max: '' },
+    opGrowth: { min: '', max: '' },
+    roe: { min: '', max: '' },
+    peg: { min: '', max: '' },
+    per: { min: '', max: '' },
+    pbr: { min: '', max: '' },
+    debt: { min: '', max: '' },
+    dividend: { min: '', max: '' },
+    marketCap: { min: '', max: '' },
+    volume: { min: '', max: '' },
+};
+
+// === Condition Metadata ===
+const CONDITION_FIELDS: {
+    key: keyof SimpleConditions;
+    label: string;
+    unit: string;
+    paramMin: string;
+    paramMax: string;
+}[] = [
+        { key: 'revenueGrowth', label: '매출액 증가율', unit: '%', paramMin: 'minRevenueGrowth', paramMax: 'maxRevenueGrowth' },
+        { key: 'opGrowth', label: '영업이익 증가율', unit: '%', paramMin: 'minOpGrowth', paramMax: 'maxOpGrowth' },
+        { key: 'roe', label: 'ROE', unit: '%', paramMin: 'minROE', paramMax: 'maxROE' },
+        { key: 'peg', label: 'PEG', unit: '배', paramMin: 'minPEG', paramMax: 'maxPEG' },
+        { key: 'per', label: 'PER', unit: '배', paramMin: 'minPER', paramMax: 'maxPER' },
+        { key: 'pbr', label: 'PBR', unit: '배', paramMin: 'minPBR', paramMax: 'maxPBR' },
+        { key: 'debt', label: '부채비율', unit: '%', paramMin: 'minDebt', paramMax: 'maxDebt' },
+        { key: 'dividend', label: '배당수익률', unit: '%', paramMin: 'minDividend', paramMax: 'maxDividend' },
+        { key: 'marketCap', label: '시가총액', unit: '억원', paramMin: 'minMarketCap', paramMax: 'maxMarketCap' },
+        { key: 'volume', label: '거래량 (최근5일)', unit: '주', paramMin: 'minVolume', paramMax: 'maxVolume' },
+    ];
+
 export default function ConditionSearchPage() {
-    const [conditions, setConditions] = useState<Condition[]>([
-        { id: '1', field: 'market_cap', min: '1000', max: '' }, // Default 1T KRW (1000 억) -> 100 Billion
-    ]);
-    const [results, setResults] = useState<StockResult[]>([]);
+    // === State ===
+    const [conditions, setConditions] = useState<SimpleConditions>({ ...DEFAULT_CONDITIONS });
+    const [results, setResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const [debugMsg, setDebugMsg] = useState('');
+    const [statusMsg, setStatusMsg] = useState('');
 
-    const addCondition = () => {
-        setConditions([...conditions, { id: Date.now().toString(), field: 'per', min: '', max: '' }]);
-    };
+    // Preset State
+    const [presets, setPresets] = useState<Preset[]>([]);
+    const [presetName, setPresetName] = useState('');
+    const [selectedPresetId, setSelectedPresetId] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [isLoadingPresets, setIsLoadingPresets] = useState(false);
 
-    const removeCondition = (id: string) => {
-        setConditions(conditions.filter(c => c.id !== id));
-    };
+    // Opinion State
+    const [opinionData, setOpinionData] = useState<any[]>([]);
+    const [opinionSymbol, setOpinionSymbol] = useState('005930');
+    const [isOpinionLoading, setIsOpinionLoading] = useState(false);
 
-    const updateCondition = (id: string, key: keyof Condition, value: string) => {
-        setConditions(conditions.map(c => c.id === id ? { ...c, [key]: value } : c));
-    };
+    // === Load Presets ===
+    const loadPresets = useCallback(async () => {
+        setIsLoadingPresets(true);
+        try {
+            const res = await fetch('/api/condition-presets');
+            if (res.ok) {
+                const data = await res.json();
+                setPresets(Array.isArray(data) ? data : []);
+            }
+        } catch (e) {
+            console.error('Failed to load presets:', e);
+        } finally {
+            setIsLoadingPresets(false);
+        }
+    }, []);
 
+    useEffect(() => {
+        loadPresets();
+        fetchOpinion();
+    }, [loadPresets]);
+
+    // === Search Handler ===
     const handleSearch = async () => {
         setIsSearching(true);
         setResults([]);
-        setDebugMsg("검색 중...");
+        setStatusMsg('조건 검색 실행 중...');
 
         try {
-            // 1. Fetch Candidates (Market Cap Ranking - Top N)
-            const res = await fetch('/api/kis/ranking?type=market-cap');
-            if (!res.ok) {
-                const errText = await res.text();
-                throw new Error(`API Error: ${res.status} ${res.statusText} - ${errText}`);
-            }
-            const rankingData = await res.json();
+            const params = new URLSearchParams({ limit: '50' });
 
-            console.log('[DEBUG] Ranking Data Sample:', rankingData?.[0]);
-
-            if (!Array.isArray(rankingData)) {
-                throw new Error("Invalid format");
-            }
-
-            // Step 1: Normalize
-            const candidates: StockResult[] = rankingData.map((item: any) => {
-                // Key Check for KIS Ranking API (FHPST01730000)
-                // mksc_shra: Code
-                // hts_kor_isnm: Name
-                // stck_prpr: Price
-                // prdy_vrss: Change
-                // prdy_ctrt: Rate
-                // acml_vol: Volume
-                // stck_avls: Market Cap (Listed Shares?) -> Actually avls_scal usually?
-                // Use detailed fetch for PER/ROE/MarketCap anyway.
-
-                return {
-                    symbol: item.mksc_shra,
-                    name: item.hts_kor_isnm,
-                    price: parseInt(item.stck_prpr || '0'),
-                    change: parseInt(item.prdy_vrss || '0'),
-                    changeRate: parseFloat(item.prdy_ctrt || '0'),
-                    volume: parseInt(item.acml_vol || '0'),
-                    marketCap: 0, // Fill later or calculate
-                };
-            }).filter(c => c.symbol);
-
-            // Step 2: Fetch Details for Candidates to get PER/ROE/MarketCap
-            const symbols = candidates.map(c => c.symbol);
-
-            setDebugMsg(`상세 정보 조회 중... (${symbols.length}건)`);
-            const chunkSize = 10;
-            const detailedResults: StockResult[] = [];
-
-            for (let i = 0; i < symbols.length; i += chunkSize) {
-                const chunk = symbols.slice(i, i + chunkSize);
-                const query = chunk.join(',');
-                const batchRes = await fetch(`/api/kis/price/batch?market=KR&symbols=${query}`);
-                const batchData = await batchRes.json();
-
-                chunk.forEach(sym => {
-                    const detail = batchData[sym];
-                    const original = candidates.find(c => c.symbol === sym);
-
-                    if (original && detail) {
-                        try {
-                            const d = detail as any;
-                            // Debug logs for the first stock processed in each chunk
-                            if (detailedResults.length === 0) {
-                                console.log('[DEBUG] Detail for', sym, d);
-                            }
-
-                            const per = parseFloat(d.per || '0');
-                            const eps = parseInt(d.eps || '0');
-                            const bps = parseInt(d.bps || '0');
-                            // hts_avls unit is expected to be 100 Million KRW (억)
-                            const marketCap = parseInt(d.hts_avls || '0');
-
-                            let roe = 0;
-                            if (bps > 0) {
-                                roe = (eps / bps) * 100;
-                            }
-
-                            detailedResults.push({
-                                ...original,
-                                symbol: original.symbol,
-                                name: original.name,
-                                price: parseInt(d.stck_prpr || original.price.toString()),
-                                change: parseInt(d.prdy_vrss || original.change.toString()),
-                                changeRate: parseFloat(d.prdy_ctrt || original.changeRate.toString()),
-                                volume: parseInt(d.acml_vol || original.volume.toString()),
-                                marketCap: marketCap,
-                                per,
-                                roe
-                            });
-                        } catch (err) {
-                            console.error(`Error processing details for ${sym}:`, err);
-                        }
-                    }
-                });
-            }
-
-            // Step 3: Local Filtering
-            const finalResults = detailedResults.filter(stock => {
-                return conditions.every(cond => {
-                    const min = cond.min ? parseFloat(cond.min) : -Infinity;
-                    const max = cond.max ? parseFloat(cond.max) : Infinity;
-
-                    if (cond.field === 'market_cap') {
-                        // KIS `hts_avls` is typically in 억 (100M KRW).
-                        return stock.marketCap >= min && stock.marketCap <= max;
-                    }
-                    if (cond.field === 'per') {
-                        return (stock.per || 0) >= min && (stock.per || 0) <= max;
-                    }
-                    if (cond.field === 'roe') {
-                        return (stock.roe || 0) >= min && (stock.roe || 0) <= max;
-                    }
-                    return true;
-                });
+            CONDITION_FIELDS.forEach(field => {
+                const range = conditions[field.key];
+                if (range.min !== '') params.set(field.paramMin, range.min);
+                if (range.max !== '') params.set(field.paramMax, range.max);
             });
 
-            setResults(finalResults);
-            setDebugMsg(`검색 완료: ${finalResults.length}건 (전체 ${detailedResults.length}건 중)`);
-
+            const res = await fetch(`/api/kis/ranking/simple?${params.toString()}`);
+            if (!res.ok) throw new Error(`API Error: ${res.status}`);
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : [];
+            setResults(list);
+            setStatusMsg(`검색 완료: ${list.length}건`);
         } catch (e: any) {
             console.error(e);
-            setDebugMsg(`오류 발생: ${e.message}`);
+            setStatusMsg(`오류 발생: ${e.message}`);
         } finally {
             setIsSearching(false);
         }
     };
 
-    const [opinionData, setOpinionData] = useState<any[]>([]);
-    const [opinionSymbol, setOpinionSymbol] = useState('005930'); // Default Samsung
-    const [isOpinionLoading, setIsOpinionLoading] = useState(false);
+    // === Preset Handlers ===
+    const handleSavePreset = async () => {
+        if (!presetName.trim()) {
+            alert('프리셋 이름을 입력해주세요.');
+            return;
+        }
+        setIsSaving(true);
+        try {
+            const res = await fetch('/api/condition-presets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: presetName.trim(), conditions }),
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Failed');
+            }
+            setPresetName('');
+            loadPresets();
+            setStatusMsg(`"${presetName.trim()}" 프리셋이 저장되었습니다.`);
+        } catch (e: any) {
+            alert(`저장 실패: ${e.message}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
+    const handleLoadPreset = (presetId: string) => {
+        const preset = presets.find(p => p.id === presetId);
+        if (preset) {
+            setConditions(preset.conditions);
+            setSelectedPresetId(presetId);
+            setStatusMsg(`"${preset.name}" 프리셋을 불러왔습니다.`);
+        }
+    };
+
+    const handleDeletePreset = async (presetId: string) => {
+        const preset = presets.find(p => p.id === presetId);
+        if (!confirm(`"${preset?.name}" 프리셋을 삭제하시겠습니까?`)) return;
+
+        try {
+            const res = await fetch(`/api/condition-presets?id=${presetId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed');
+            setSelectedPresetId('');
+            loadPresets();
+            setStatusMsg('프리셋이 삭제되었습니다.');
+        } catch (e) {
+            alert('삭제 실패');
+        }
+    };
+
+    const handleResetConditions = () => {
+        setConditions({ ...DEFAULT_CONDITIONS });
+        setSelectedPresetId('');
+        setStatusMsg('조건이 초기화되었습니다.');
+    };
+
+    // === Opinion Handler ===
     const fetchOpinion = async () => {
         setIsOpinionLoading(true);
         try {
-            // Last 1 year
             const today = new Date();
             const yearAgo = new Date();
             yearAgo.setFullYear(today.getFullYear() - 1);
-
             const todayStr = today.toISOString().slice(0, 10).replace(/-/g, "");
             const yearAgoStr = yearAgo.toISOString().slice(0, 10).replace(/-/g, "");
 
             const res = await fetch(`/api/kis/invest-opinion?symbol=${opinionSymbol}&startDate=${yearAgoStr}&endDate=${todayStr}`);
-            if (!res.ok) throw new Error("Failed to fetch opinion");
+            if (!res.ok) throw new Error("Failed");
             const data = await res.json();
-
-            // KIS API returns single object if 1 row, array if multiple. Ensure array.
-            const list = Array.isArray(data) ? data : (data ? [data] : []);
-            setOpinionData(list);
+            setOpinionData(Array.isArray(data) ? data : (data ? [data] : []));
         } catch (e) {
             console.error(e);
             setOpinionData([]);
@@ -201,77 +213,15 @@ export default function ConditionSearchPage() {
         }
     };
 
-    // Fetch on mount
-    useEffect(() => {
-        fetchOpinion();
-    }, []);
-
-    // HTS 0330 State with Ranges
-    const [simpleConditions, setSimpleConditions] = useState({
-        opMargin: { min: 10, max: 999 },
-        opGrowth: { min: 5, max: 999 },
-        debt: { min: 0, max: 200 },
-        per: { min: 0, max: 20 },
-        revenue: { min: 0, max: 99999 }, // 억 단위
-    });
-    const [simpleResults, setSimpleResults] = useState<any[]>([]);
-    const [isSimpleLoading, setIsSimpleLoading] = useState(false);
-
-    const fetchSimpleSearch = async () => {
-        setIsSimpleLoading(true);
-        try {
-            const query = new URLSearchParams({
-                limit: '50', // Increase limit slightly
-                minOpMargin: simpleConditions.opMargin.min.toString(),
-                maxOpMargin: simpleConditions.opMargin.max.toString(),
-                minOpGrowth: simpleConditions.opGrowth.min.toString(),
-                maxOpGrowth: simpleConditions.opGrowth.max.toString(),
-                minDebt: simpleConditions.debt.min.toString(),
-                maxDebt: simpleConditions.debt.max.toString(),
-                minPER: simpleConditions.per.min.toString(),
-                maxPER: simpleConditions.per.max.toString(),
-                minRevenue: simpleConditions.revenue.min.toString(),
-                maxRevenue: simpleConditions.revenue.max.toString()
-            });
-            const res = await fetch(`/api/kis/ranking/simple?${query.toString()}`);
-            if (!res.ok) throw new Error("Failed");
-            const data = await res.json();
-            setSimpleResults(Array.isArray(data) ? data : []);
-        } catch (e) {
-            console.error(e);
-            setSimpleResults([]);
-        } finally {
-            setIsSimpleLoading(false);
-        }
+    // === Condition Change Handler ===
+    const updateCondition = (key: keyof SimpleConditions, field: 'min' | 'max', value: string) => {
+        setConditions(prev => ({
+            ...prev,
+            [key]: { ...prev[key], [field]: value }
+        }));
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const RangeInput = ({ label, unit, value, onChange, min = 0, max = 9999 }: any) => (
-        <div className="space-y-2">
-            <div className="flex justify-between text-sm font-medium text-slate-700">
-                <label>{label}</label>
-                <span className="text-slate-400 text-xs">{unit}</span>
-            </div>
-            <div className="flex items-center gap-2">
-                <input
-                    type="number"
-                    value={value.min}
-                    onChange={(e) => onChange({ ...value, min: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-right outline-none focus:border-blue-500"
-                    placeholder="Min"
-                />
-                <span className="text-slate-400">~</span>
-                <input
-                    type="number"
-                    value={value.max}
-                    onChange={(e) => onChange({ ...value, max: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-right outline-none focus:border-blue-500"
-                    placeholder="Max"
-                />
-            </div>
-        </div>
-    );
-
+    // === Render ===
     return (
         <SidebarLayout>
             <div className="p-8 pb-32 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -280,81 +230,182 @@ export default function ConditionSearchPage() {
                     <p className="text-slate-500">원하는 조건으로 주식을 검색해보세요. (KOSPI 대상)</p>
                 </header>
 
-                {/* HTS 0330 Simple Condition Search */}
+                {/* === HTS 0330 조건검색 === */}
                 <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
                         <div className="flex items-center gap-2">
                             <div className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">HTS 0330</div>
-                            <h2 className="text-xl font-bold text-slate-800">사용자 조건검색 (범위 설정)</h2>
+                            <h2 className="text-xl font-bold text-slate-800">사용자 조건검색</h2>
                         </div>
-                        <button
-                            onClick={fetchSimpleSearch}
-                            disabled={isSimpleLoading}
-                            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 shadow-md shadow-blue-100"
-                        >
-                            {isSimpleLoading ? '검색 중...' : '조건검색 실행'}
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleResetConditions}
+                                className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition"
+                            >
+                                초기화
+                            </button>
+                            <button
+                                onClick={handleSearch}
+                                disabled={isSearching}
+                                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 shadow-md shadow-blue-100"
+                            >
+                                {isSearching ? '검색 중...' : '조건검색 실행'}
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <RangeInput
-                            label="영업이익률" unit="%"
-                            value={simpleConditions.opMargin}
-                            onChange={(v: any) => setSimpleConditions({ ...simpleConditions, opMargin: v })}
-                        />
-                        <RangeInput
-                            label="영업이익 증가율" unit="%"
-                            value={simpleConditions.opGrowth}
-                            onChange={(v: any) => setSimpleConditions({ ...simpleConditions, opGrowth: v })}
-                        />
-                        <RangeInput
-                            label="부채비율" unit="%"
-                            value={simpleConditions.debt}
-                            onChange={(v: any) => setSimpleConditions({ ...simpleConditions, debt: v })}
-                        />
-                        <RangeInput
-                            label="PER" unit="배"
-                            value={simpleConditions.per}
-                            onChange={(v: any) => setSimpleConditions({ ...simpleConditions, per: v })}
-                        />
-                        <RangeInput
-                            label="매출액" unit="억원"
-                            value={simpleConditions.revenue}
-                            onChange={(v: any) => setSimpleConditions({ ...simpleConditions, revenue: v })}
-                        />
+                    {/* === Preset Section === */}
+                    <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                        <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                            조건 프리셋
+                        </h3>
+
+                        {/* Load Preset */}
+                        {presets.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {presets.map(preset => (
+                                    <div key={preset.id} className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => handleLoadPreset(preset.id)}
+                                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${selectedPresetId === preset.id
+                                                    ? 'bg-blue-600 text-white shadow-sm'
+                                                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50 hover:border-blue-300'
+                                                }`}
+                                        >
+                                            {preset.name}
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeletePreset(preset.id)}
+                                            className="text-slate-400 hover:text-red-500 transition p-1"
+                                            title="삭제"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Save Preset */}
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={presetName}
+                                onChange={(e) => setPresetName(e.target.value)}
+                                placeholder="프리셋 이름 (예: 저평가가치주)"
+                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white"
+                                onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()}
+                            />
+                            <button
+                                onClick={handleSavePreset}
+                                disabled={isSaving || !presetName.trim()}
+                                className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50"
+                            >
+                                {isSaving ? '저장 중...' : '현재 조건 저장'}
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Results Table */}
-                    <div className="overflow-hidden border border-slate-200 rounded-xl">
-                        <table className="w-full text-sm text-left">
+                    {/* === 10 Condition Inputs === */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                        {CONDITION_FIELDS.map(field => (
+                            <div key={field.key} className="space-y-1.5">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-sm font-medium text-slate-700">{field.label}</label>
+                                    <span className="text-xs text-slate-400">{field.unit}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <input
+                                        type="number"
+                                        value={conditions[field.key].min}
+                                        onChange={(e) => updateCondition(field.key, 'min', e.target.value)}
+                                        className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-sm text-right outline-none focus:border-blue-500 bg-white"
+                                        placeholder="최소"
+                                    />
+                                    <span className="text-slate-300 text-xs flex-shrink-0">~</span>
+                                    <input
+                                        type="number"
+                                        value={conditions[field.key].max}
+                                        onChange={(e) => updateCondition(field.key, 'max', e.target.value)}
+                                        className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-sm text-right outline-none focus:border-blue-500 bg-white"
+                                        placeholder="최대"
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Status Message */}
+                    {statusMsg && (
+                        <div className="text-sm text-slate-500 bg-slate-50 px-4 py-2 rounded-lg">
+                            {statusMsg}
+                        </div>
+                    )}
+
+                    {/* === Results Table === */}
+                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table className="w-full text-sm text-left whitespace-nowrap">
                             <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
                                 <tr>
-                                    <th className="px-4 py-3">종목명</th>
-                                    <th className="px-4 py-3 text-right">현재가</th>
-                                    <th className="px-4 py-3 text-right">PER</th>
-                                    <th className="px-4 py-3 text-right">영업이익률</th>
-                                    <th className="px-4 py-3 text-right">증가율</th>
-                                    <th className="px-4 py-3 text-right">부채비율</th>
-                                    <th className="px-4 py-3 text-right">매출액</th>
+                                    <th className="px-3 py-3 sticky left-0 bg-slate-50 z-10">종목명</th>
+                                    <th className="px-3 py-3 text-right">현재가</th>
+                                    <th className="px-3 py-3 text-right">매출증가율</th>
+                                    <th className="px-3 py-3 text-right">영업이익증가율</th>
+                                    <th className="px-3 py-3 text-right">ROE</th>
+                                    <th className="px-3 py-3 text-right">PEG</th>
+                                    <th className="px-3 py-3 text-right">PER</th>
+                                    <th className="px-3 py-3 text-right">PBR</th>
+                                    <th className="px-3 py-3 text-right">부채비율</th>
+                                    <th className="px-3 py-3 text-right">시가총액</th>
+                                    <th className="px-3 py-3 text-right">거래량</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 bg-white">
-                                {simpleResults.length === 0 ? (
+                                {results.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
-                                            {isSimpleLoading ? '조건 만족 종목을 검색하고 있습니다...' : '검색 결과가 없습니다.'}
+                                        <td colSpan={11} className="px-4 py-12 text-center text-slate-400">
+                                            {isSearching ? '조건 만족 종목을 검색하고 있습니다...' : '검색 결과가 없습니다. 조건을 설정하고 검색을 실행해주세요.'}
                                         </td>
                                     </tr>
                                 ) : (
-                                    simpleResults.map((item, idx) => (
-                                        <tr key={idx} className="hover:bg-slate-50">
-                                            <td className="px-4 py-3 font-medium text-slate-900">{item.name} <span className="text-slate-400 text-xs ml-1">{item.symbol}</span></td>
-                                            <td className="px-4 py-3 text-right font-bold">{item.price?.toLocaleString()}</td>
-                                            <td className="px-4 py-3 text-right text-slate-600">{item.per} 배</td>
-                                            <td className="px-4 py-3 text-right text-blue-600 font-medium">{item.operating_profit_margin}%</td>
-                                            <td className="px-4 py-3 text-right text-red-600 font-medium">{item.operating_profit_growth}%</td>
-                                            <td className="px-4 py-3 text-right text-slate-600">{item.debt_ratio}%</td>
-                                            <td className="px-4 py-3 text-right text-slate-600">{(item.revenue || 0).toLocaleString()}억</td>
+                                    results.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
+                                            <td className="px-3 py-3 font-medium text-slate-900 sticky left-0 bg-white z-10">
+                                                {item.name}
+                                                <span className="text-slate-400 text-xs ml-1">{item.symbol}</span>
+                                            </td>
+                                            <td className="px-3 py-3 text-right font-bold text-slate-900">
+                                                {item.price?.toLocaleString()}
+                                            </td>
+                                            <td className={`px-3 py-3 text-right font-medium ${item.revenue_growth > 0 ? 'text-red-500' : item.revenue_growth < 0 ? 'text-blue-500' : 'text-slate-500'}`}>
+                                                {item.revenue_growth?.toFixed(1)}%
+                                            </td>
+                                            <td className={`px-3 py-3 text-right font-medium ${item.operating_profit_growth > 0 ? 'text-red-500' : item.operating_profit_growth < 0 ? 'text-blue-500' : 'text-slate-500'}`}>
+                                                {item.operating_profit_growth?.toFixed(1)}%
+                                            </td>
+                                            <td className="px-3 py-3 text-right text-emerald-600 font-medium">
+                                                {item.roe?.toFixed(1)}%
+                                            </td>
+                                            <td className="px-3 py-3 text-right text-slate-600">
+                                                {item.peg > 0 ? item.peg?.toFixed(2) : '-'}
+                                            </td>
+                                            <td className="px-3 py-3 text-right text-slate-600">
+                                                {item.per?.toFixed(1)}
+                                            </td>
+                                            <td className="px-3 py-3 text-right text-slate-600">
+                                                {item.pbr?.toFixed(2)}
+                                            </td>
+                                            <td className="px-3 py-3 text-right text-slate-600">
+                                                {item.debt_ratio?.toFixed(1)}%
+                                            </td>
+                                            <td className="px-3 py-3 text-right text-slate-600">
+                                                {(item.market_cap || 0).toLocaleString()}억
+                                            </td>
+                                            <td className="px-3 py-3 text-right text-slate-600">
+                                                {(item.volume || 0).toLocaleString()}
+                                            </td>
                                         </tr>
                                     ))
                                 )}
@@ -364,7 +415,7 @@ export default function ConditionSearchPage() {
                     <p className="text-xs text-slate-400 text-right">* API 속도 제한으로 시가총액 상위 50개 종목 내에서 검색합니다.</p>
                 </div>
 
-                {/* HTS 0640 Section */}
+                {/* === HTS 0640 투자의견 === */}
                 <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
                     <div className="flex justify-between items-center">
                         <h2 className="text-xl font-bold text-slate-800">투자의견 (HTS 0640)</h2>
@@ -418,7 +469,6 @@ export default function ConditionSearchPage() {
                         </table>
                     </div>
                 </div>
-
             </div>
         </SidebarLayout>
     );
