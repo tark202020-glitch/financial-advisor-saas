@@ -1,3 +1,13 @@
+## [Alpha V1.110] - 2026-02-09 15:50:00
+
+### 🔧 Fix: Manual KOSPI Input
+- **Summary**: Allow manual editing of KOSPI index in trade logs.
+- **Detail**:
+  - **Display**: 거래내역 목록에서 KOSPI 지수가 없을 경우 '-' 대신 수동 입력된 값을 우선 표시하도록 수정.
+  - **UI**: KOSPI 입력 필드를 메모 필드와 분리하고 스타일을 개선하여 입력 가능함을 명확히 함.
+  - **Logic**: 자동 조회(Auto-fetch) 실패 시 기존에 입력된 수동 값을 덮어쓰지 않도록 보호 로직 적용.
+- **Build Time**: 2026-02-09 15:50:00
+
 ## [Alpha V1.109] - 2026-02-09 15:35:00
 
 ### 📊 Feature: Index Comparison Columns

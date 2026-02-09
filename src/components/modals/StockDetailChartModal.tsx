@@ -198,11 +198,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                         if (match) {
                             const val = match.bstp_nmix_prpr || match.ovrs_nmix_prpr || match.clpr;
                             setNewTrade(prev => ({ ...prev, kospiIndex: val }));
-                        } else {
-                            setNewTrade(prev => ({ ...prev, kospiIndex: '' }));
                         }
-                    } else {
-                        setNewTrade(prev => ({ ...prev, kospiIndex: '' }));
                     }
                 })
                 .catch(e => console.error(e));
@@ -554,10 +550,15 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                     <input type="number" placeholder="0" value={newTrade.quantity} onChange={e => setNewTrade({ ...newTrade, quantity: e.target.value })} className="w-full p-2 rounded border" />
                                 </div>
                                 <div className="col-span-2">
-                                    <label className="text-xs text-slate-500 mb-1 block">메모 / KOSPI</label>
                                     <div className="flex gap-2">
-                                        <input type="text" placeholder="메모" value={newTrade.memo} onChange={e => setNewTrade({ ...newTrade, memo: e.target.value })} className="w-full p-2 rounded border flex-1" />
-                                        <input type="text" placeholder="KOSPI" value={newTrade.kospiIndex} onChange={e => setNewTrade({ ...newTrade, kospiIndex: e.target.value })} className="w-20 p-2 rounded border bg-slate-100 text-xs" />
+                                        <div className="flex-1">
+                                            <label className="text-xs text-slate-500 mb-1 block">메모</label>
+                                            <input type="text" placeholder="메모 입력" value={newTrade.memo} onChange={e => setNewTrade({ ...newTrade, memo: e.target.value })} className="w-full p-2 rounded border" />
+                                        </div>
+                                        <div className="w-24">
+                                            <label className="text-xs text-slate-500 mb-1 block">KOSPI (수동)</label>
+                                            <input type="text" placeholder="지수" value={newTrade.kospiIndex} onChange={e => setNewTrade({ ...newTrade, kospiIndex: e.target.value })} className="w-full p-2 rounded border text-xs font-mono" />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex gap-1">
@@ -590,9 +591,11 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                             </div>
                                             <div className="font-medium">{trade.price.toLocaleString()}</div>
                                             <div className="text-xs text-slate-400 font-mono">
-                                                {kospiMap[trade.date] ? (
+                                                {trade.kospiIndex ? (
+                                                    <span>{Number(trade.kospiIndex).toLocaleString()}</span>
+                                                ) : (kospiMap[trade.date] ? (
                                                     <span>{Number(kospiMap[trade.date]).toLocaleString()}</span>
-                                                ) : '-'}
+                                                ) : '-')}
                                             </div>
                                             <div className="text-center">{trade.quantity}</div>
                                             <div className="truncate text-slate-500">{trade.memo || '-'}</div>
