@@ -8,15 +8,61 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLin
 export default function TargetProximityBlock() {
     const { assets } = usePortfolio();
     const { subscribe, lastData } = useWebSocketContext();
+    const [initialPrices, setInitialPrices] = React.useState<Map<string, number>>(new Map());
+    const [isLoading, setIsLoading] = React.useState(true);
 
-    // 0. Subscribe to all assets
+    // 0. Subscribe and Fetch Initial Data
     useEffect(() => {
         if (assets && assets.length > 0) {
+            // Subscribe WS
             assets.forEach(asset => {
                 if (asset.symbol) {
                     subscribe(asset.symbol, asset.category);
                 }
             });
+
+            // Fetch Initial Snapshot (for off-hours or immediate display)
+            const fetchPrices = async () => {
+                const priceMap = new Map<string, number>();
+
+                await Promise.all(assets.map(async (asset) => {
+                    try {
+                        if (!asset.symbol) return;
+                        // Use domestic/overseas generic endpoint logic or specific
+                        const endpoint = asset.category === 'US'
+                            ? `/api/kis/price/overseas/${asset.symbol}`
+                            : `/api/kis/price/domestic/${asset.symbol}`;
+
+                        const res = await fetch(endpoint);
+                        const data = await res.json();
+
+                        // Parse Price
+                        let price = 0;
+                        if (asset.category === 'US') {
+                            // Overseas format might vary, check structure
+                            // data.output.last (price)
+                            price = parseFloat(data.output?.last || data.output?.base || 0);
+                        } else {
+                            // Domestic
+                            // data.output.stck_prpr
+                            price = parseInt(data.output?.stck_prpr || 0);
+                        }
+
+                        if (price > 0) {
+                            priceMap.set(asset.symbol, price);
+                        }
+                    } catch (e) {
+                        console.error(`Failed to fetch price for ${asset.symbol}`, e);
+                    }
+                }));
+
+                setInitialPrices(priceMap);
+                setIsLoading(false);
+            };
+
+            fetchPrices();
+        } else {
+            setIsLoading(false);
         }
     }, [assets, subscribe]);
 
@@ -24,13 +70,9 @@ export default function TargetProximityBlock() {
     const data = useMemo(() => {
         return assets
             .map(asset => {
-                // Get Price from WebSocket Data or fallback to Asset's pricePerShare (which might be stale buy price, so better undefined if no live data)
-                // Actually asset.pricePerShare is BUY Price. We need CURRENT Price.
-                // If WS data is missing, we can't calculate current proximity accurately.
-                // But we might have asset.currentPrice if PortfolioContext fetched it? No, it doesn't.
-                // So we rely on WS data.
                 const liveData = lastData.get(asset.symbol);
-                const currentPrice = liveData?.price;
+                // Prefer Live WS > Initial Fetch > Fallback
+                const currentPrice = liveData?.price || initialPrices.get(asset.symbol);
 
                 if (!currentPrice) return null; // Skip if no price data yet
 
@@ -60,21 +102,11 @@ export default function TargetProximityBlock() {
                 let lowerBar = 0;
                 let upperBar = 0;
 
-                // Calculating Bar Lengths
-                // Visualization Logic:
-                // If Lower is closer, we show Left Bar.
-                // If Upper is closer, we show Right Bar.
-                // Length represents "Closeness". Closer = Longer.
-
                 if (lowerDistance !== null && Math.abs(lowerDistance) <= MAX_RANGE) {
-                    // If Lower is relevant (e.g. within 30%)
-                    // Negative value for left side
-                    // If distance is 0, bar is -30. If distance is 30, bar is 0.
                     lowerBar = -(MAX_RANGE - Math.abs(lowerDistance));
                 }
 
                 if (upperDistance !== null && Math.abs(upperDistance) <= MAX_RANGE) {
-                    // Positive value for right side
                     upperBar = MAX_RANGE - Math.abs(upperDistance);
                 }
 
@@ -99,7 +131,7 @@ export default function TargetProximityBlock() {
             .filter((item): item is NonNullable<typeof item> => item !== null)
             // Sort: Smallest absolute distance first (closest to 0)
             .sort((a, b) => a.closestDist - b.closestDist);
-    }, [assets, lastData]);
+    }, [assets, lastData, initialPrices]);
 
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
@@ -126,10 +158,27 @@ export default function TargetProximityBlock() {
         return null;
     };
 
+    if (isLoading) {
+        return (
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 text-center text-slate-400 h-[500px] flex items-center justify-center">
+                데이터를 불러오는 중입니다...
+            </div>
+        )
+    }
+
     if (!assets || assets.length === 0) {
         return (
             <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 text-center text-slate-400">
                 보유한 주식이 없습니다.
+            </div>
+        )
+    }
+
+    if (data.length === 0) {
+        return (
+            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 text-center text-slate-400 h-[500px] flex items-center justify-center">
+                표시할 데이터가 없거나 시세 정보를 불러오지 못했습니다. <br />
+                (목표가를 설정했는지 확인해주세요)
             </div>
         )
     }
