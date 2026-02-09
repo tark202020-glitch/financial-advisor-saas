@@ -33,20 +33,21 @@ export default function TargetProximityBlock() {
                 if (asset.symbol) subscribe(asset.symbol, asset.category);
             });
 
-            // Iterate sequentially or in small batches to update progress UI
+            // Iterate sequentially with filtering
             for (let i = 0; i < total; i++) {
                 const asset = assets[i];
-                if (!asset.symbol) continue;
+
+                // Exclude: Empty symbol or Zero quantity (Sold out)
+                if (!asset.symbol || asset.quantity <= 0) continue;
 
                 if (isMounted) {
                     setLoadingStatus(`${asset.name} (${asset.symbol}) 시세 조회 중...`);
-                    // Calculate progress based on (i / total) * 100
-                    // Start from small % and reach near 100%
-                    setLoadingProgress(Math.round(((i) / total) * 100));
+                    // Calculate progress based on (i+1) instead of i for better progression
+                    setLoadingProgress(Math.round(((i + 1) / total) * 100));
                 }
 
                 try {
-                    // Clean symbol (remove exchange suffix if present, e.g., 005930.KS -> 005930)
+                    // Clean symbol
                     let cleanSymbol = asset.symbol;
                     if (asset.symbol.includes('.')) {
                         cleanSymbol = asset.symbol.split('.')[0];
@@ -95,6 +96,7 @@ export default function TargetProximityBlock() {
     // 1. Prepare Data
     const data = useMemo(() => {
         return assets
+            .filter(asset => asset.symbol && asset.quantity > 0)
             .map(asset => {
                 const liveData = lastData.get(asset.symbol);
                 // Prefer Live WS > Initial Fetch

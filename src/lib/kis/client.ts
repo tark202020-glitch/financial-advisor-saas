@@ -89,14 +89,14 @@ export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice
     }));
 
     if (!response.ok) {
-        console.error(`Failed to fetch DOM price for ${symbol}:`, await response.text());
-        return null;
+        const text = await response.text();
+        throw new Error(`Failed to fetch DOM price for ${symbol}: ${text}`);
     }
 
     const data: KisResponse<KisDomStockPrice> = await response.json();
     if (data.rt_cd !== "0") {
         console.error(`KIS API Error (DOM): ${data.msg1}`);
-        return null;
+        throw new Error(`KIS API Error (DOM): ${data.msg1} (Code: ${data.msg_cd})`);
     }
 
     return data.output;
@@ -155,7 +155,7 @@ export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice 
 
     if (data.rt_cd !== "0") {
         console.error(`KIS API Error (OV) for ${symbol}: ${data.msg1} (Code: ${data.rt_cd})`);
-        return null;
+        throw new Error(`KIS API Error (OV) for ${symbol}: ${data.msg1} (Code: ${data.rt_cd})`);
     }
 
     return data.output;
