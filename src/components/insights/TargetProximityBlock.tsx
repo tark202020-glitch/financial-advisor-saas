@@ -28,6 +28,7 @@ export default function TargetProximityBlock() {
 
             const priceMap = new Map<string, number>();
             const total = assets.length;
+            const errors: string[] = [];
 
             // Subscribe to WS for future updates
             assets.forEach(asset => {
@@ -59,30 +60,45 @@ export default function TargetProximityBlock() {
                         : `/api/kis/price/domestic/${cleanSymbol}`;
 
                     const res = await fetch(endpoint);
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                        throw new Error(data.error || `Status ${res.status}`);
+                    }
+
                     if (res.ok) {
-                        const data = await res.json();
                         let price = 0;
                         if (asset.category === 'US') {
                             price = parseFloat(data.output?.last || data.output?.base || 0);
                         } else {
                             price = parseInt(data.output?.stck_prpr || 0);
                         }
-                        if (price > 0) priceMap.set(asset.symbol, price);
+                        if (price > 0) {
+                            priceMap.set(asset.symbol, price);
+                        } else {
+                            // Price 0 is suspicious but maybe pre-market. 
+                            // We don't error here, but render logic will catch it as "No Price" if map doesn't have it?
+                            // No, if I don't set it in map, it's missing.
+                            // Let's log if price is 0.
+                            if (price === 0) errors.push(`${asset.symbol}: Price returned 0`);
+                        }
                     }
-                } catch (e) {
-                    // Silent fail for individual fetch error
+                } catch (e: any) {
+                    const errMsg = `${asset.name} (${asset.symbol}): ${e.message}`;
+                    console.error(errMsg);
+                    errors.push(errMsg);
                 }
 
-                // Small delay to make the UI update perceptible if desired, or just async nature
-                // await new Promise(r => setTimeout(r, 100)); 
+                // Small delay to make the UI update perceptible if desired
+                // await new Promise(r => setTimeout(r, 50)); 
             }
 
             if (isMounted) {
                 setLoadingProgress(100);
-                // Slight delay at 100% before showing content
                 setTimeout(() => {
                     if (isMounted) {
                         setInitialPrices(priceMap);
+                        setFetchErrors(errors);
                         setIsLoading(false);
                     }
                 }, 500);
@@ -95,15 +111,24 @@ export default function TargetProximityBlock() {
     }, [assets, subscribe]);
 
     // 1. Prepare Data
-    const data = useMemo(() => {
-        return assets
-            .filter(asset => asset.symbol && asset.quantity > 0)
+    const { finalData, processingLogs } = useMemo(() => {
+        const logs: string[] = [];
+        const rawData = assets
             .map(asset => {
+                // 1. Filter: Sold Out
+                if (!asset.symbol || asset.quantity <= 0) {
+                    logs.push(`[제외] ${asset.name}: 보유수량 0 또는 기호 없음`);
+                    return null;
+                }
+
                 const liveData = lastData.get(asset.symbol);
-                // Prefer Live WS > Initial Fetch
                 const currentPrice = liveData?.price || initialPrices.get(asset.symbol);
 
-                if (!currentPrice) return null; // Skip if no price data yet
+                // 2. Filter: No Price
+                if (!currentPrice) {
+                    logs.push(`[제외] ${asset.name}: 현재가 조회 실패 (API/WS 미수신)`);
+                    return null;
+                }
 
                 // Calculate Distances
                 let lowerDistance = null;
@@ -117,13 +142,18 @@ export default function TargetProximityBlock() {
                     upperDistance = ((asset.targetPriceUpper - currentPrice) / currentPrice) * 100;
                 }
 
-                // Determine effective distance for sorting (smallest absolute value)
+                // 3. Filter: No Targets
+                if (lowerDistance === null && upperDistance === null) {
+                    logs.push(`[제외] ${asset.name}: 목표가 미설정`);
+                    return null;
+                }
+
                 const distL = lowerDistance !== null ? Math.abs(lowerDistance) : Infinity;
                 const distU = upperDistance !== null ? Math.abs(upperDistance) : Infinity;
-
                 const closestDist = Math.min(distL, distU);
-                const MAX_RANGE = 30; // Max percentage to visualize
 
+                // Calculate Bars
+                const MAX_RANGE = 30;
                 let lowerBar = 0;
                 let upperBar = 0;
 
@@ -134,8 +164,6 @@ export default function TargetProximityBlock() {
                 if (upperDistance !== null && Math.abs(upperDistance) <= MAX_RANGE) {
                     upperBar = MAX_RANGE - Math.abs(upperDistance);
                 }
-
-                if (lowerDistance === null && upperDistance === null) return null;
 
                 return {
                     name: asset.name || asset.symbol,
@@ -154,6 +182,8 @@ export default function TargetProximityBlock() {
             })
             .filter((item): item is NonNullable<typeof item> => item !== null)
             .sort((a, b) => a.closestDist - b.closestDist);
+
+        return { finalData: rawData, processingLogs: logs };
     }, [assets, lastData, initialPrices]);
 
     const CustomTooltip = ({ active, payload, label }: any) => {
@@ -185,14 +215,10 @@ export default function TargetProximityBlock() {
     if (isLoading) {
         return (
             <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 h-[500px] flex flex-col items-center justify-center space-y-6">
-                {/* Spinner or Icon */}
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-
                 <div className="w-full max-w-xs space-y-2 text-center">
                     <p className="text-slate-800 font-medium text-lg">포트폴리오 분석 중...</p>
                     <p className="text-slate-500 text-sm animate-pulse">{loadingStatus}</p>
-
-                    {/* Progress Bar */}
                     <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-4">
                         <div
                             className="bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out"
@@ -213,21 +239,30 @@ export default function TargetProximityBlock() {
         )
     }
 
-    if (data.length === 0) {
+    if (finalData.length === 0) {
         return (
             <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 text-center text-slate-400 h-[500px] flex flex-col items-center justify-center space-y-4">
                 <p>표시할 데이터가 (유효한 목표가 설정 종목) 없습니다.</p>
-                {fetchErrors.length > 0 && (
-                    <div className="w-full max-w-md bg-red-50 p-4 rounded-lg text-left overflow-y-auto max-h-40">
-                        <p className="text-red-600 font-bold mb-2 text-xs">오류 상세 리포트:</p>
-                        <ul className="list-disc list-inside text-xs text-red-500 space-y-1">
-                            {fetchErrors.map((err, idx) => (
-                                <li key={idx}>{err}</li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-                <p className="text-xs text-slate-400">(목표가를 설정했는지, 보유 수량이 0 이상인지 확인해주세요)</p>
+
+                <div className="w-full max-w-md bg-slate-50 p-4 rounded-lg text-left overflow-y-auto max-h-48 border border-slate-200">
+                    <p className="text-slate-700 font-bold mb-2 text-xs">🔍 제외된 종목 리포트:</p>
+                    <ul className="list-disc list-inside text-xs text-slate-500 space-y-1">
+                        {processingLogs.map((log, idx) => (
+                            <li key={idx} className={log.includes("실패") ? "text-red-400" : ""}>{log}</li>
+                        ))}
+                    </ul>
+                    {fetchErrors.length > 0 && (
+                        <>
+                            <div className="border-t border-slate-200 my-2"></div>
+                            <p className="text-red-600 font-bold mb-2 text-xs">⚠ API 오류:</p>
+                            <ul className="list-disc list-inside text-xs text-red-500 space-y-1">
+                                {fetchErrors.map((err, idx) => <li key={`err-${idx}`}>{err}</li>)}
+                            </ul>
+                        </>
+                    )}
+                </div>
+
+                <p className="text-xs text-slate-400">목표가 설정 여부 및 시세 조회 상태를 확인해주세요.</p>
             </div>
         )
     }
@@ -253,6 +288,16 @@ export default function TargetProximityBlock() {
                 </div>
             </div>
 
+            {/* Debug Info Condensed (if data exists but clean logic might toggle) */}
+            {(processingLogs.length > 0 && finalData.length < assets.length) && (
+                <details className="mb-4 text-xs text-slate-400 cursor-pointer">
+                    <summary>📋 일부 종목 제외됨 ({processingLogs.length}건)</summary>
+                    <ul className="mt-2 list-disc list-inside bg-slate-50 p-2 rounded">
+                        {processingLogs.map((log, idx) => <li key={idx}>{log}</li>)}
+                    </ul>
+                </details>
+            )}
+
             {/* Error Banner if Partial Errors exist but some data is shown */}
             {fetchErrors.length > 0 && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-600">
@@ -273,7 +318,7 @@ export default function TargetProximityBlock() {
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                         layout="vertical"
-                        data={data}
+                        data={finalData}
                         margin={{ top: 5, right: 30, left: 30, bottom: 5 }}
                         stackOffset="sign"
                     >
@@ -290,14 +335,14 @@ export default function TargetProximityBlock() {
 
                         {/* Lower Bound Bar (Left/Blue) */}
                         <Bar dataKey="lowerBar" stackId="stack" barSize={12} radius={[4, 0, 0, 4]}>
-                            {data.map((entry, index) => (
+                            {finalData.map((entry, index) => (
                                 <Cell key={`cell-lower-${index}`} fill="#3b82f6" fillOpacity={0.8} />
                             ))}
                         </Bar>
 
                         {/* Upper Bound Bar (Right/Red) */}
                         <Bar dataKey="upperBar" stackId="stack" barSize={12} radius={[0, 4, 4, 0]}>
-                            {data.map((entry, index) => (
+                            {finalData.map((entry, index) => (
                                 <Cell key={`cell-upper-${index}`} fill="#ef4444" fillOpacity={0.8} />
                             ))}
                         </Bar>

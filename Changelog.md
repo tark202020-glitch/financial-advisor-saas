@@ -1,4 +1,4 @@
-## [Alpha V1.112] - 2026-02-09 17:35:00
+## [Alpha V1.112] - 2026-02-09 19:38:00
 
 ### 📊 Feature: Stock Insights (Target Proximity)
 - **Summary**: Added 'Stock Insights' page with 'Target Price Proximity' block.
@@ -8,9 +8,9 @@
   - **Logic**: 목표가까지 남은 거리가 가까울수록 막대가 길어지며, 중앙(0%)에 가까운 순서대로 정렬됨.
   - **Loading**: 전체 데이터 로딩 후 그래프 표출 (Progressive Loading UI 적용: "삼성전자 조회 중...").
   - **Filter**: 보유 수량이 0인 종목(매도 완료)은 차트 및 데이터 조회 대상에서 제외.
-  - **Debug**: 시세 조회 실패 시, 화면에 상세 오류 메시지(API 응답)를 표시하여 원인 파악 기능 추가.
+  - **Debug UI**: 데이터 제외 사유(목표가 미설정, API 오류, 보유량 0 등)를 상세 리포트로 제공하여 사용자 혼란 방지.
   - **Real-time**: WebSocket 실시간 시세 연동. (장외 시간 대비 초기 데이터 Fetching 로직 추가)
-- **Build Time**: 2026-02-09 19:25:00
+- **Build Time**: 2026-02-09 19:38:00
 
 ## [Alpha V1.111] - 2026-02-09 16:00:00
 
