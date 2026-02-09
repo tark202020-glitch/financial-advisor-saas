@@ -1,3 +1,13 @@
+## [Alpha V1.111] - 2026-02-09 16:00:00
+
+### 🎨 UI/UX: Rename & Enhance Button
+- **Summary**: Renamed 'Index Comparison' to 'Index Return Comparison' and improved button design.
+- **Detail**:
+  - **Terminology**: 기능 명칭을 "지수대비 수익률 비교"로 변경하여 목적을 명확히 함.
+  - **Button**: 텍스트 링크 형태에서 **배경이 채워진 버튼(Solid Button)** 형태로 변경하여 가시성과 클릭 영역 확보.
+  - **Modal**: 모달 타이틀도 "지수대비 수익률 비교"로 통일.
+- **Build Time**: 2026-02-09 16:00:00
+
 ## [Alpha V1.110] - 2026-02-09 15:50:00
 
 ### 🔧 Fix: Manual KOSPI Input

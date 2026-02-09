@@ -455,9 +455,9 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                 </div>
                                 <button
                                     onClick={() => setShowIndexComparison(true)}
-                                    className="mt-4 text-xs font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition"
+                                    className="mt-4 w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition"
                                 >
-                                    ▼ 지수변화 참조
+                                    📊 지수대비 수익률 비교
                                 </button>
                             </div>
                         </div>
@@ -632,7 +632,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white z-10">
                             <div>
                                 <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                                    <span className="text-indigo-600">📊</span> {benchmarkName} 지수 비교
+                                    <span className="text-indigo-600">📊</span> 지수대비 수익률 비교
                                 </h3>
                                 <p className="text-slate-500 text-sm mt-1">
                                     매수 시점의 시장 지수와 현재 지수를 비교하여 성과를 분석합니다. (현재 지수: <span className="font-bold text-slate-800">{currentIndex ? currentIndex.toLocaleString() : '-'}</span>)
