@@ -26,7 +26,6 @@ export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) 
     const changeAmount = stockData?.change || 0;
 
     // Valuation Logic
-    // Valuation Logic
     const totalPurchase = asset.pricePerShare * asset.quantity;
     const currentValuation = currentPrice * asset.quantity;
     const profitLoss = stockData ? (currentValuation - totalPurchase) : 0;
@@ -44,6 +43,24 @@ export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) 
     const isPositive = profitLoss >= 0;
     const colorClass = isPositive ? 'text-red-500' : 'text-blue-600';
     const profitSign = isPositive ? '▲' : '▼';
+
+    // Formatting Logic
+    const isUS = asset.category !== 'KR';
+    const currencyPrefix = isUS ? '$' : '';
+
+    // Helper for currency formatting
+    const formatCurrency = (value: number, isInteger: boolean = false) => {
+        const formatted = isInteger || (isUS && value % 1 === 0) ? Math.round(value).toLocaleString() : value.toLocaleString();
+        return `${currencyPrefix}${formatted}`;
+    };
+
+    // Specific format for Purchase Price (Average Price) - Integer for US
+    const formatPurchasePrice = (price: number) => {
+        if (isUS) {
+            return `${currencyPrefix}${Math.round(price).toLocaleString()}`;
+        }
+        return price.toLocaleString();
+    };
 
     const handleSave = () => {
         updateAsset(asset.id, {
@@ -65,119 +82,122 @@ export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) 
     return (
         <>
             <div
-                className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition w-full relative cursor-pointer group"
+                className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition w-full relative cursor-pointer group overflow-hidden"
                 onClick={() => setIsModalOpen(true)}
             >
-                {/* Header */}
-                <div className="flex justify-between items-start mb-4">
-                    <div>
+                {/* Header Section */}
+                <div className="bg-slate-50/50 p-6 border-b border-slate-100 flex justify-between items-start">
+                    <div className="flex-1 min-w-0 pr-4">
                         <div className="text-xs text-slate-500 mb-1 flex gap-1">
                             <span>{asset.symbol}</span>
                             <span className="text-slate-300">|</span>
                             <span>{asset.category === 'KR' ? 'KOSPI' : asset.category}</span>
                         </div>
-                        <h3 className="text-2xl font-bold text-slate-900 tracking-tight transition group-hover:text-indigo-600">
-                            {asset.name || asset.symbol}
-                        </h3>
+                        <div className="h-14 flex items-center">
+                            <h3 className="text-2xl font-bold text-slate-900 tracking-tight transition group-hover:text-indigo-600 line-clamp-2">
+                                {asset.name || asset.symbol}
+                            </h3>
+                        </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                         <div className={`text-2xl font-bold ${changeAmount > 0 ? 'text-red-500' : changeAmount < 0 ? 'text-blue-600' : 'text-slate-700'}`}>
-                            {currentPrice.toLocaleString()}
+                            {formatCurrency(currentPrice)}
                         </div>
                         <div className={`text-xs font-medium flex items-center justify-end gap-1 ${changeAmount > 0 ? 'text-red-500' : changeAmount < 0 ? 'text-blue-600' : 'text-slate-500'}`}>
                             <span>{changeAmount > 0 ? '▲' : changeAmount < 0 ? '▼' : '-'}</span>
                             <span>{Math.abs(changePercent).toFixed(2)}%</span>
-                            <span>{Math.abs(changeAmount).toLocaleString()}</span>
+                            <span>{isUS ? '$' : ''}{Math.abs(changeAmount).toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="border-t border-slate-100 my-4"></div>
+                {/* Body Section */}
+                <div className="p-6 pt-6">
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 gap-y-6 text-sm mb-6">
+                        <div>
+                            <div className="text-slate-500 text-xs mb-1">매입금액</div>
+                            <div className="font-medium text-slate-900 text-lg">
+                                {formatCurrency(totalPurchase)}
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-slate-500 text-xs mb-1">매입단가 | 수량</div>
+                            <div className="font-medium text-slate-900">
+                                {formatPurchasePrice(asset.pricePerShare)} <span className="text-slate-300 mx-1">|</span> {asset.quantity.toLocaleString()}
+                            </div>
+                        </div>
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-y-6 text-sm mb-6">
-                    <div>
-                        <div className="text-slate-500 text-xs mb-1">매입금액</div>
-                        <div className="font-medium text-slate-900 text-lg">
-                            {totalPurchase.toLocaleString()}
+                        <div>
+                            <div className="text-slate-500 text-xs mb-1">평가손익</div>
+                            <div className={`font-bold text-xl ${colorClass}`}>
+                                {formatCurrency(profitLoss)}
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-slate-500 text-xs mb-1">수익률</div>
+                            <div className={`font-bold text-xl flex items-center justify-end gap-1 ${colorClass}`}>
+                                <span className="text-sm">{profitSign}</span>
+                                {Math.abs(returnRate).toFixed(2)}%
+                            </div>
                         </div>
                     </div>
-                    <div className="text-right">
-                        <div className="text-slate-500 text-xs mb-1">매입단가 | 수량</div>
-                        <div className="font-medium text-slate-900">
-                            {asset.pricePerShare.toLocaleString()} <span className="text-slate-300 mx-1">|</span> {asset.quantity.toLocaleString()}
-                        </div>
-                    </div>
 
-                    <div>
-                        <div className="text-slate-500 text-xs mb-1">평가손익</div>
-                        <div className={`font-bold text-xl ${colorClass}`}>
-                            {profitLoss.toLocaleString()}
-                        </div>
-                    </div>
-                    <div className="text-right">
-                        <div className="text-slate-500 text-xs mb-1">수익률</div>
-                        <div className={`font-bold text-xl flex items-center justify-end gap-1 ${colorClass}`}>
-                            <span className="text-sm">{profitSign}</span>
-                            {Math.abs(returnRate).toFixed(2)}%
-                        </div>
-                    </div>
-                </div>
+                    <div className="border-t border-slate-100 my-4"></div>
 
-                <div className="border-t border-slate-100 my-4"></div>
-
-                {/* Inputs Section */}
-                <div className="space-y-4">
-                    {/* Memo */}
-                    <div onClick={(e) => e.stopPropagation()}>
-                        <label className="block text-xs text-slate-500 mb-1">목표 메모</label>
-                        <input
-                            type="text"
-                            value={memo}
-                            onChange={(e) => setMemo(e.target.value)}
-                            onBlur={handleSave}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                            placeholder="메모를 입력하세요"
-                        />
-                    </div>
-
-                    {/* Targets */}
-                    <div className="flex gap-4" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex-1">
-                            <label className="block text-xs text-slate-500 mb-1 flex items-center justify-between">
-                                하한 목표
-                                {getGoalRate(targetLower) !== null && (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getGoalRate(targetLower)! >= 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                                        {getGoalRate(targetLower)! > 0 ? '+' : ''}{getGoalRate(targetLower)!.toFixed(1)}%
-                                    </span>
-                                )}
-                            </label>
+                    {/* Inputs Section */}
+                    <div className="space-y-4">
+                        {/* Memo */}
+                        <div onClick={(e) => e.stopPropagation()}>
+                            <label className="block text-xs text-slate-500 mb-1">목표 메모</label>
                             <input
                                 type="text"
-                                value={targetLower}
-                                onChange={(e) => setTargetLower(e.target.value)}
+                                value={memo}
+                                onChange={(e) => setMemo(e.target.value)}
                                 onBlur={handleSave}
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                                placeholder="0"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                                placeholder="메모를 입력하세요"
                             />
                         </div>
-                        <div className="flex-1">
-                            <label className="block text-xs text-slate-500 mb-1 flex items-center justify-between">
-                                상한 목표
-                                {getGoalRate(targetUpper) !== null && (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getGoalRate(targetUpper)! >= 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                                        {getGoalRate(targetUpper)! > 0 ? '+' : ''}{getGoalRate(targetUpper)!.toFixed(1)}%
-                                    </span>
-                                )}
-                            </label>
-                            <input
-                                type="text"
-                                value={targetUpper}
-                                onChange={(e) => setTargetUpper(e.target.value)}
-                                onBlur={handleSave}
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
-                                placeholder="0"
-                            />
+
+                        {/* Targets */}
+                        <div className="flex gap-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex-1">
+                                <label className="block text-xs text-slate-500 mb-1 flex items-center justify-between">
+                                    하한 목표
+                                    {getGoalRate(targetLower) !== null && (
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getGoalRate(targetLower)! >= 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                                            {getGoalRate(targetLower)! > 0 ? '+' : ''}{getGoalRate(targetLower)!.toFixed(1)}%
+                                        </span>
+                                    )}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={targetLower}
+                                    onChange={(e) => setTargetLower(e.target.value)}
+                                    onBlur={handleSave}
+                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                                    placeholder="0"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-xs text-slate-500 mb-1 flex items-center justify-between">
+                                    상한 목표
+                                    {getGoalRate(targetUpper) !== null && (
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getGoalRate(targetUpper)! >= 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                                            {getGoalRate(targetUpper)! > 0 ? '+' : ''}{getGoalRate(targetUpper)!.toFixed(1)}%
+                                        </span>
+                                    )}
+                                </label>
+                                <input
+                                    type="text"
+                                    value={targetUpper}
+                                    onChange={(e) => setTargetUpper(e.target.value)}
+                                    onBlur={handleSave}
+                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                                    placeholder="0"
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
