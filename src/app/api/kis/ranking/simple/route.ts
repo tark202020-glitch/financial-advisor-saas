@@ -54,23 +54,16 @@ async function fetchFinancials(symbol: string, token: string) {
     };
 
     try {
-        const [growthRes, profitRes, stabilityRes, incomeRes] = await Promise.all([
+        const [growthRes, profitRes, stabilityRes] = await Promise.all([
             fetchAPI("FHKST66430800", "/uapi/domestic-stock/v1/finance/growth-ratio"),
             fetchAPI("FHKST66430400", "/uapi/domestic-stock/v1/finance/profit-ratio"),
             fetchAPI("FHKST66430300", "/uapi/domestic-stock/v1/finance/financial-ratio"),
-            fetchAPI("FHKST66430200", "/uapi/domestic-stock/v1/finance/income-statement")
         ]);
 
         const getLatest = (res: any, key: string) => {
             if (!res || !res.output || !Array.isArray(res.output) || res.output.length === 0) return 0;
             return parseFloat(res.output[0][key] || '0');
         };
-
-        // Field mappings based on actual KIS API responses:
-        // growth-ratio: grs (매출증가율), bsop_prfi_inrt (영업이익증가율)
-        // profit-ratio: sale_totl_rate (매출총이익률), self_cptl_ntin_inrt (ROE)
-        // financial-ratio: lblt_rate (부채비율), roe_val (ROE)
-        // income-statement: sale_account (매출액)
 
         const roe = getLatest(stabilityRes, 'roe_val') || getLatest(profitRes, 'self_cptl_ntin_inrt');
 
@@ -79,7 +72,6 @@ async function fetchFinancials(symbol: string, token: string) {
             revenue_growth: getLatest(growthRes, 'grs'),
             operating_profit_margin: getLatest(profitRes, 'sale_totl_rate'),
             debt_ratio: getLatest(stabilityRes, 'lblt_rate'),
-            revenue: getLatest(incomeRes, 'sale_account') || getLatest(incomeRes, 'sales') || 0,
             roe,
         };
     } catch (e) {
@@ -90,7 +82,6 @@ async function fetchFinancials(symbol: string, token: string) {
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '50');
 
     // === All range filter parameters ===
     const getRange = (name: string, defaultMin: number = -999999, defaultMax: number = 999999) => ({
@@ -111,20 +102,30 @@ export async function GET(request: NextRequest) {
         volume: getRange('Volume'),
     };
 
-    // Legacy support
-    if (searchParams.has('minOpMargin')) {
-        // old params are still supported
-    }
+    const inRange = (val: number, range: { min: number; max: number }) =>
+        val >= range.min && val <= range.max;
+
+    // Check which filters require financial API data
+    const needsFinancialData =
+        filters.revenueGrowth.min > -999999 || filters.revenueGrowth.max < 999999 ||
+        filters.opGrowth.min > -999999 || filters.opGrowth.max < 999999 ||
+        filters.roe.min > -999999 || filters.roe.max < 999999 ||
+        filters.peg.min > -999999 || filters.peg.max < 999999 ||
+        filters.debt.min > -999999 || filters.debt.max < 999999 ||
+        true; // Always fetch financials since we want to display them
 
     try {
-        const rankingData = await getMarketCapRanking(limit);
+        // Step 1: Get all KOSPI candidates (up to 200 in fallback, all in live)
+        const rankingData = await getMarketCapRanking(200);
 
         if (!rankingData || rankingData.length === 0) {
             console.warn("[SimpleSearch] No ranking data returned");
             return NextResponse.json([]);
         }
 
-        // Map ranking data to candidates
+        console.log(`[SimpleSearch] Got ${rankingData.length} total candidates`);
+
+        // Step 2: Map and apply STAGE 1 filters (price-data based — no extra API calls)
         const candidates = rankingData.map((item: any) => ({
             symbol: item.mksc_shrn_iscd || item.mksc_shra || '',
             name: item.hts_kor_isnm || '',
@@ -133,67 +134,92 @@ export async function GET(request: NextRequest) {
             pbr: parseFloat(item.pbr || '0'),
             volume: parseInt(item.acml_vol || '0'),
             market_cap: parseInt(item.stck_avls || item.lstn_stcn || '0')
-        })).filter((c: any) => c.symbol);
+        })).filter((c: any) => {
+            if (!c.symbol) return false;
 
-        console.log(`[SimpleSearch] Got ${candidates.length} candidates from ranking`);
+            // STAGE 1: Filter by fields available from ranking/price data
+            if (!inRange(c.per, filters.per)) return false;
+            if (!inRange(c.pbr, filters.pbr)) return false;
+            if (!inRange(c.market_cap, filters.marketCap)) return false;
+            if (!inRange(c.volume, filters.volume)) return false;
 
+            return true;
+        });
+
+        console.log(`[SimpleSearch] After Stage 1 filter: ${candidates.length} candidates (from ${rankingData.length})`);
+
+        // Step 3: Get access token for financial data APIs
         const token = await getAccessToken();
+
+        // Step 4: STAGE 2 — Fetch financials for pre-filtered candidates and apply remaining filters
+        // Process in parallel batches for speed
+        const BATCH_SIZE = 5;
         const results: ConditionStock[] = [];
+        const MAX_FINANCIAL_FETCHES = 100; // Safety limit to prevent excessive API calls
+        const toProcess = candidates.slice(0, MAX_FINANCIAL_FETCHES);
 
-        for (const stock of candidates) {
-            try {
-                const financials = await fetchFinancials(stock.symbol, token);
-                if (!financials) continue;
+        for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
+            const batch = toProcess.slice(i, i + BATCH_SIZE);
 
-                // Calculate PEG = PER / EPS Growth Rate
-                // Use revenue_growth as proxy (EPS growth often unavailable)
-                const epsGrowth = financials.revenue_growth;
-                const peg = (stock.per > 0 && epsGrowth > 0.01)
-                    ? Math.round((stock.per / epsGrowth) * 100) / 100
-                    : 0;
+            const batchResults = await Promise.all(batch.map(async (stock) => {
+                try {
+                    const financials = await fetchFinancials(stock.symbol, token);
+                    if (!financials) return null;
 
-                const finalStock: ConditionStock = {
-                    symbol: stock.symbol,
-                    name: stock.name,
-                    price: stock.price,
-                    per: stock.per,
-                    pbr: stock.pbr,
-                    roe: financials.roe,
-                    peg,
-                    dividend_yield: 0, // TODO: integrate dividend API
-                    market_cap: stock.market_cap,
-                    volume: stock.volume,
-                    operating_profit_margin: financials.operating_profit_margin,
-                    operating_profit_growth: financials.operating_profit_growth,
-                    revenue_growth: financials.revenue_growth,
-                    debt_ratio: financials.debt_ratio,
-                    revenue: financials.revenue,
-                };
+                    const epsGrowth = financials.revenue_growth;
+                    const peg = (stock.per > 0 && epsGrowth > 0.01)
+                        ? Math.round((stock.per / epsGrowth) * 100) / 100
+                        : 0;
 
-                // === Apply all range filters ===
-                const inRange = (val: number, range: { min: number; max: number }) =>
-                    val >= range.min && val <= range.max;
+                    const finalStock: ConditionStock = {
+                        symbol: stock.symbol,
+                        name: stock.name,
+                        price: stock.price,
+                        per: stock.per,
+                        pbr: stock.pbr,
+                        roe: financials.roe,
+                        peg,
+                        dividend_yield: 0,
+                        market_cap: stock.market_cap,
+                        volume: stock.volume,
+                        operating_profit_margin: financials.operating_profit_margin,
+                        operating_profit_growth: financials.operating_profit_growth,
+                        revenue_growth: financials.revenue_growth,
+                        debt_ratio: financials.debt_ratio,
+                        revenue: 0,
+                    };
 
-                if (!inRange(finalStock.revenue_growth, filters.revenueGrowth)) continue;
-                if (!inRange(finalStock.operating_profit_growth, filters.opGrowth)) continue;
-                if (!inRange(finalStock.roe, filters.roe)) continue;
-                if (finalStock.peg > 0 && !inRange(finalStock.peg, filters.peg)) continue; // Skip PEG filter if PEG=0 (unavailable)
-                if (!inRange(finalStock.per, filters.per)) continue;
-                if (!inRange(finalStock.pbr, filters.pbr)) continue;
-                if (!inRange(finalStock.debt_ratio, filters.debt)) continue;
-                if (!inRange(finalStock.dividend_yield, filters.dividend)) continue;
-                if (!inRange(finalStock.market_cap, filters.marketCap)) continue;
-                if (!inRange(finalStock.volume, filters.volume)) continue;
+                    // STAGE 2: Apply financial-data filters
+                    if (!inRange(finalStock.revenue_growth, filters.revenueGrowth)) return null;
+                    if (!inRange(finalStock.operating_profit_growth, filters.opGrowth)) return null;
+                    if (!inRange(finalStock.roe, filters.roe)) return null;
+                    if (finalStock.peg > 0 && !inRange(finalStock.peg, filters.peg)) return null;
+                    if (!inRange(finalStock.debt_ratio, filters.debt)) return null;
+                    if (!inRange(finalStock.dividend_yield, filters.dividend)) return null;
 
-                results.push(finalStock);
-            } catch (innerErr) {
-                console.error(`[SimpleSearch] Error processing ${stock.symbol}`, innerErr);
-                continue;
-            }
+                    return finalStock;
+                } catch (innerErr) {
+                    console.error(`[SimpleSearch] Error processing ${stock.symbol}`, innerErr);
+                    return null;
+                }
+            }));
+
+            batchResults.forEach(r => { if (r) results.push(r); });
         }
 
-        console.log(`[SimpleSearch] Returning ${results.length} results (filtered from ${candidates.length})`);
-        return NextResponse.json(results);
+        const skipped = candidates.length - toProcess.length;
+        console.log(`[SimpleSearch] Returning ${results.length} results (processed ${toProcess.length}, skipped ${skipped})`);
+
+        return NextResponse.json({
+            results,
+            meta: {
+                totalCandidates: rankingData.length,
+                afterStage1: candidates.length,
+                processed: toProcess.length,
+                matched: results.length,
+                skipped,
+            }
+        });
 
     } catch (e: any) {
         console.error("[SimpleSearch] Global Error:", e);

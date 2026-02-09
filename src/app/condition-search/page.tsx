@@ -109,10 +109,10 @@ export default function ConditionSearchPage() {
     const handleSearch = async () => {
         setIsSearching(true);
         setResults([]);
-        setStatusMsg('조건 검색 실행 중...');
+        setStatusMsg('KOSPI 전체 종목 대상 조건 검색 중...');
 
         try {
-            const params = new URLSearchParams({ limit: '50' });
+            const params = new URLSearchParams();
 
             CONDITION_FIELDS.forEach(field => {
                 const range = conditions[field.key];
@@ -123,9 +123,19 @@ export default function ConditionSearchPage() {
             const res = await fetch(`/api/kis/ranking/simple?${params.toString()}`);
             if (!res.ok) throw new Error(`API Error: ${res.status}`);
             const data = await res.json();
-            const list = Array.isArray(data) ? data : [];
+
+            // Handle new response format: { results, meta }
+            const list = Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+            const meta = data.meta;
             setResults(list);
-            setStatusMsg(`검색 완료: ${list.length}건`);
+
+            if (meta) {
+                setStatusMsg(
+                    `검색 완료: ${meta.matched}건 (전체 ${meta.totalCandidates}개 → 1차필터 ${meta.afterStage1}개 → 재무분석 ${meta.processed}개)`
+                );
+            } else {
+                setStatusMsg(`검색 완료: ${list.length}건`);
+            }
         } catch (e: any) {
             console.error(e);
             setStatusMsg(`오류 발생: ${e.message}`);
@@ -270,8 +280,8 @@ export default function ConditionSearchPage() {
                                         <button
                                             onClick={() => handleLoadPreset(preset.id)}
                                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${selectedPresetId === preset.id
-                                                    ? 'bg-blue-600 text-white shadow-sm'
-                                                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50 hover:border-blue-300'
+                                                ? 'bg-blue-600 text-white shadow-sm'
+                                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50 hover:border-blue-300'
                                                 }`}
                                         >
                                             {preset.name}
@@ -412,7 +422,7 @@ export default function ConditionSearchPage() {
                             </tbody>
                         </table>
                     </div>
-                    <p className="text-xs text-slate-400 text-right">* API 속도 제한으로 시가총액 상위 50개 종목 내에서 검색합니다.</p>
+                    <p className="text-xs text-slate-400 text-right">* KOSPI 상장 종목 대상 검색 (장중: 랭킹 API 전체, 장외: 주요 200개 종목). 1차 필터(PER/PBR/시가총액/거래량) 통과 후 최대 100개 종목에 대해 재무 분석을 수행합니다.</p>
                 </div>
 
                 {/* === HTS 0640 투자의견 === */}

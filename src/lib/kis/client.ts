@@ -673,8 +673,9 @@ export async function fetchGenericFinance(tr_id: string, path: string, symbol: s
 
 // ... existing export generic functions
 
-// Pre-defined top KOSPI stocks by market cap (fallback for off-market hours)
+// Pre-defined KOSPI stocks for off-market hours fallback (~200 stocks covering major sectors)
 const TOP_KOSPI_STOCKS: { symbol: string; name: string }[] = [
+    // === 대형주 (시가총액 상위) ===
     { symbol: '005930', name: '삼성전자' },
     { symbol: '000660', name: 'SK하이닉스' },
     { symbol: '373220', name: 'LG에너지솔루션' },
@@ -695,6 +696,7 @@ const TOP_KOSPI_STOCKS: { symbol: string; name: string }[] = [
     { symbol: '051910', name: 'LG화학' },
     { symbol: '003550', name: 'LG' },
     { symbol: '032830', name: '삼성생명' },
+    // === 금융 ===
     { symbol: '034730', name: 'SK' },
     { symbol: '096770', name: 'SK이노베이션' },
     { symbol: '030200', name: 'KT' },
@@ -702,38 +704,180 @@ const TOP_KOSPI_STOCKS: { symbol: string; name: string }[] = [
     { symbol: '086790', name: '하나금융지주' },
     { symbol: '017670', name: 'SK텔레콤' },
     { symbol: '316140', name: '우리금융지주' },
-    { symbol: '009150', name: '삼성전기' },
-    { symbol: '034020', name: '두산에너빌리티' },
-    { symbol: '033780', name: 'KT&G' },
     { symbol: '138040', name: '메리츠금융지주' },
-    { symbol: '011200', name: 'HMM' },
-    { symbol: '010130', name: '고려아연' },
-    { symbol: '018260', name: '삼성에스디에스' },
-    { symbol: '036570', name: '엔씨소프트' },
-    { symbol: '015760', name: '한국전력' },
-    { symbol: '047050', name: '포스코인터내셔널' },
-    { symbol: '003490', name: '대한항공' },
-    { symbol: '259960', name: '크래프톤' },
-    { symbol: '010950', name: 'S-Oil' },
     { symbol: '024110', name: '기업은행' },
-    { symbol: '011170', name: '롯데케미칼' },
-    { symbol: '090430', name: '아모레퍼시픽' },
-    { symbol: '352820', name: '하이브' },
+    { symbol: '088350', name: '한화생명' },
+    { symbol: '005830', name: 'DB손해보험' },
+    { symbol: '000150', name: '두산' },
+    { symbol: '071050', name: '한국금융지주' },
+    // === 반도체/전자 ===
+    { symbol: '009150', name: '삼성전기' },
+    { symbol: '018260', name: '삼성에스디에스' },
+    { symbol: '042700', name: '한미반도체' },
+    { symbol: '403870', name: 'HPSP' },
+    { symbol: '058470', name: '리노공업' },
+    { symbol: '240810', name: '원익IPS' },
+    { symbol: '166090', name: '하나머티리얼즈' },
+    // === 자동차/부품 ===
     { symbol: '161390', name: '한국타이어앤테크놀로지' },
-    { symbol: '326030', name: 'SK바이오팜' },
     { symbol: '004020', name: '현대제철' },
+    { symbol: '011210', name: '현대위아' },
+    { symbol: '018880', name: '한온시스템' },
+    { symbol: '012450', name: '한화에어로스페이스' },
+    // === 바이오/제약 ===
+    { symbol: '326030', name: 'SK바이오팜' },
+    { symbol: '128940', name: '한미약품' },
+    { symbol: '006800', name: '미래에셋증권' },
+    { symbol: '302440', name: 'SK바이오사이언스' },
+    { symbol: '145020', name: '휴젤' },
+    { symbol: '000100', name: '유한양행' },
+    { symbol: '185750', name: '종근당' },
+    { symbol: '069620', name: '대웅제약' },
+    { symbol: '006280', name: '녹십자' },
+    { symbol: '004990', name: '롯데지주' },
+    // === 에너지/소재 ===
+    { symbol: '034020', name: '두산에너빌리티' },
+    { symbol: '010950', name: 'S-Oil' },
+    { symbol: '011170', name: '롯데케미칼' },
+    { symbol: '010130', name: '고려아연' },
+    { symbol: '047050', name: '포스코인터내셔널' },
+    { symbol: '078930', name: 'GS' },
+    { symbol: '036460', name: '한국가스공사' },
     { symbol: '267250', name: 'HD현대' },
+    { symbol: '329180', name: 'HD현대중공업' },
     { symbol: '009540', name: '한국조선해양' },
     { symbol: '010140', name: '삼성중공업' },
+    // === IT/엔터 ===
+    { symbol: '036570', name: '엔씨소프트' },
+    { symbol: '259960', name: '크래프톤' },
+    { symbol: '352820', name: '하이브' },
+    { symbol: '251270', name: '넷마블' },
+    { symbol: '263750', name: '펄어비스' },
+    { symbol: '041510', name: 'SM' },
+    { symbol: '035900', name: 'JYP Ent.' },
+    // === 유통/소비재 ===
+    { symbol: '090430', name: '아모레퍼시픽' },
+    { symbol: '033780', name: 'KT&G' },
+    { symbol: '011200', name: 'HMM' },
+    { symbol: '003490', name: '대한항공' },
+    { symbol: '015760', name: '한국전력' },
+    { symbol: '004170', name: '신세계' },
+    { symbol: '023530', name: '롯데쇼핑' },
+    { symbol: '139480', name: '이마트' },
+    { symbol: '097950', name: 'CJ제일제당' },
+    { symbol: '051900', name: 'LG생활건강' },
+    { symbol: '006260', name: 'LS' },
+    { symbol: '001040', name: 'CJ' },
+    // === 건설/인프라 ===
+    { symbol: '000720', name: '현대건설' },
+    { symbol: '006360', name: 'GS건설' },
+    { symbol: '047810', name: '한국항공우주' },
+    { symbol: '000120', name: 'CJ대한통운' },
+    { symbol: '003410', name: '쌍용C&E' },
+    { symbol: '001450', name: '현대해상' },
+    { symbol: '009830', name: '한화솔루션' },
+    // === 중형주 ===
+    { symbol: '002790', name: '아모레G' },
+    { symbol: '009240', name: '한샘' },
+    { symbol: '011780', name: '금호석유' },
+    { symbol: '036830', name: '솔브레인홀딩스' },
+    { symbol: '021240', name: '코웨이' },
+    { symbol: '271560', name: '오리온' },
+    { symbol: '005940', name: 'NH투자증권' },
+    { symbol: '000880', name: '한화' },
+    { symbol: '034220', name: 'LG디스플레이' },
+    { symbol: '069960', name: '현대백화점' },
+    { symbol: '007070', name: 'GS리테일' },
+    { symbol: '282330', name: 'BGF리테일' },
+    { symbol: '016360', name: '삼성증권' },
+    { symbol: '004370', name: '농심' },
+    { symbol: '002380', name: 'KCC' },
+    { symbol: '005300', name: '롯데칠성' },
+    { symbol: '001680', name: '대상' },
+    { symbol: '000990', name: 'DB하이텍' },
+    { symbol: '005850', name: '에스엘' },
+    { symbol: '014820', name: '동원시스템즈' },
+    { symbol: '012750', name: '에스원' },
+    { symbol: '003030', name: '세아제강지주' },
+    { symbol: '192820', name: '코스맥스' },
+    { symbol: '000240', name: '한국앤컴퍼니' },
+    { symbol: '001740', name: 'SK네트웍스' },
+    { symbol: '000080', name: '하이트진로' },
+    { symbol: '008770', name: '호텔신라' },
+    { symbol: '007310', name: '오뚜기' },
+    { symbol: '111770', name: '영원무역' },
+    { symbol: '079550', name: 'LIG넥스원' },
+    { symbol: '003620', name: '쌍용자동차' },
+    { symbol: '005610', name: 'SPC삼립' },
+    { symbol: '241560', name: '두산밥캣' },
+    { symbol: '004800', name: '효성' },
+    { symbol: '003240', name: '태광산업' },
+    { symbol: '006800', name: '미래에셋증권' },
+    { symbol: '042660', name: '한화오션' },
+    { symbol: '008930', name: '한미사이언스' },
+    { symbol: '002350', name: 'NPC' },
+    { symbol: '007310', name: '오뚜기' },
+    { symbol: '006110', name: '삼아알미늄' },
+    { symbol: '051600', name: '한전KPS' },
+    { symbol: '025540', name: '한국단자공업' },
+    { symbol: '192400', name: '쿠쿠홀딩스' },
+    { symbol: '002960', name: '한국쉘석유' },
+    { symbol: '008060', name: '대덕전자' },
+    { symbol: '014680', name: '한솔케미칼' },
+    { symbol: '000210', name: 'DL' },
+    { symbol: '004490', name: '세방전지' },
+    { symbol: '044820', name: '코스맥스비티아이' },
+    { symbol: '064350', name: '현대로템' },
+    { symbol: '298020', name: '효성티앤씨' },
+    { symbol: '003960', name: '사조대림' },
+    { symbol: '071320', name: '지역난방공사' },
+    { symbol: '005090', name: 'SGC에너지' },
+    { symbol: '002840', name: '미원상사' },
+    { symbol: '093370', name: '후성' },
+    { symbol: '011070', name: 'LG이노텍' },
+    { symbol: '009420', name: '한올바이오파마' },
+    { symbol: '003850', name: '보령' },
+    { symbol: '010620', name: '현대미포조선' },
+    { symbol: '037560', name: 'LG헬로비전' },
+    { symbol: '002030', name: '아세아' },
+    { symbol: '007700', name: 'F&F' },
+    { symbol: '008560', name: '메리츠증권' },
+    { symbol: '071840', name: '하이스틸' },
+    { symbol: '002810', name: '삼영무역' },
+    { symbol: '030000', name: '제일기획' },
+    { symbol: '005180', name: '빙그레' },
+    { symbol: '006650', name: '대한유화' },
+    { symbol: '034830', name: '한국토지신탁' },
+    { symbol: '007340', name: 'DN오토모티브' },
+    { symbol: '002270', name: '롯데제과' },
+    { symbol: '095570', name: 'AJ네트웍스' },
+    { symbol: '009970', name: '영원무역홀딩스' },
+    { symbol: '003920', name: '남양유업' },
+    { symbol: '023000', name: '삼원강재' },
+    { symbol: '028670', name: '팬오션' },
+    { symbol: '204320', name: '만도' },
+    { symbol: '005440', name: '현대그린푸드' },
+    { symbol: '001120', name: 'LX인터내셔널' },
+    { symbol: '001800', name: '오리온홀딩스' },
+    { symbol: '008350', name: '남선알미늄' },
+    { symbol: '092780', name: '동양생명' },
+    { symbol: '115390', name: '락앤락' },
+    { symbol: '026960', name: '동서' },
+    { symbol: '000640', name: '동아쏘시오홀딩스' },
+    { symbol: '003200', name: '일신방직' },
+    { symbol: '214370', name: '케어젠' },
+    { symbol: '044380', name: '주연테크' },
+    { symbol: '000060', name: '메리츠화재' },
+    { symbol: '025000', name: 'KPX홀딩스' },
 ];
 
-export async function getMarketCapRanking(limit: number = 30): Promise<KisMarketCapItem[]> {
+export async function getMarketCapRanking(limit: number = 200): Promise<KisMarketCapItem[]> {
     const token = await getAccessToken();
 
     // TR_ID: FHPST01730000 (Market Cap Ranking)
-    // URL: /uapi/domestic-stock/v1/ranking/market-cap
     // NOTE: This API only returns data during market hours (09:00~15:30 KST).
     //       For off-market hours, we use a fallback with pre-defined stocks.
+    //       limit is now defaulted to 200 for broader KOSPI coverage.
 
     try {
         const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/ranking/market-cap?FID_COND_MRKT_DIV_CODE=J&FID_COND_SCR_DIV_CODE=20173&FID_INPUT_ISCD=0000&FID_DIV_CLS_CODE=0&FID_BLNG_CLS_CODE=0&FID_TRGT_CLS_CODE=111111111&FID_TRGT_XCLS_CODE=000000000&FID_INPUT_PRICE_1=&FID_INPUT_PRICE_2=&FID_VOL_CLS_CODE=&FID_INPUT_DATE_1=`, {
@@ -751,8 +895,9 @@ export async function getMarketCapRanking(limit: number = 30): Promise<KisMarket
         if (response.ok) {
             const data = await response.json();
             if (data.rt_cd === "0" && Array.isArray(data.output) && data.output.length > 0) {
-                console.log(`[MarketCapRanking] Live data: ${data.output.length} items`);
-                return data.output.slice(0, limit);
+                console.log(`[MarketCapRanking] Live data: ${data.output.length} items (returning all)`);
+                // Return ALL data from the API, no artificial limit during market hours
+                return data.output;
             }
             console.warn(`[MarketCapRanking] API returned rt_cd="${data.rt_cd}", msg="${data.msg1}" — likely off-market hours. Using fallback.`);
         } else {
@@ -763,14 +908,14 @@ export async function getMarketCapRanking(limit: number = 30): Promise<KisMarket
     }
 
     // === FALLBACK: Use pre-defined stocks and fetch individual prices ===
-    console.log(`[MarketCapRanking] Fallback mode: fetching ${Math.min(limit, TOP_KOSPI_STOCKS.length)} individual stocks...`);
-    const fallbackStocks = TOP_KOSPI_STOCKS.slice(0, limit);
+    const stocksToFetch = TOP_KOSPI_STOCKS.slice(0, limit);
+    console.log(`[MarketCapRanking] Fallback mode: fetching ${stocksToFetch.length} individual stocks...`);
     const results: KisMarketCapItem[] = [];
 
-    // Fetch in chunks of 5 to avoid rate limiting
-    const chunkSize = 5;
-    for (let i = 0; i < fallbackStocks.length; i += chunkSize) {
-        const chunk = fallbackStocks.slice(i, i + chunkSize);
+    // Fetch in chunks of 10 (increased from 5 for faster processing)
+    const chunkSize = 10;
+    for (let i = 0; i < stocksToFetch.length; i += chunkSize) {
+        const chunk = stocksToFetch.slice(i, i + chunkSize);
         const promises = chunk.map(async (stock) => {
             try {
                 const res = await kisRateLimiter.add(() => fetch(
