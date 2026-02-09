@@ -10,10 +10,22 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    Line
+    Line,
+    ReferenceLine
 } from 'recharts';
 import { useStockPrice } from '@/hooks/useStockPrice';
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
+
+// Color Constants for Consistency
+const COLORS = {
+    ma5: '#f97316',   // orange-500
+    ma20: '#8b5cf6',  // violet-500
+    ma60: '#3b82f6',  // blue-500
+    ma120: '#22c55e', // green-500
+    up: '#ef4444',    // red-500
+    down: '#3b82f6',  // blue-500
+    buyPrice: '#ef4444' // red-500
+};
 
 interface StockDetailModalProps {
     isOpen: boolean;
@@ -107,7 +119,6 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                 // Find Min/Max Date
                 const dates = asset.trades.map(t => new Date(t.date).getTime());
                 const minTime = Math.min(...dates);
-                const maxTime = Math.max(...dates); // Use Max trade date? Or Today?
                 // If max trade is old, we need range up to it.
                 // Let's use range [minDate, maxDate] or [minDate, today].
 
@@ -190,7 +201,9 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
     // View Data
     const currentPrice = stockLive?.price || (history.length > 0 ? history[history.length - 1].close : asset.pricePerShare);
     const changePercent = stockLive?.changePercent || 0;
-    const displayData = history.slice(-60); // Zoom to last 60
+
+    // Change: 60 -> 30 days
+    const displayData = history.slice(-30);
 
     // Valuation
     const totalPurchase = asset.pricePerShare * asset.quantity;
@@ -231,10 +244,10 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                     <div className="flex items-center gap-2 text-slate-500 text-sm font-medium mb-1">
                                         가격(수정)
                                         <div className="flex gap-2 text-[10px] ml-2">
-                                            <span className="text-orange-500">■ 5</span>
-                                            <span className="text-violet-500">■ 20</span>
-                                            <span className="text-blue-500">■ 60</span>
-                                            <span className="text-green-500">■ 120</span>
+                                            <span style={{ color: COLORS.ma5 }}>■ 5</span>
+                                            <span style={{ color: COLORS.ma20 }}>■ 20</span>
+                                            <span style={{ color: COLORS.ma60 }}>■ 60</span>
+                                            <span style={{ color: COLORS.ma120 }}>■ 120</span>
                                         </div>
                                     </div>
                                     <div className={`text-4xl font-bold ${changePercent >= 0 ? 'text-red-500' : 'text-blue-600'}`}>
@@ -246,7 +259,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                     </div>
                                 </div>
                                 <div className="border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-600">
-                                    60일
+                                    30일
                                 </div>
                             </div>
 
@@ -256,7 +269,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                     <div className="h-full flex items-center justify-center text-slate-300">Loading Chart...</div>
                                 ) : (
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <ComposedChart data={displayData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                                        <ComposedChart data={displayData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }} syncId="stockDetail">
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <XAxis dataKey="date" hide />
                                             <YAxis
@@ -267,11 +280,16 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                                 tickLine={false}
                                             />
                                             <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-                                            <Line type="monotone" dataKey="ma5" stroke="#f97316" strokeWidth={1} dot={false} />
-                                            <Line type="monotone" dataKey="ma20" stroke="#8b5cf6" strokeWidth={1} dot={false} />
-                                            <Line type="monotone" dataKey="ma60" stroke="#3b82f6" strokeWidth={1} dot={false} />
-                                            <Line type="monotone" dataKey="ma120" stroke="#22c55e" strokeWidth={1} dot={false} />
-                                            <Line type="monotone" dataKey="close" stroke={changePercent >= 0 ? '#ef4444' : '#3b82f6'} strokeWidth={2} dot={false} />
+                                            <Line type="monotone" dataKey="ma5" stroke={COLORS.ma5} strokeWidth={1} dot={false} />
+                                            <Line type="monotone" dataKey="ma20" stroke={COLORS.ma20} strokeWidth={1} dot={false} />
+                                            <Line type="monotone" dataKey="ma60" stroke={COLORS.ma60} strokeWidth={1} dot={false} />
+                                            <Line type="monotone" dataKey="ma120" stroke={COLORS.ma120} strokeWidth={1} dot={false} />
+                                            <Line type="monotone" dataKey="close" stroke={changePercent >= 0 ? COLORS.up : COLORS.down} strokeWidth={2} dot={false} />
+
+                                            {/* Avg Purchase Price Line */}
+                                            {asset.pricePerShare > 0 && (
+                                                <ReferenceLine y={asset.pricePerShare} stroke={COLORS.buyPrice} strokeDasharray="3 3" label={{ value: '매입단가', fill: COLORS.buyPrice, fontSize: 10, position: 'insideRight' }} />
+                                            )}
                                         </ComposedChart>
                                     </ResponsiveContainer>
                                 )}
@@ -281,8 +299,15 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                             <div className="h-16 mt-2 border-t border-slate-50 relative">
                                 <span className="absolute top-1 left-0 text-[10px] text-slate-400 font-bold">거래량</span>
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <ComposedChart data={displayData}>
+                                    <ComposedChart data={displayData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} syncId="stockDetail">
                                         <Bar dataKey="volume" fill="#cbd5e1" />
+                                        {/* Hidden YAxis to match Price Chart margin/width */}
+                                        <YAxis
+                                            orientation="right"
+                                            tick={false}
+                                            axisLine={false}
+                                            tickLine={false}
+                                        />
                                     </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
