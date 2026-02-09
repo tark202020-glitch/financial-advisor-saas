@@ -449,11 +449,11 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                             </div>
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                                    <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
                                         매도 하한 목표
                                         {lowerRate !== null && (
-                                            <span className={`ml-2 text-xs font-normal ${lowerRate >= 0 ? 'text-red-500' : 'text-blue-600'}`}>
-                                                ({lowerRate > 0 ? '+' : ''}{lowerRate.toFixed(2)}%)
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${lowerRate >= 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                {lowerRate > 0 ? '+' : ''}{lowerRate.toFixed(2)}%
                                             </span>
                                         )}
                                     </label>
@@ -462,14 +462,15 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                         value={targetLower}
                                         onChange={(e) => setTargetLower(e.target.value)}
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-bold text-lg text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        placeholder="목표가 입력"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                                    <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
                                         매도 상한 목표
                                         {upperRate !== null && (
-                                            <span className={`ml-2 text-xs font-normal ${upperRate >= 0 ? 'text-red-500' : 'text-blue-600'}`}>
-                                                ({upperRate > 0 ? '+' : ''}{upperRate.toFixed(2)}%)
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${upperRate >= 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                {upperRate > 0 ? '+' : ''}{upperRate.toFixed(2)}%
                                             </span>
                                         )}
                                     </label>
@@ -478,6 +479,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                         value={targetUpper}
                                         onChange={(e) => setTargetUpper(e.target.value)}
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 font-bold text-lg text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                        placeholder="목표가 입력"
                                     />
                                 </div>
                             </div>
