@@ -1,18 +1,17 @@
 "use client";
 
 import React, { useMemo, useEffect, useState } from 'react';
-import { usePortfolio } from '@/context/PortfolioContext';
+import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import { useWebSocketContext } from '@/context/WebSocketContext';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell } from 'recharts';
-
-type TabType = 'lower' | 'upper';
+import StockDetailChartModal from '../modals/StockDetailChartModal';
 
 export default function TargetProximityBlock() {
     const { assets } = usePortfolio();
     const { subscribe, lastData } = useWebSocketContext();
 
-    // Tab State
-    const [activeTab, setActiveTab] = useState<TabType>('lower');
+    // Modal State
+    const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
     // Progressive Loading State
     const [initialPrices, setInitialPrices] = useState<Map<string, number>>(new Map());
@@ -74,10 +73,10 @@ export default function TargetProximityBlock() {
                     if (res.ok) {
                         let price = 0;
                         if (asset.category === 'US') {
-                            // KIS Overseas API (Already unwrapped by route handler): last / base / clos
+                            // KIS Overseas API
                             price = parseFloat(data.last || data.base || data.clos || 0);
                         } else {
-                            // Domestic API (Already unwrapped by route handler): stck_prpr / stck_sdpr
+                            // Domestic API
                             price = parseInt(data.stck_prpr || 0);
                             // Fallback to Previous Close (stck_sdpr) if current is 0
                             if (price === 0) {
@@ -147,27 +146,19 @@ export default function TargetProximityBlock() {
             // --- Upper Target Processing ---
             if (asset.targetPriceUpper) {
                 const dist = ((asset.targetPriceUpper - currentPrice) / currentPrice) * 100;
-                // Only show positive remaining distance? Or show all?
-                // Usually "Proximity" means how close.
-                // Let's show all that have a target.
                 upperList.push({
                     name: asset.name,
                     symbol: asset.symbol,
                     currentPrice,
                     target: asset.targetPriceUpper,
-                    distance: dist, // Positive means room to grow. Negative means overshoot?
+                    distance: dist,
                     displayDist: dist.toFixed(2),
-                    barValue: 100 - Math.min(Math.abs(dist), 100) // Visual score? 
-                    // Let's use simple distance for bar. Shorter bar = Closer? 
-                    // Or Longer bar = Closer? 
-                    // Let's stick to "Remaining %". 
+                    assetObj: asset // Keep reference for modal
                 });
             }
 
             // --- Lower Target Processing ---
             if (asset.targetPriceLower) {
-                // How far is current from lower? 
-                // formatted: (Current - Lower) / Current * 100
                 const dist = ((currentPrice - asset.targetPriceLower) / currentPrice) * 100;
                 lowerList.push({
                     name: asset.name,
@@ -176,6 +167,7 @@ export default function TargetProximityBlock() {
                     target: asset.targetPriceLower,
                     distance: dist,
                     displayDist: dist.toFixed(2),
+                    assetObj: asset // Keep reference for modal
                 });
             }
 
@@ -191,16 +183,19 @@ export default function TargetProximityBlock() {
         return { lowerData: lowerList, upperData: upperList, processingLogs: logs };
     }, [assets, lastData, initialPrices]);
 
-    const activeData = activeTab === 'lower' ? lowerData : upperData;
-    const barColor = activeTab === 'lower' ? '#3b82f6' : '#ef4444'; // Blue / Red
+    const handleBarClick = (data: any) => {
+        if (data && data.assetObj) {
+            setSelectedAsset(data.assetObj);
+        }
+    };
 
-    const CustomTooltip = ({ active, payload, label }: any) => {
+    const CustomTooltip = ({ active, payload, type }: any) => {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
-            const isLower = activeTab === 'lower';
+            const isLower = type === 'lower';
             return (
                 <div className="bg-white p-3 border border-slate-200 shadow-lg rounded-lg text-xs z-50">
-                    <p className="font-bold mb-1 text-slate-800">{label}</p>
+                    <p className="font-bold mb-1 text-slate-800">{data.name}</p>
                     <p className="text-slate-600">현재가: <span className="font-mono">{data.currentPrice.toLocaleString()}</span></p>
                     <p className={isLower ? "text-blue-600" : "text-red-500"}>
                         {isLower ? "하한목표" : "상한목표"}: {data.target.toLocaleString()}
@@ -211,6 +206,9 @@ export default function TargetProximityBlock() {
                             {Math.abs(data.distance).toFixed(2)}%
                         </span>
                         {data.distance < 0 && <span className="text-xs text-red-400 ml-1">(도달/초과)</span>}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-2 text-center border-t pt-1">
+                        클릭하여 상세 보기
                     </p>
                 </div>
             );
@@ -247,102 +245,115 @@ export default function TargetProximityBlock() {
     }
 
     return (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative animate-in fade-in zoom-in duration-500">
-            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                    <span className="text-indigo-600">🎯</span> 목표가 달성 순위
-                </span>
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                {/* Tabs */}
-                <div className="flex bg-slate-100 p-1 rounded-lg">
-                    <button
-                        onClick={() => setActiveTab('lower')}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'lower'
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-slate-400 hover:text-slate-600'
-                            }`}
-                    >
-                        ⬇️ 하한 목표
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('upper')}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'upper'
-                                ? 'bg-white text-red-600 shadow-sm'
-                                : 'text-slate-400 hover:text-slate-600'
-                            }`}
-                    >
-                        ⬆️ 상한 목표
-                    </button>
+                {/* Block 1: Upper Target (Red) */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative animate-in fade-in zoom-in duration-500">
+                    <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <span className="text-red-500">⬆️</span> 상한 목표 달성 순위
+                    </h2>
+                    {upperData.length === 0 ? (
+                        <div className="h-[400px] flex items-center justify-center text-slate-400 text-sm">
+                            상한 목표가 설정된 종목이 없습니다.
+                        </div>
+                    ) : (
+                        <div className="h-[400px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    layout="vertical"
+                                    data={upperData}
+                                    margin={{ top: 5, right: 30, left: 30, bottom: 5 }}
+                                >
+                                    <XAxis type="number" hide />
+                                    <YAxis
+                                        dataKey="name"
+                                        type="category"
+                                        width={80}
+                                        tick={{ fontSize: 12, fill: '#475569', fontWeight: 500, cursor: 'pointer' }}
+                                        interval={0}
+                                        onClick={handleBarClick}
+                                    />
+                                    <Tooltip content={<CustomTooltip type='upper' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
+                                    <Bar dataKey="distance" barSize={20} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
+                                        {upperData.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill='#ef4444' fillOpacity={0.7} style={{ cursor: 'pointer' }} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
                 </div>
-            </h2>
+
+                {/* Block 2: Lower Target (Blue) */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative animate-in fade-in zoom-in duration-500">
+                    <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                        <span className="text-blue-500">⬇️</span> 하한 목표 달성 순위
+                    </h2>
+                    {lowerData.length === 0 ? (
+                        <div className="h-[400px] flex items-center justify-center text-slate-400 text-sm">
+                            하한 목표가 설정된 종목이 없습니다.
+                        </div>
+                    ) : (
+                        <div className="h-[400px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    layout="vertical"
+                                    data={lowerData}
+                                    margin={{ top: 5, right: 30, left: 30, bottom: 5 }}
+                                >
+                                    <XAxis type="number" hide />
+                                    <YAxis
+                                        dataKey="name"
+                                        type="category"
+                                        width={80}
+                                        tick={{ fontSize: 12, fill: '#475569', fontWeight: 500, cursor: 'pointer' }}
+                                        interval={0}
+                                        onClick={handleBarClick}
+                                    />
+                                    <Tooltip content={<CustomTooltip type='lower' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
+                                    <Bar dataKey="distance" barSize={20} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
+                                        {lowerData.map((entry: any, index: number) => (
+                                            <Cell key={`cell-${index}`} fill='#3b82f6' fillOpacity={0.7} style={{ cursor: 'pointer' }} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    )}
+                </div>
+            </div>
 
             {/* Debug Info Condensed */}
             {(processingLogs.length > 0) && (
-                <details className="mb-4 text-xs text-slate-400 cursor-pointer">
-                    <summary>📋 데이터 리포트 (제외된 종목 포함)</summary>
-                    <div className="mt-2 text-slate-500 max-h-32 overflow-y-auto bg-slate-50 p-2 rounded border border-slate-100">
-                        {fetchErrors.length > 0 && (
-                            <div className="mb-2 pb-2 border-b border-red-100 text-red-500">
-                                <strong>⚠ API 오류:</strong>
-                                <ul className="list-disc list-inside">
-                                    {fetchErrors.map((e, i) => <li key={i}>{e}</li>)}
-                                </ul>
-                            </div>
-                        )}
-                        <ul className="list-disc list-inside">
-                            {processingLogs.map((log, idx) => <li key={idx}>{log}</li>)}
-                        </ul>
-                    </div>
-                </details>
+                <div className="bg-white rounded-xl p-4 border border-slate-200">
+                    <details className="text-xs text-slate-400 cursor-pointer">
+                        <summary>📋 데이터 리포트 (제외된 종목 포함)</summary>
+                        <div className="mt-2 text-slate-500 max-h-32 overflow-y-auto bg-slate-50 p-2 rounded border border-slate-100">
+                            {fetchErrors.length > 0 && (
+                                <div className="mb-2 pb-2 border-b border-red-100 text-red-500">
+                                    <strong>⚠ API 오류:</strong>
+                                    <ul className="list-disc list-inside">
+                                        {fetchErrors.map((e, i) => <li key={i}>{e}</li>)}
+                                    </ul>
+                                </div>
+                            )}
+                            <ul className="list-disc list-inside">
+                                {processingLogs.map((log, idx) => <li key={idx}>{log}</li>)}
+                            </ul>
+                        </div>
+                    </details>
+                </div>
             )}
 
-            {/* Empty State for current tab */}
-            {activeData.length === 0 ? (
-                <div className="h-[400px] flex flex-col items-center justify-center text-slate-400 text-sm">
-                    <p>설정된 {activeTab === 'lower' ? '하한' : '상한'} 목표가가 없습니다.</p>
-                </div>
-            ) : (
-                /* Chart Container */
-                <div className="h-[500px] w-full">
-                    <p className="text-xs text-right text-slate-400 mb-2">
-                        * 남은 거리가 짧을수록(0%) 상단에 위치합니다.
-                    </p>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                            layout="vertical"
-                            data={activeData}
-                            margin={{ top: 5, right: 40, left: 40, bottom: 5 }}
-                        >
-                            <XAxis type="number" hide />
-                            <YAxis
-                                dataKey="name"
-                                type="category"
-                                width={100}
-                                tick={{ fontSize: 12, fill: '#475569', fontWeight: 500 }}
-                                interval={0}
-                            />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
-
-                            {/* Simple Bar showing "Distance" - wait, we want to visualize proximity. 
-                                Maybe limit the bar length to max 100%?
-                                If distance is small, bar should be LONG? Or SHORT?
-                                Usually "Proximity" means closer is fuller. 
-                                Let's try: Bar Length = 100 - Distance (Clamped at 0).
-                                If distance is 5%, Bar is 95%.
-                                If distance is 50%, Bar is 50%.
-                                If distance is 0%, Bar is 100%.
-                            */}
-                            <Bar dataKey="distance" barSize={20} radius={[0, 4, 4, 0]}>
-                                {activeData.map((entry: any, index: number) => {
-                                    // Visualizing Distance directly?
-                                    // If we visualize distance, shorter bar = closer.
-                                    // Let's do that. It's more honest.
-                                    return <Cell key={`cell-${index}`} fill={barColor} fillOpacity={0.7} />;
-                                })}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+            {/* Modal */}
+            {selectedAsset && (
+                <StockDetailChartModal
+                    isOpen={!!selectedAsset}
+                    onClose={() => setSelectedAsset(null)}
+                    asset={selectedAsset}
+                />
             )}
         </div>
     );

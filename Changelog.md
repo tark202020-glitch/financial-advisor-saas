@@ -1,3 +1,12 @@
+## [Alpha V1.114] - 2026-02-09 21:40:00
+
+### 📊 Feature: Stock Insights UX Improvements
+- **Summary**: Improved chart layout and interaction for Target Price Proximity.
+- **Detail**:
+  - **Layout**: 기존 탭(Tab) 방식에서 **상한/하한 목표 블록 분리(Grid)** 방식으로 변경하여 두 정보를 한 눈에 파악 가능.
+  - **Interaction**: 차트(막대/라벨) 클릭 시 **[종목 상세 모달]**이 호출되어 즉시 상세 분석 가능.
+- **Build Time**: 2026-02-09 21:40:00
+
 ## [Alpha V1.113] - 2026-02-09 21:15:00
 
 ### 📊 Feature: Split Target Graphs (Lower/Upper)
