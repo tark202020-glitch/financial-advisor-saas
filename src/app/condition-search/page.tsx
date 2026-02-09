@@ -212,7 +212,7 @@ export default function ConditionSearchPage() {
         minOpGrowth: 5,
         maxDebt: 200,
         maxPER: 20,
-        minDividend: 0 // Not fully supported yet in backend but let's keep it
+        minRevenue: 0 // Min Revenue (Unit: 억, e.g. 1000 = 1000억)
     });
     const [simpleResults, setSimpleResults] = useState<any[]>([]);
     const [isSimpleLoading, setIsSimpleLoading] = useState(false);
@@ -221,11 +221,12 @@ export default function ConditionSearchPage() {
         setIsSimpleLoading(true);
         try {
             const query = new URLSearchParams({
-                limit: '30', // Top 30 for speed
+                limit: '30',
                 minOpMargin: simpleConditions.minOpMargin.toString(),
                 minOpGrowth: simpleConditions.minOpGrowth.toString(),
                 maxDebt: simpleConditions.maxDebt.toString(),
-                maxPER: simpleConditions.maxPER.toString()
+                maxPER: simpleConditions.maxPER.toString(),
+                minRevenue: simpleConditions.minRevenue.toString()
             });
             const res = await fetch(`/api/kis/ranking/simple?${query.toString()}`);
             if (!res.ok) throw new Error("Failed");
@@ -316,6 +317,19 @@ export default function ConditionSearchPage() {
                                 className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                             />
                         </div>
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-medium text-slate-700">
+                                <label>최소 매출액 (억원)</label>
+                                <span className="text-blue-600">{simpleConditions.minRevenue.toLocaleString()}억 이상</span>
+                            </div>
+                            <input
+                                type="range" min="0" max="100000" step="1000"
+                                value={simpleConditions.minRevenue}
+                                onChange={(e) => setSimpleConditions({ ...simpleConditions, minRevenue: parseInt(e.target.value) })}
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            />
+                        </div>
                     </div>
 
                     {/* Results Table */}
@@ -329,12 +343,14 @@ export default function ConditionSearchPage() {
                                     <th className="px-4 py-3 text-right">영업이익률</th>
                                     <th className="px-4 py-3 text-right">증가율</th>
                                     <th className="px-4 py-3 text-right">부채비율</th>
+                                    <th className="px-4 py-3 text-right">매출액</th>
+                                    <th className="px-4 py-3 text-right">배당률</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 bg-white">
                                 {simpleResults.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                                        <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
                                             {isSimpleLoading ? '조건 만족 종목을 검색하고 있습니다...' : '검색 결과가 없습니다.'}
                                         </td>
                                     </tr>
@@ -347,6 +363,8 @@ export default function ConditionSearchPage() {
                                             <td className="px-4 py-3 text-right text-blue-600 font-medium">{item.operating_profit_margin}%</td>
                                             <td className="px-4 py-3 text-right text-red-600 font-medium">{item.operating_profit_growth}%</td>
                                             <td className="px-4 py-3 text-right text-slate-600">{item.debt_ratio}%</td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{(item.revenue || 0).toLocaleString()}억</td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{item.dividend_yield || 0}%</td>
                                         </tr>
                                     ))
                                 )}

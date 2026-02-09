@@ -9,6 +9,16 @@
   - **Default**: 페이지 진입 시 **삼성전자(005930)** 데이터를 기본 조회하여 사용자 편의성 제공.
 - **Build Time**: 2026-02-09 23:30:00
 
+## [Alpha V1.119] - 2026-02-09 23:05:00
+
+### 🚀 Feature: HTS 0330 Enhanced Filters
+- **Summary**: Added Revenue and Dividend Yield support.
+- **Detail**:
+  - **Revenue**: Added "Min Revenue" slider and column.
+  - **Dividend**: Added Dividend Yield (currently placeholder until API confirmation) column.
+  - **Format**: Improved number formatting (e.g. 1,000억).
+- **Build Time**: 2026-02-09 23:05:00
+
 ## [Alpha V1.118] - 2026-02-09 22:55:00
 
 ### 🚀 Feature: HTS 0330 Condition Search
