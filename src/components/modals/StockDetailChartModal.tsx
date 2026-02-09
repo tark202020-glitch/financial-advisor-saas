@@ -47,7 +47,7 @@ interface CandleData {
 }
 
 export default function StockDetailModal({ isOpen, onClose, asset }: StockDetailModalProps) {
-    const { updateAsset, removeAsset, addTradeLog, removeTradeLog } = usePortfolio();
+    const { updateAsset, removeAsset, addTradeLog, updateTradeLog, removeTradeLog } = usePortfolio();
     const stockLive = useStockPrice(asset.symbol, 0, 'KR');
 
     // Local State for Chart
@@ -72,6 +72,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
         memo: ''
     });
     const [isAddingLog, setIsAddingLog] = useState(false);
+    const [editingTradeId, setEditingTradeId] = useState<number | null>(null);
     // --- Effects ---
 
     // 1. Fetch Chart Data
@@ -150,6 +151,32 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
         }
     }, [isOpen, asset]);
 
+    // 2. Auto-fetch KOSPI for New Trade Date
+    useEffect(() => {
+        if ((isAddingLog || editingTradeId) && newTrade.date) {
+            const dateStr = newTrade.date.replace(/-/g, "");
+            fetch(`/api/kis/index/domestic/0001?startDate=${dateStr}&endDate=${dateStr}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data) && data.length > 0) {
+                        // Finding exact match
+                        const match = data.find((d: any) => d.stck_bsop_date === dateStr);
+                        if (match) {
+                            setNewTrade(prev => ({ ...prev, kospiIndex: match.bstp_nmix_prpr }));
+                        } else {
+                            // If today is holiday or weekend, might be empty or previous close. 
+                            // Just clear or keep existing? Let's clear if strictly not found?
+                            // User wants "automatically recorded".
+                            setNewTrade(prev => ({ ...prev, kospiIndex: '' }));
+                        }
+                    } else {
+                        setNewTrade(prev => ({ ...prev, kospiIndex: '' }));
+                    }
+                })
+                .catch(e => console.error(e));
+        }
+    }, [newTrade.date, isAddingLog, editingTradeId]);
+
     // --- Handlers ---
 
     const handleSaveGoals = () => {
@@ -160,17 +187,23 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
         });
     };
 
-    const handleAddTrade = async () => {
+    const handleSaveTrade = async () => {
         if (!newTrade.price || !newTrade.quantity) return;
 
-        await addTradeLog(asset.id, {
+        const tradeData = {
             date: newTrade.date,
             type: newTrade.type,
             price: Number(newTrade.price),
             quantity: Number(newTrade.quantity),
             kospiIndex: newTrade.kospiIndex ? Number(newTrade.kospiIndex) : undefined,
             memo: newTrade.memo
-        });
+        };
+
+        if (editingTradeId) {
+            await updateTradeLog(editingTradeId, asset.id, tradeData);
+        } else {
+            await addTradeLog(asset.id, tradeData);
+        }
 
         setNewTrade({
             date: new Date().toISOString().split('T')[0],
@@ -181,6 +214,20 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
             memo: ''
         });
         setIsAddingLog(false);
+        setEditingTradeId(null);
+    };
+
+    const handleEditTrade = (trade: any) => {
+        setNewTrade({
+            date: trade.date,
+            type: trade.type,
+            price: trade.price.toString(),
+            quantity: trade.quantity.toString(),
+            kospiIndex: trade.kospiIndex || trade.kospi_index || '', // Handle different prop names
+            memo: trade.memo || ''
+        });
+        setEditingTradeId(trade.id);
+        setIsAddingLog(true);
     };
 
     const handleDeleteTrade = async (tradeId: number) => {
@@ -211,6 +258,44 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
     const profitLoss = currentValuation - totalPurchase;
     const returnRate = (profitLoss / totalPurchase) * 100;
     const isPositive = profitLoss >= 0;
+
+    // Out of bounds Logic for ReferenceLine
+    const chartMax = displayData.length > 0 ? Math.max(...displayData.map(d => d.high)) : 0;
+    const chartMin = displayData.length > 0 ? Math.min(...displayData.map(d => d.low)) : 0;
+
+    // Safety buffer for auto domain (approx 5-10%)
+    const domainMax = chartMax * 1.05;
+    const domainMin = chartMin * 0.95;
+
+    let purchaseLineY = asset.pricePerShare;
+    let purchaseLineLabel = `매입단가 ${asset.pricePerShare.toLocaleString()}`;
+    let isOutOfBounds = false;
+
+    if (asset.pricePerShare > domainMax) {
+        purchaseLineY = chartMax; // Pin to top
+        purchaseLineLabel = `매입단가 ${asset.pricePerShare.toLocaleString()} (▼)`; // Purchase is higher, so it's above chart. Wait.
+        // User said: "매입단가가 그래프의 세로축 범위 밖에 있다면--> 그래프 최 하단 또는 최상단에 매입단가와 실가격을 표기"
+        // If PricePerShare (57,170) > ChartMax (say 50,000). The line should be at TOP.
+        // Label should indicate it's above. (▲) might be confusing if looking at chart. 
+        // Let's use text only: "매입단가 57,170 (범위 밖 ▲)"
+        purchaseLineLabel = `매입단가 ${asset.pricePerShare.toLocaleString()} (▲)`;
+        isOutOfBounds = true;
+    } else if (asset.pricePerShare < domainMin) {
+        purchaseLineY = chartMin; // Pin to bottom
+        purchaseLineLabel = `매입단가 ${asset.pricePerShare.toLocaleString()} (▼)`;
+        isOutOfBounds = true;
+    }
+
+    // Goal Return Rates
+    const getGoalRate = (target: string) => {
+        if (!target || !asset.pricePerShare) return null;
+        const t = parseInt(target.replace(/,/g, ''));
+        if (isNaN(t)) return null;
+        const r = ((t - asset.pricePerShare) / asset.pricePerShare) * 100;
+        return r;
+    };
+    const lowerRate = getGoalRate(targetLower);
+    const upperRate = getGoalRate(targetUpper);
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -288,7 +373,19 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
 
                                             {/* Avg Purchase Price Line */}
                                             {asset.pricePerShare > 0 && (
-                                                <ReferenceLine y={asset.pricePerShare} stroke={COLORS.buyPrice} strokeDasharray="3 3" label={{ value: '매입단가', fill: COLORS.buyPrice, fontSize: 10, position: 'insideRight' }} />
+                                                <ReferenceLine
+                                                    y={purchaseLineY}
+                                                    stroke={COLORS.buyPrice}
+                                                    strokeDasharray="3 3"
+                                                    label={{
+                                                        value: purchaseLineLabel,
+                                                        fill: COLORS.buyPrice,
+                                                        fontSize: 11,
+                                                        fontWeight: 'bold',
+                                                        position: isOutOfBounds ? 'insideBottomRight' : 'insideRight',
+                                                        dy: isOutOfBounds && purchaseLineY === chartMax ? 10 : (isOutOfBounds && purchaseLineY === chartMin ? -10 : -10)
+                                                    }}
+                                                />
                                             )}
                                         </ComposedChart>
                                     </ResponsiveContainer>
@@ -352,7 +449,14 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                             </div>
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">매도 하한 목표</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                                        매도 하한 목표
+                                        {lowerRate !== null && (
+                                            <span className={`ml-2 text-xs font-normal ${lowerRate >= 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                                                ({lowerRate > 0 ? '+' : ''}{lowerRate.toFixed(2)}%)
+                                            </span>
+                                        )}
+                                    </label>
                                     <input
                                         type="number"
                                         value={targetLower}
@@ -361,7 +465,14 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">매도 상한 목표</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                                        매도 상한 목표
+                                        {upperRate !== null && (
+                                            <span className={`ml-2 text-xs font-normal ${upperRate >= 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                                                ({upperRate > 0 ? '+' : ''}{upperRate.toFixed(2)}%)
+                                            </span>
+                                        )}
+                                    </label>
                                     <input
                                         type="number"
                                         value={targetUpper}
@@ -407,11 +518,17 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                     <label className="text-xs text-slate-500 mb-1 block">수량</label>
                                     <input type="number" placeholder="0" value={newTrade.quantity} onChange={e => setNewTrade({ ...newTrade, quantity: e.target.value })} className="w-full p-2 rounded border" />
                                 </div>
-                                <div>
-                                    <label className="text-xs text-slate-500 mb-1 block">메모</label>
-                                    <input type="text" placeholder="메모" value={newTrade.memo} onChange={e => setNewTrade({ ...newTrade, memo: e.target.value })} className="w-full p-2 rounded border" />
+                                <div className="col-span-2">
+                                    <label className="text-xs text-slate-500 mb-1 block">메모 / KOSPI</label>
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="메모" value={newTrade.memo} onChange={e => setNewTrade({ ...newTrade, memo: e.target.value })} className="w-full p-2 rounded border flex-1" />
+                                        <input type="text" placeholder="KOSPI" value={newTrade.kospiIndex} onChange={e => setNewTrade({ ...newTrade, kospiIndex: e.target.value })} className="w-20 p-2 rounded border bg-slate-100 text-xs" />
+                                    </div>
                                 </div>
-                                <button onClick={handleAddTrade} className="bg-indigo-600 text-white p-2 rounded font-bold hover:bg-indigo-700">저장</button>
+                                <div className="flex gap-1">
+                                    <button onClick={handleSaveTrade} className="bg-indigo-600 text-white p-2 rounded font-bold hover:bg-indigo-700 flex-1">{editingTradeId ? '수정' : '저장'}</button>
+                                    {editingTradeId && <button onClick={() => { setIsAddingLog(false); setEditingTradeId(null); }} className="bg-slate-300 text-slate-700 p-2 rounded font-bold hover:bg-slate-400">취소</button>}
+                                </div>
                             </div>
                         )}
 
@@ -444,8 +561,9 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                             </div>
                                             <div className="text-center">{trade.quantity}</div>
                                             <div className="truncate text-slate-500">{trade.memo || '-'}</div>
-                                            <div className="text-right">
-                                                <button onClick={() => handleDeleteTrade(trade.id)} className="text-slate-400 hover:text-red-500 text-xs">삭제</button>
+                                            <div className="text-right flex gap-2 justify-end">
+                                                <button onClick={() => handleEditTrade(trade)} className="text-slate-400 hover:text-indigo-600 text-xs"><Edit3 size={12} /></button>
+                                                <button onClick={() => handleDeleteTrade(trade.id)} className="text-slate-400 hover:text-red-500 text-xs"><Trash2 size={12} /></button>
                                             </div>
                                         </div>
                                     ))

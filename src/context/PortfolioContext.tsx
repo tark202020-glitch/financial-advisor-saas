@@ -43,6 +43,7 @@ interface PortfolioContextType {
     removeAsset: (id: number) => Promise<void>;
     updateAsset: (id: number, updates: Partial<Asset>) => Promise<void>;
     addTradeLog: (assetId: number, trade: Omit<TradeRecord, 'id'>) => Promise<void>;
+    updateTradeLog: (tradeId: number, assetId: number, updates: Partial<Omit<TradeRecord, 'id'>>) => Promise<void>;
     removeTradeLog: (tradeId: number, assetId: number) => Promise<void>;
     logout: () => Promise<void>;
     refreshPortfolio: () => Promise<void>;
@@ -98,6 +99,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                             type: t.type,
                             price: t.price,
                             quantity: t.quantity,
+                            kospiIndex: t.kospi_index, // Map from DB
                             memo: t.memo
                         })).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()) : []
                     }));
@@ -221,7 +223,8 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                     price: t.price,
                     quantity: t.quantity,
                     trade_date: t.date,
-                    memo: t.kospiIndex ? `${t.memo || ''} [KOSPI:${t.kospiIndex}]` : t.memo
+                    kospi_index: t.kospiIndex, // Insert KOSPI
+                    memo: t.memo
                 }));
 
                 const { error: tradeError } = await supabase
@@ -287,6 +290,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 price: trade.price,
                 quantity: trade.quantity,
                 trade_date: trade.date,
+                kospi_index: trade.kospiIndex, // Insert KOSPI
                 memo: trade.memo
             });
 
@@ -301,12 +305,73 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         } catch (e) { console.error(e); }
     };
 
+    // CRUD: Update Trade Log (New)
+    const updateTradeLog = async (tradeId: number, assetId: number, updates: Partial<Omit<TradeRecord, 'id'>>) => {
+        if (!user) return;
+        try {
+            const dbUpdates: any = {};
+            if (updates.date) dbUpdates.trade_date = updates.date;
+            if (updates.type) dbUpdates.type = updates.type;
+            if (updates.price) dbUpdates.price = updates.price;
+            if (updates.quantity) dbUpdates.quantity = updates.quantity;
+            if (updates.kospiIndex !== undefined) dbUpdates.kospi_index = updates.kospiIndex;
+            if (updates.memo !== undefined) dbUpdates.memo = updates.memo;
+
+            const { error } = await supabase
+                .from('trade_logs')
+                .update(dbUpdates)
+                .eq('id', tradeId);
+
+            if (error) throw error;
+
+            // Recalculate asset quantity if quantity/type changed? 
+            // This is complex because we need previous value. 
+            // For now, assume simpler use case or just re-fetch.
+            // Actually, if we change trade quantity, we MUST update portfolio quantity.
+            // But doing it robustly requires recalculation from scratch or diff.
+            // Simplest: Re-fetch entire portfolio and let backend triggers handle it?
+            // No, Supabase doesn't have triggers for this.
+            // We should ideally recalculate quantity from all trades.
+
+            // Let's recalculate asset quantity from scratch for accuracy
+            const { data: allTrades } = await supabase
+                .from('trade_logs')
+                .select('type, quantity')
+                .eq('portfolio_id', assetId);
+
+            if (allTrades) {
+                const newTotal = allTrades.reduce((acc: number, t: any) => {
+                    return acc + (t.type === 'BUY' ? t.quantity : -t.quantity);
+                }, 0);
+
+                await supabase.from('portfolios').update({ quantity: newTotal }).eq('id', assetId);
+            }
+
+            await fetchPortfolio(user.id);
+        } catch (e) { console.error(e); }
+    };
+
     // CRUD: Remove Trade Log
     const removeTradeLog = async (tradeId: number, assetId: number) => {
         if (!user) return;
         try {
             const { error } = await supabase.from('trade_logs').delete().eq('id', tradeId);
             if (error) throw error;
+
+            // Recalculate asset quantity
+            const { data: allTrades } = await supabase
+                .from('trade_logs')
+                .select('type, quantity')
+                .eq('portfolio_id', assetId);
+
+            if (allTrades) {
+                const newTotal = allTrades.reduce((acc: number, t: any) => {
+                    return acc + (t.type === 'BUY' ? t.quantity : -t.quantity);
+                }, 0);
+
+                await supabase.from('portfolios').update({ quantity: newTotal }).eq('id', assetId);
+            }
+
             await fetchPortfolio(user.id);
         } catch (e) { console.error(e); }
     };
@@ -341,6 +406,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             removeAsset,
             updateAsset,
             addTradeLog,
+            updateTradeLog,
             removeTradeLog,
             logout,
             refreshPortfolio,
