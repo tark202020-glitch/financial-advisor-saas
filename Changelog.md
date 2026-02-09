@@ -9,6 +9,16 @@
   - **Default**: 페이지 진입 시 **삼성전자(005930)** 데이터를 기본 조회하여 사용자 편의성 제공.
 - **Build Time**: 2026-02-09 23:30:00
 
+## [Alpha V1.121] - 2026-02-09 23:35:00
+
+### 🐛 Fix: Condition Search 500 Error
+- **Summary**: Fixed API crash in Condition Search (HTS 0330).
+- **Detail**:
+  - **Backend**: Rewrote `ranking/simple` API to robustly handle range parameters and KIS API errors.
+  - **Revenue**: Added missing `minRevenue` filtering logic.
+  - **Stability**: Added safety checks for `fetchFinancials` to prevent server errors.
+- **Build Time**: 2026-02-09 23:35:00
+
 ## [Alpha V1.120] - 2026-02-09 23:20:00
 
 ### 🚀 Feature: HTS 0330 Range Search

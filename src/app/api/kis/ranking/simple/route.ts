@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
     getAccessToken,
-    fetchGenericFinance,
     BASE_URL,
     APP_KEY,
     APP_SECRET,
@@ -34,9 +33,6 @@ async function fetchFinancials(symbol: string, token: string) {
     // 3. Stability (FHKST66430300)
     // 4. Income (Income Statement) for Revenue
 
-    // We use Promise.all for parallelism within single stock
-    // Using limited depth to avoid recursion issues
-
     const headers = {
         "content-type": "application/json",
         "authorization": `Bearer ${token}`,
@@ -46,24 +42,34 @@ async function fetchFinancials(symbol: string, token: string) {
     };
 
     const fetchAPI = async (tr_id: string, path: string) => {
-        return kisRateLimiter.add(() => fetch(`${BASE_URL}${path}?FID_COND_MRKT_DIV_CODE=J&FID_DIV_CLS_CODE=0&fid_input_iscd=${symbol}`, {
-            headers: { ...headers, tr_id }
-        }).then(res => res.json()));
+        try {
+            return await kisRateLimiter.add(async () => {
+                const res = await fetch(`${BASE_URL}${path}?FID_COND_MRKT_DIV_CODE=J&FID_DIV_CLS_CODE=0&fid_input_iscd=${symbol}`, {
+                    headers: { ...headers, tr_id }
+                });
+                if (!res.ok) {
+                    throw new Error(`API ${tr_id} Failed: ${res.status}`);
+                }
+                return res.json();
+            });
+        } catch (e) {
+            console.warn(`Fetch failed for ${symbol} / ${tr_id}`, e);
+            return { output: [] }; // Return empty output structure on fail
+        }
     };
 
     try {
         const [growthRes, profitRes, stabilityRes, incomeRes] = await Promise.all([
-            fetchAPI("FHKST66430800", "/uapi/domestic-stock/v1/finance/growth-ratio"),
-            fetchAPI("FHKST66430400", "/uapi/domestic-stock/v1/finance/profit-ratio"),
-            fetchAPI("FHKST66430300", "/uapi/domestic-stock/v1/finance/financial-ratio"),
-            fetchAPI("FHKST66430200", "/uapi/domestic-stock/v1/finance/income-statement")
+            fetchAPI("FHKST66430800", "/uapi/domestic-stock/v1/finance/growth-ratio"), // Growth
+            fetchAPI("FHKST66430400", "/uapi/domestic-stock/v1/finance/profit-ratio"), // Profit
+            fetchAPI("FHKST66430300", "/uapi/domestic-stock/v1/finance/financial-ratio"), // Stability
+            fetchAPI("FHKST66430200", "/uapi/domestic-stock/v1/finance/income-statement") // Income
         ]);
 
         // Helper to get latest year value
         const getLatest = (res: any, key: string) => {
-            if (!res.output || !Array.isArray(res.output) || res.output.length === 0) return 0;
-            // Usually index 0 is latest? Or sorted? KIS returns e.g. 2023, 2022...
-            // Let's assume index 0 is most recent.
+            if (!res || !res.output || !Array.isArray(res.output) || res.output.length === 0) return 0;
+            // KIS returns sorted by date usually, 0 is latest
             return parseFloat(res.output[0][key] || '0');
         };
 
@@ -83,14 +89,24 @@ async function fetchFinancials(symbol: string, token: string) {
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '30'); // Default Top 30
+    // Lower default limit to prevent timeouts if user doesn't specify
+    const limit = parseInt(searchParams.get('limit') || '20');
 
-    // Thresholds
-    const minOpMargin = parseFloat(searchParams.get('minOpMargin') || '-999');
-    const minOpGrowth = parseFloat(searchParams.get('minOpGrowth') || '-999');
+    // Thresholds (Ranges)
+    const minOpMargin = parseFloat(searchParams.get('minOpMargin') || '-9999');
+    const maxOpMargin = parseFloat(searchParams.get('maxOpMargin') || '9999');
+
+    const minOpGrowth = parseFloat(searchParams.get('minOpGrowth') || '-9999');
+    const maxOpGrowth = parseFloat(searchParams.get('maxOpGrowth') || '9999');
+
+    const minDebt = parseFloat(searchParams.get('minDebt') || '-9999');
     const maxDebt = parseFloat(searchParams.get('maxDebt') || '9999');
+
+    const minPER = parseFloat(searchParams.get('minPER') || '0');
     const maxPER = parseFloat(searchParams.get('maxPER') || '9999');
-    const minDividend = parseFloat(searchParams.get('minDividend') || '-999');
+
+    const minRevenue = parseFloat(searchParams.get('minRevenue') || '0');
+    const maxRevenue = parseFloat(searchParams.get('maxRevenue') || '99999999'); // Default huge
 
     try {
         const token = await getAccessToken();
@@ -103,10 +119,15 @@ export async function GET(request: NextRequest) {
                 "authorization": `Bearer ${token}`,
                 "appkey": APP_KEY!,
                 "appsecret": APP_SECRET!,
-                "tr_id": "FHPST01740000", // Check exact TR_ID for Market Cap Ranking
+                "tr_id": "FHPST01740000",
                 "custtype": "P"
             }
         }));
+
+        if (!rankingRes.ok) {
+            console.error("Ranking API Failed", await rankingRes.text());
+            return NextResponse.json({ error: "Ranking API Failed" }, { status: 500 });
+        }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let candidates: any[] = [];
@@ -125,47 +146,49 @@ export async function GET(request: NextRequest) {
                 market_cap: parseInt(item.stck_avls || item.lstn_stcn)
             }));
         } else {
-            // Fallback if ranking fails: default list
-            candidates = [
-                { symbol: '005930', name: '삼성전자', price: 0, per: 0, pbr: 0, dividend_yield: 0, market_cap: 0 },
-                { symbol: '000660', name: 'SK하이닉스', price: 0, per: 0, pbr: 0, dividend_yield: 0, market_cap: 0 }
-            ];
+            console.warn("No output from Ranking API");
+            candidates = [];
         }
 
         const results: ConditionStock[] = [];
 
         // 2. Fetch Details for each candidate
-        // We do this in chunks to avoid hitting rate rate limits too hard even with limiter
         for (const stock of candidates) {
-            // Basic Price Info (PER, Dividend) - if not in ranking
-            // Market Cap ranking API typically returns minimal info.
-            // Let's assume we need to re-fetch price to get accurate PER/Dividend if needed.
+            try {
+                // Fetch Financials
+                const financials = await fetchFinancials(stock.symbol, token);
+                // If financials fail, we skip validation for now or skip stock? 
+                // Let's skip stock to be safe (strict mode)
+                if (!financials) continue;
 
-            // Fetch Financials
-            const financials = await fetchFinancials(stock.symbol, token);
-            if (!financials) continue;
+                const finalStock: ConditionStock = {
+                    ...stock,
+                    ...financials,
+                    dividend_yield: 0
+                };
 
-            const finalStock: ConditionStock = {
-                ...stock,
-                ...financials,
-                // We use ranking PER if available, otherwise 0
-                dividend_yield: 0 // Need inquiry-price for accurate dividend if not in ranking
-            };
+                // 3. Apply Filter (Ranges)
+                if (finalStock.operating_profit_margin < minOpMargin || finalStock.operating_profit_margin > maxOpMargin) continue;
+                if (finalStock.operating_profit_growth < minOpGrowth || finalStock.operating_profit_growth > maxOpGrowth) continue;
+                if (finalStock.debt_ratio < minDebt || finalStock.debt_ratio > maxDebt) continue;
 
-            // 3. Apply Filter
-            if (finalStock.operating_profit_margin < minOpMargin) continue;
-            if (finalStock.operating_profit_growth < minOpGrowth) continue;
-            if (finalStock.debt_ratio > maxDebt) continue;
-            if (finalStock.per > maxPER) continue;
-            // if (finalStock.dividend_yield < minDividend) continue; // Dividend data missing for now
+                // PER Check (handle 0 or invalid)
+                if (finalStock.per < minPER || finalStock.per > maxPER) continue;
 
-            results.push(finalStock);
+                // Revenue Check
+                if (finalStock.revenue < minRevenue || finalStock.revenue > maxRevenue) continue;
+
+                results.push(finalStock);
+            } catch (innerErr) {
+                console.error(`Error processing stock ${stock.symbol}`, innerErr);
+                continue;
+            }
         }
 
         return NextResponse.json(results);
 
     } catch (e: any) {
-        console.error(e);
-        return NextResponse.json({ error: e.message }, { status: 500 });
+        console.error("Global Error in Simple Search:", e);
+        return NextResponse.json({ error: e.message || "Internal Server Error" }, { status: 500 });
     }
 }
