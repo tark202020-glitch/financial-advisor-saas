@@ -57,6 +57,17 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
     // Local State for KOSPI Index Map
     const [kospiMap, setKospiMap] = useState<Record<string, string>>({});
 
+    // Local State for Index Comparison
+    const [showIndexComparison, setShowIndexComparison] = useState(false);
+    const [currentIndex, setCurrentIndex] = useState<number | null>(null);
+    const [benchmarkName, setBenchmarkName] = useState<string>('KOSPI'); // Default
+
+    // Logic for Benchmark
+    const getBenchmarkInfo = (category: string) => {
+        if (category === 'US') return { symbol: 'SPX', name: 'S&P 500', api: '/api/kis/index/overseas/SPX' };
+        return { symbol: '0001', name: 'KOSPI', api: '/api/kis/index/domestic/0001' };
+    };
+
     // Local State for Inputs (Goals)
     const [memo, setMemo] = useState(asset.memo || '');
     const [targetLower, setTargetLower] = useState(asset.targetPriceLower?.toString() || '');
@@ -115,58 +126,79 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
             setTargetLower(asset.targetPriceLower?.toString() || '');
             setTargetUpper(asset.targetPriceUpper?.toString() || '');
 
-            // Fetch KOSPI History for Trades
+            // Determine Benchmark
+            const benchmark = getBenchmarkInfo(asset.category);
+            setBenchmarkName(benchmark.name);
+
+            // Fetch Benchmark History for Trades
             if (asset.trades && asset.trades.length > 0) {
-                // Find Min/Max Date
                 const dates = asset.trades.map(t => new Date(t.date).getTime());
                 const minTime = Math.min(...dates);
-                // If max trade is old, we need range up to it.
-                // Let's use range [minDate, maxDate] or [minDate, today].
 
                 const minDate = new Date(minTime).toISOString().slice(0, 10).replace(/-/g, "");
-
-                // Calculate Max Date usage KST (UTC+9) to ensure we cover 'today' even in early morning KST
                 const now = new Date();
                 const kstDate = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-                const maxDate = kstDate.toISOString().slice(0, 10).replace(/-/g, ""); // Fetch up to today KST
+                const maxDate = kstDate.toISOString().slice(0, 10).replace(/-/g, "");
 
-                // Fetch KOSPI (0001)
-                fetch(`/api/kis/index/domestic/0001?startDate=${minDate}&endDate=${maxDate}`)
+                const fetchUrl = `${benchmark.api}?startDate=${minDate}&endDate=${maxDate}`;
+
+                fetch(fetchUrl)
                     .then(res => res.json())
                     .then(data => {
                         if (Array.isArray(data)) {
                             const map: Record<string, string> = {};
+                            let latestVal: number | null = null;
+                            let latestDate = "";
+
                             data.forEach((item: any) => {
-                                // item.stck_bsop_date is YYYYMMDD
-                                // We need YYYY-MM-DD to match trade.date
-                                const d = item.stck_bsop_date;
-                                const formattedDate = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-                                map[formattedDate] = item.bstp_nmix_prpr;
+                                const date = item.stck_bsop_date;
+                                const val = item.bstp_nmix_prpr || item.ovrs_nmix_prpr || item.clpr;
+
+                                if (date && val) {
+                                    const formattedDate = `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`;
+                                    map[formattedDate] = val;
+                                    if (date > latestDate) {
+                                        latestDate = date;
+                                        latestVal = parseFloat(val);
+                                    }
+                                }
                             });
                             setKospiMap(map);
+                            if (latestVal) setCurrentIndex(latestVal);
                         }
                     })
-                    .catch(e => console.error("Failed to fetch KOSPI history:", e));
+                    .catch(e => console.error("Failed to fetch Index history:", e));
+            } else {
+                const nowKst = new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, "");
+                fetch(`${benchmark.api}?startDate=${nowKst}&endDate=${nowKst}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (Array.isArray(data) && data.length > 0) {
+                            const item = data[0];
+                            const val = item.bstp_nmix_prpr || item.ovrs_nmix_prpr || item.clpr;
+                            if (val) setCurrentIndex(parseFloat(val));
+                        }
+                    })
+                    .catch(e => console.error("Failed to fetch current index:", e));
             }
         }
     }, [isOpen, asset]);
 
-    // 2. Auto-fetch KOSPI for New Trade Date
+    // 2. Auto-fetch Index for New Trade Date (Manual Entry)
     useEffect(() => {
         if ((isAddingLog || editingTradeId) && newTrade.date) {
+            const benchmark = getBenchmarkInfo(asset.category);
             const dateStr = newTrade.date.replace(/-/g, "");
-            fetch(`/api/kis/index/domestic/0001?startDate=${dateStr}&endDate=${dateStr}`)
+
+            fetch(`${benchmark.api}?startDate=${dateStr}&endDate=${dateStr}`)
                 .then(res => res.json())
                 .then(data => {
                     if (Array.isArray(data) && data.length > 0) {
-                        // Finding exact match
                         const match = data.find((d: any) => d.stck_bsop_date === dateStr);
                         if (match) {
-                            setNewTrade(prev => ({ ...prev, kospiIndex: match.bstp_nmix_prpr }));
+                            const val = match.bstp_nmix_prpr || match.ovrs_nmix_prpr || match.clpr;
+                            setNewTrade(prev => ({ ...prev, kospiIndex: val }));
                         } else {
-                            // If today is holiday or weekend, might be empty or previous close. 
-                            // Just clear or keep existing? Let's clear if strictly not found?
-                            // User wants "automatically recorded".
                             setNewTrade(prev => ({ ...prev, kospiIndex: '' }));
                         }
                     } else {
@@ -175,7 +207,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                 })
                 .catch(e => console.error(e));
         }
-    }, [newTrade.date, isAddingLog, editingTradeId]);
+    }, [newTrade.date, isAddingLog, editingTradeId, asset.category]);
 
     // --- Handlers ---
 
@@ -430,6 +462,59 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                     {profitLoss.toLocaleString()}
                                     <span className="text-lg ml-2 font-medium">{isPositive ? '▲' : '▼'} {Math.abs(returnRate).toFixed(2)}%</span>
                                 </div>
+                                <button
+                                    onClick={() => setShowIndexComparison(!showIndexComparison)}
+                                    className="mt-4 text-xs font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition"
+                                >
+                                    {showIndexComparison ? '▲ 접기' : '▼ 지수변화 참조'}
+                                </button>
+
+                                {showIndexComparison && (
+                                    <div className="mt-4 bg-slate-50 rounded-xl p-4 border border-slate-200 text-sm animate-in fade-in zoom-in-95 duration-200">
+                                        <h4 className="font-bold text-slate-700 mb-2 text-xs flex justify-between">
+                                            <span>{benchmarkName} 지수 비교</span>
+                                            <span className="text-slate-500 font-normal">현재 지수: {currentIndex ? currentIndex.toLocaleString() : '-'}</span>
+                                        </h4>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-right text-xs">
+                                                <thead>
+                                                    <tr className="text-slate-500 border-b border-slate-200">
+                                                        <th className="pb-2 text-left">일자</th>
+                                                        <th className="pb-2">매수가</th>
+                                                        <th className="pb-2">현재가</th>
+                                                        <th className="pb-2">지수(당시)</th>
+                                                        <th className="pb-2">지수(현재)</th>
+                                                        <th className="pb-2">주가%</th>
+                                                        <th className="pb-2">지수%</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {asset.trades?.filter((t: any) => t.type === 'BUY').map((trade: any, idx: number) => {
+                                                        const buyIndex = trade.kospiIndex ? Number(trade.kospiIndex) : (kospiMap[trade.date] ? Number(kospiMap[trade.date]) : null);
+                                                        const stockReturn = trade.price ? ((currentPrice - trade.price) / trade.price) * 100 : 0;
+                                                        const indexReturn = (buyIndex && currentIndex) ? ((currentIndex - buyIndex) / buyIndex) * 100 : null;
+
+                                                        return (
+                                                            <tr key={trade.id || idx} className="hover:bg-slate-100 transition">
+                                                                <td className="py-2 text-left font-mono whitespace-nowrap">{trade.date}</td>
+                                                                <td className="py-2">{trade.price.toLocaleString()}</td>
+                                                                <td className="py-2">{currentPrice.toLocaleString()}</td>
+                                                                <td className="py-2">{buyIndex ? buyIndex.toLocaleString() : '-'}</td>
+                                                                <td className="py-2">{currentIndex ? currentIndex.toLocaleString() : '-'}</td>
+                                                                <td className={`py-2 font-bold ${stockReturn >= 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                                                                    {stockReturn.toFixed(2)}%
+                                                                </td>
+                                                                <td className={`py-2 font-bold ${indexReturn !== null ? (indexReturn >= 0 ? 'text-red-500' : 'text-blue-600') : 'text-slate-400'}`}>
+                                                                    {indexReturn !== null ? `${indexReturn.toFixed(2)}%` : '-'}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
