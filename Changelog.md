@@ -1,3 +1,13 @@
+## [Alpha V1.112.1] - 2026-02-09 20:45:00
+
+### 🚑 Hotfix: Price Fetching (Zero Price)
+- **Summary**: Fix 'Price returns 0' issue on Stock Insights page.
+- **Detail**:
+  - **Issue**: 장 종료 후 또는 특정 상황에서 현재가(`stck_prpr` / `last`)가 0으로 반환되어 차트에서 제외되는 현상.
+  - **Fix**: 현재가가 0일 경우 전일 종가(`stck_sdpr` / `base`)를 대체 가격으로 사용하여 차트 표시 보장.
+  - **Debug**: 가격이 여전히 0일 경우 Raw Data를 로그에 남겨 원인 파악 용이하게 함.
+- **Build Time**: 2026-02-09 20:45:00
+
 ## [Alpha V1.112] - 2026-02-09 19:38:00
 
 ### 📊 Feature: Stock Insights (Target Proximity)
