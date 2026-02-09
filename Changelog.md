@@ -9,6 +9,16 @@
   - **Default**: 페이지 진입 시 **삼성전자(005930)** 데이터를 기본 조회하여 사용자 편의성 제공.
 - **Build Time**: 2026-02-09 23:30:00
 
+## [Alpha V1.120] - 2026-02-09 23:20:00
+
+### 🚀 Feature: HTS 0330 Range Search
+- **Summary**: Upgraded Condition Search to use Range (Min/Max) filters.
+- **Detail**:
+  - **New UI**: Replaced sliders with Min/Max input fields for precise filtering.
+  - **Cleanup**: Removed old "Condition 1" section.
+  - **Reliability**: Improved backend error handling for search results.
+- **Build Time**: 2026-02-09 23:20:00
+
 ## [Alpha V1.119] - 2026-02-09 23:05:00
 
 ### 🚀 Feature: HTS 0330 Enhanced Filters
