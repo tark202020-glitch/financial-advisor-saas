@@ -1,10 +1,11 @@
 import { KisTokenResponse, KisDomStockPrice, KisOvStockPrice, KisResponse, KisDomIndexPrice, KisWebSocketApprovalResponse, KisIndexChartResponse, KisMarketCapItem } from './types';
 import { getUSExchangeCode } from './exchange';
 import { kisRateLimiter } from './rateLimiter';
+export { kisRateLimiter };
 
-const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
-const APP_KEY = process.env.KIS_APP_KEY;
-const APP_SECRET = process.env.KIS_APP_SECRET;
+export const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
+export const APP_KEY = process.env.KIS_APP_KEY;
+export const APP_SECRET = process.env.KIS_APP_SECRET;
 const CANO = process.env.KIS_CANO;
 const ACNT_PRDT_CD = process.env.KIS_ACNT_PRDT_CD || "01";
 
@@ -637,7 +638,7 @@ export async function getDailyPriceHistory(symbol: string): Promise<KisCandleDat
 }
 
 
-async function fetchGenericFinance(tr_id: string, path: string, symbol: string): Promise<any | null> {
+export async function fetchGenericFinance(tr_id: string, path: string, symbol: string): Promise<any | null> {
     try {
         const token = await getAccessToken();
         const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}${path}?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}&FID_DIV_CLS_CODE=1`, {

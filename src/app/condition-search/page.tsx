@@ -206,6 +206,39 @@ export default function ConditionSearchPage() {
         fetchOpinion();
     }, []);
 
+    // HTS 0330 State
+    const [simpleConditions, setSimpleConditions] = useState({
+        minOpMargin: 10,
+        minOpGrowth: 5,
+        maxDebt: 200,
+        maxPER: 20,
+        minDividend: 0 // Not fully supported yet in backend but let's keep it
+    });
+    const [simpleResults, setSimpleResults] = useState<any[]>([]);
+    const [isSimpleLoading, setIsSimpleLoading] = useState(false);
+
+    const fetchSimpleSearch = async () => {
+        setIsSimpleLoading(true);
+        try {
+            const query = new URLSearchParams({
+                limit: '30', // Top 30 for speed
+                minOpMargin: simpleConditions.minOpMargin.toString(),
+                minOpGrowth: simpleConditions.minOpGrowth.toString(),
+                maxDebt: simpleConditions.maxDebt.toString(),
+                maxPER: simpleConditions.maxPER.toString()
+            });
+            const res = await fetch(`/api/kis/ranking/simple?${query.toString()}`);
+            if (!res.ok) throw new Error("Failed");
+            const data = await res.json();
+            setSimpleResults(Array.isArray(data) ? data : []);
+        } catch (e) {
+            console.error(e);
+            setSimpleResults([]);
+        } finally {
+            setIsSimpleLoading(false);
+        }
+    };
+
     return (
         <SidebarLayout>
             <div className="p-8 pb-32 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -213,6 +246,115 @@ export default function ConditionSearchPage() {
                     <h1 className="text-3xl font-bold text-slate-900 mb-2">조건검색</h1>
                     <p className="text-slate-500">원하는 조건으로 주식을 검색해보세요. (KOSPI 대상)</p>
                 </header>
+
+                {/* HTS 0330 Simple Condition Search */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                        <div className="flex items-center gap-2">
+                            <div className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">HTS 0330</div>
+                            <h2 className="text-xl font-bold text-slate-800">사용자 간편조건검색 (저평가 가치주)</h2>
+                        </div>
+                        <button
+                            onClick={fetchSimpleSearch}
+                            disabled={isSimpleLoading}
+                            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 shadow-md shadow-blue-100"
+                        >
+                            {isSimpleLoading ? '검색 중 (Top 30)...' : '조건검색 실행'}
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Sliders */}
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-medium text-slate-700">
+                                <label>영업이익률 (최근결산)</label>
+                                <span className="text-blue-600">{simpleConditions.minOpMargin}% 이상</span>
+                            </div>
+                            <input
+                                type="range" min="-20" max="50" step="1"
+                                value={simpleConditions.minOpMargin}
+                                onChange={(e) => setSimpleConditions({ ...simpleConditions, minOpMargin: parseInt(e.target.value) })}
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-medium text-slate-700">
+                                <label>영업이익 증가율</label>
+                                <span className="text-blue-600">{simpleConditions.minOpGrowth}% 이상</span>
+                            </div>
+                            <input
+                                type="range" min="-20" max="50" step="1"
+                                value={simpleConditions.minOpGrowth}
+                                onChange={(e) => setSimpleConditions({ ...simpleConditions, minOpGrowth: parseInt(e.target.value) })}
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-medium text-slate-700">
+                                <label>부채비율</label>
+                                <span className="text-blue-600">{simpleConditions.maxDebt}% 이하</span>
+                            </div>
+                            <input
+                                type="range" min="0" max="500" step="10"
+                                value={simpleConditions.maxDebt}
+                                onChange={(e) => setSimpleConditions({ ...simpleConditions, maxDebt: parseInt(e.target.value) })}
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-medium text-slate-700">
+                                <label>PER (배)</label>
+                                <span className="text-blue-600">{simpleConditions.maxPER}배 이하</span>
+                            </div>
+                            <input
+                                type="range" min="0" max="100" step="1"
+                                value={simpleConditions.maxPER}
+                                onChange={(e) => setSimpleConditions({ ...simpleConditions, maxPER: parseInt(e.target.value) })}
+                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Results Table */}
+                    <div className="overflow-hidden border border-slate-200 rounded-xl">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                                <tr>
+                                    <th className="px-4 py-3">종목명</th>
+                                    <th className="px-4 py-3 text-right">현재가</th>
+                                    <th className="px-4 py-3 text-right">PER</th>
+                                    <th className="px-4 py-3 text-right">영업이익률</th>
+                                    <th className="px-4 py-3 text-right">증가율</th>
+                                    <th className="px-4 py-3 text-right">부채비율</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 bg-white">
+                                {simpleResults.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                                            {isSimpleLoading ? '조건 만족 종목을 검색하고 있습니다...' : '검색 결과가 없습니다.'}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    simpleResults.map((item, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-50">
+                                            <td className="px-4 py-3 font-medium text-slate-900">{item.name} <span className="text-slate-400 text-xs ml-1">{item.symbol}</span></td>
+                                            <td className="px-4 py-3 text-right font-bold">{item.price?.toLocaleString()}</td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{item.per} 배</td>
+                                            <td className="px-4 py-3 text-right text-blue-600 font-medium">{item.operating_profit_margin}%</td>
+                                            <td className="px-4 py-3 text-right text-red-600 font-medium">{item.operating_profit_growth}%</td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{item.debt_ratio}%</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p className="text-xs text-slate-400 text-right">* API 속도 제한으로 시가총액 상위 30개 종목 내에서 검색합니다.</p>
+                </div>
 
                 {/* HTS 0640 Section */}
                 <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">

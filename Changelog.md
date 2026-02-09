@@ -9,6 +9,16 @@
   - **Default**: 페이지 진입 시 **삼성전자(005930)** 데이터를 기본 조회하여 사용자 편의성 제공.
 - **Build Time**: 2026-02-09 23:30:00
 
+## [Alpha V1.118] - 2026-02-09 22:55:00
+
+### 🚀 Feature: HTS 0330 Condition Search
+- **Summary**: Implemented simple condition search functionality.
+- **Detail**:
+  - **Ranking**: Filter by Op Margin, Growth, Debt, PER.
+  - **Data**: Real-time KIS API integration for 5 key metrics.
+  - **UI**: Added sliders for condition adjustment.
+- **Build Time**: 2026-02-09 22:55:00
+
 ## [Alpha V1.117] - 2026-02-09 22:50:00
 
 ### 🐛 Fix: Condition Search
