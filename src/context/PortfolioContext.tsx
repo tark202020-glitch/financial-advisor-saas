@@ -189,6 +189,57 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         };
     }, [initialUser, user, fetchPortfolio, supabase]); // Re-run if server passes new user (e.g. after login redirect)
 
+    // Helper: Recalculate Average Price & Quantity
+    const recalculateAssetMetrics = async (assetId: number) => {
+        try {
+            const { data: trades, error } = await supabase
+                .from('trade_logs')
+                .select('*')
+                .eq('portfolio_id', assetId)
+                .order('trade_date', { ascending: true })
+                .order('created_at', { ascending: true }); // Secondary sort for same day trades
+
+            if (error || !trades) return;
+
+            let currentQty = 0;
+            let currentTotalCost = 0;
+
+            for (const trade of trades) {
+                const qty = Number(trade.quantity);
+                const price = Number(trade.price);
+
+                if (trade.type === 'BUY') {
+                    currentTotalCost += price * qty;
+                    currentQty += qty;
+                } else if (trade.type === 'SELL') {
+                    if (currentQty > 0) {
+                        const avgPrice = currentTotalCost / currentQty;
+                        currentTotalCost -= avgPrice * qty;
+                        currentQty -= qty;
+                    } else {
+                        currentQty -= qty;
+                    }
+                }
+            }
+
+            // Prevent negative zero or precision errors
+            if (currentQty <= 0) {
+                currentQty = 0;
+                currentTotalCost = 0;
+            }
+
+            const finalAvgPrice = currentQty > 0 ? (currentTotalCost / currentQty) : 0;
+
+            await supabase.from('portfolios').update({
+                quantity: currentQty,
+                buy_price: finalAvgPrice
+            }).eq('id', assetId);
+
+        } catch (e) {
+            console.error("Error recalculating metrics:", e);
+        }
+    };
+
     // CRUD: Add Asset
     const addAsset = async (newAsset: Omit<Asset, 'id'>) => {
         if (!user) {
@@ -223,7 +274,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                     price: t.price,
                     quantity: t.quantity,
                     trade_date: t.date,
-                    kospi_index: t.kospiIndex, // Insert KOSPI
+                    kospi_index: t.kospiIndex,
                     memo: t.memo
                 }));
 
@@ -232,6 +283,9 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                     .insert(tradesToInsert);
 
                 if (tradeError) throw tradeError;
+
+                // Recalculate immediately
+                await recalculateAssetMetrics(portfolioData.id);
             }
 
             await fetchPortfolio(user.id);
@@ -290,17 +344,11 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 price: trade.price,
                 quantity: trade.quantity,
                 trade_date: trade.date,
-                kospi_index: trade.kospiIndex, // Insert KOSPI
+                kospi_index: trade.kospiIndex,
                 memo: trade.memo
             });
 
-            const asset = assets.find(a => a.id === assetId);
-            if (asset) {
-                const change = trade.type === 'BUY' ? trade.quantity : -trade.quantity;
-                const newQty = Number(asset.quantity) + Number(change);
-                await supabase.from('portfolios').update({ quantity: newQty }).eq('id', assetId);
-            }
-
+            await recalculateAssetMetrics(assetId);
             await fetchPortfolio(user.id);
         } catch (e) { console.error(e); }
     };
@@ -324,29 +372,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
 
             if (error) throw error;
 
-            // Recalculate asset quantity if quantity/type changed? 
-            // This is complex because we need previous value. 
-            // For now, assume simpler use case or just re-fetch.
-            // Actually, if we change trade quantity, we MUST update portfolio quantity.
-            // But doing it robustly requires recalculation from scratch or diff.
-            // Simplest: Re-fetch entire portfolio and let backend triggers handle it?
-            // No, Supabase doesn't have triggers for this.
-            // We should ideally recalculate quantity from all trades.
-
-            // Let's recalculate asset quantity from scratch for accuracy
-            const { data: allTrades } = await supabase
-                .from('trade_logs')
-                .select('type, quantity')
-                .eq('portfolio_id', assetId);
-
-            if (allTrades) {
-                const newTotal = allTrades.reduce((acc: number, t: any) => {
-                    return acc + (t.type === 'BUY' ? t.quantity : -t.quantity);
-                }, 0);
-
-                await supabase.from('portfolios').update({ quantity: newTotal }).eq('id', assetId);
-            }
-
+            await recalculateAssetMetrics(assetId);
             await fetchPortfolio(user.id);
         } catch (e) { console.error(e); }
     };
@@ -358,20 +384,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             const { error } = await supabase.from('trade_logs').delete().eq('id', tradeId);
             if (error) throw error;
 
-            // Recalculate asset quantity
-            const { data: allTrades } = await supabase
-                .from('trade_logs')
-                .select('type, quantity')
-                .eq('portfolio_id', assetId);
-
-            if (allTrades) {
-                const newTotal = allTrades.reduce((acc: number, t: any) => {
-                    return acc + (t.type === 'BUY' ? t.quantity : -t.quantity);
-                }, 0);
-
-                await supabase.from('portfolios').update({ quantity: newTotal }).eq('id', assetId);
-            }
-
+            await recalculateAssetMetrics(assetId);
             await fetchPortfolio(user.id);
         } catch (e) { console.error(e); }
     };
