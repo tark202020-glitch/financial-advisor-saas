@@ -1,3 +1,13 @@
+## [Alpha V1.116] - 2026-02-09 22:20:00
+
+### 📊 Feature: Portfolio Composition Analysis
+- **Summary**: Added 'Portfolio Composition' block to Stock Insights.
+- **Detail**:
+  - **Pie Chart**: 보유 자산의 평가금액 비중을 도넛 차트로 시각화.
+  - **Top 5 List**: 평가금액 또는 수익률 기준으로 상위 5개 종목을 리스팅.
+  - **Filters**: 국내/해외/전체 및 금액순/수익률순 필터링 기능 제공.
+- **Build Time**: 2026-02-09 22:20:00
+
 ## [Alpha V1.115] - 2026-02-09 21:50:00
 
 ### 🚨 UX Enhancement: Urgent Target Highlight

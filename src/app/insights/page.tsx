@@ -1,6 +1,7 @@
 "use client";
 
 import SidebarLayout from "@/components/SidebarLayout";
+import PortfolioCompositionBlock from "@/components/insights/PortfolioCompositionBlock";
 import TargetProximityBlock from "@/components/insights/TargetProximityBlock";
 
 export default function InsightsPage() {
@@ -12,7 +13,12 @@ export default function InsightsPage() {
                     <p className="text-slate-500 mt-2">보유 종목의 다양한 분석 정보를 한눈에 확인하세요.</p>
                 </header>
 
-                {/* Block 1: Target Price Proximity */}
+                {/* Block 1: Portfolio Composition (Pie Chart & Top 5) */}
+                <section>
+                    <PortfolioCompositionBlock />
+                </section>
+
+                {/* Block 2: Target Price Proximity */}
                 <section>
                     <TargetProximityBlock />
                 </section>
