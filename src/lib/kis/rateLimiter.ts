@@ -60,5 +60,5 @@ export class RateLimiter {
 }
 
 // Global instance
-// Limit to 3 concurrent requests, with at least 300ms between start times to be safe
-export const kisRateLimiter = new RateLimiter(3, 300);
+// Using 10 concurrent, 50ms interval => ~20 req/sec (KIS Standard limit)
+export const kisRateLimiter = new RateLimiter(10, 50);

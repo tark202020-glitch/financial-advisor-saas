@@ -9,6 +9,16 @@
   - **Default**: 페이지 진입 시 **삼성전자(005930)** 데이터를 기본 조회하여 사용자 편의성 제공.
 - **Build Time**: 2026-02-09 23:30:00
 
+## [Alpha V1.122] - 2026-02-09 23:55:00
+
+### ⚡ Performance: Condition Search Optimization
+- **Summary**: Optimized API performance to prevent 500 errors (Timeouts).
+- **Detail**:
+  - **Rate Limiter**: Relaxed throttling to allow up to ~20 requests/sec (previously ~3 req/sec).
+  - **Concurrency**: Increased parallel processing for financial data fetching.
+  - **Stability**: Enhanced error handling for individual stock data failures.
+- **Build Time**: 2026-02-09 23:55:00
+
 ## [Alpha V1.121] - 2026-02-09 23:35:00
 
 ### 🐛 Fix: Condition Search 500 Error
