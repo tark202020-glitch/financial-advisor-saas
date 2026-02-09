@@ -276,9 +276,19 @@ export default function TargetProximityBlock() {
                                     />
                                     <Tooltip content={<CustomTooltip type='upper' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
                                     <Bar dataKey="distance" barSize={20} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
-                                        {upperData.map((entry: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill='#ef4444' fillOpacity={0.7} style={{ cursor: 'pointer' }} />
-                                        ))}
+                                        {upperData.map((entry: any, index: number) => {
+                                            const isUrgent = Math.abs(entry.distance) < 10;
+                                            return (
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill='#ef4444'
+                                                    fillOpacity={isUrgent ? 1 : 0.6}
+                                                    stroke={isUrgent ? '#fbbf24' : 'none'}
+                                                    strokeWidth={isUrgent ? 3 : 0}
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                            );
+                                        })}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
@@ -314,9 +324,19 @@ export default function TargetProximityBlock() {
                                     />
                                     <Tooltip content={<CustomTooltip type='lower' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
                                     <Bar dataKey="distance" barSize={20} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
-                                        {lowerData.map((entry: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill='#3b82f6' fillOpacity={0.7} style={{ cursor: 'pointer' }} />
-                                        ))}
+                                        {lowerData.map((entry: any, index: number) => {
+                                            const isUrgent = Math.abs(entry.distance) < 10;
+                                            return (
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill='#3b82f6'
+                                                    fillOpacity={isUrgent ? 1 : 0.6}
+                                                    stroke={isUrgent ? '#fbbf24' : 'none'}
+                                                    strokeWidth={isUrgent ? 3 : 0}
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                            );
+                                        })}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>

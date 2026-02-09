@@ -1,3 +1,12 @@
+## [Alpha V1.115] - 2026-02-09 21:50:00
+
+### 🚨 UX Enhancement: Urgent Target Highlight
+- **Summary**: Visually emphasize targets within 10% range.
+- **Detail**:
+  - **Visual**: 목표가까지 남은 거리가 **10% 미만**인 경우 막대 그래프를 **진한 색상(Opacity 100%)**과 **금색 테두리(Gold Stroke)**로 강조.
+  - **Purpose**: 매수(하한) 또는 매도(상한) 타이밍이 임박했음을 시각적으로 알림.
+- **Build Time**: 2026-02-09 21:50:00
+
 ## [Alpha V1.114] - 2026-02-09 21:40:00
 
 ### 📊 Feature: Stock Insights UX Improvements
