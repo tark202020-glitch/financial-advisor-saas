@@ -553,8 +553,34 @@ export async function getGrowthRatio(symbol: string): Promise<any | null> {
     return await fetchGenericFinance("FHKST66430800", "/uapi/domestic-stock/v1/finance/growth-ratio", symbol);
 }
 
-export async function getInvestorOpinion(symbol: string): Promise<any | null> {
-    return await fetchGenericFinance("FHKST663300C0", "/uapi/domestic-stock/v1/quotations/invest-opinion", symbol);
+export async function getInvestorOpinion(symbol: string, startDate: string, endDate: string): Promise<any | null> {
+    const token = await getAccessToken();
+    // TR_ID: FHKST663300C0 (Investment Opinion)
+    // URL: invest-opinion
+
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/invest-opinion?FID_COND_MRKT_DIV_CODE=J&FID_COND_SCR_DIV_CODE=16633&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${startDate}&FID_INPUT_DATE_2=${endDate}`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "FHKST663300C0",
+            "custtype": "P"
+        },
+    }));
+
+    if (!response.ok) {
+        console.warn(`[KIS] Failed Invest Opinion for ${symbol}: ${response.status} ${response.statusText}`);
+        return null;
+    }
+
+    const data = await response.json();
+    if (data.rt_cd !== "0") {
+        console.warn(`[KIS] Error Invest Opinion ${symbol}: ${data.msg1}`);
+        return null;
+    }
+    return data.output || null;
 }
 
 export interface KisCandleData {

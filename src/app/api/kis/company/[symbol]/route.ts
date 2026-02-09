@@ -17,7 +17,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             getIncomeStatement(symbol),
             getFinancialRatio(symbol),
             getGrowthRatio(symbol),
-            getInvestorOpinion(symbol)
+            getInvestorOpinion(symbol,
+                new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().slice(0, 10).replace(/-/g, ""),
+                new Date().toISOString().slice(0, 10).replace(/-/g, "")
+            )
         ]);
 
         if (!stats) {
