@@ -38,7 +38,8 @@ async function fetchFinancials(symbol: string, token: string) {
     const fetchAPI = async (tr_id: string, path: string) => {
         try {
             return await kisRateLimiter.add(async () => {
-                const res = await fetch(`${BASE_URL}${path}?FID_COND_MRKT_DIV_CODE=J&FID_DIV_CLS_CODE=0&fid_input_iscd=${symbol}`, {
+                // NOTE: FID_INPUT_ISCD must be uppercase. FID_DIV_CLS_CODE=1 for annual data.
+                const res = await fetch(`${BASE_URL}${path}?FID_COND_MRKT_DIV_CODE=J&FID_DIV_CLS_CODE=1&FID_INPUT_ISCD=${symbol}`, {
                     headers: { ...headers, tr_id }
                 });
                 if (!res.ok) throw new Error(`Status ${res.status}`);
@@ -63,10 +64,15 @@ async function fetchFinancials(symbol: string, token: string) {
             return parseFloat(res.output[0][key] || '0');
         };
 
+        // Field mappings based on actual KIS API responses:
+        // growth-ratio: grs (매출증가율), bsop_prfi_inrt (영업이익증가율)
+        // profit-ratio: sale_totl_rate (매출총이익률, ~영업이익률 근사), sale_ntin_rate (매출순이익률)
+        // financial-ratio: lblt_rate (부채비율)
+        // income-statement: sale_account (매출액)
         return {
-            operating_profit_growth: getLatest(growthRes, 'opr_pft_grs'),
-            revenue_growth: getLatest(growthRes, 'sales_grs'),
-            operating_profit_margin: getLatest(profitRes, 'opr_pft_rt'),
+            operating_profit_growth: getLatest(growthRes, 'bsop_prfi_inrt'),
+            revenue_growth: getLatest(growthRes, 'grs'),
+            operating_profit_margin: getLatest(profitRes, 'sale_totl_rate'),
             debt_ratio: getLatest(stabilityRes, 'lblt_rate'),
             revenue: getLatest(incomeRes, 'sale_account') || getLatest(incomeRes, 'sales') || 0
         };
@@ -75,6 +81,7 @@ async function fetchFinancials(symbol: string, token: string) {
         return null;
     }
 }
+
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;

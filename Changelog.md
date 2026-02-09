@@ -1,4 +1,15 @@
-## [Alpha V1.118] - 2026-02-09 23:30:00
+## [Alpha V1.124] - 2026-02-10 07:45:00
+
+### 🐛 Critical Fix: 조건검색 장외 시간 데이터 미조회 해결
+- **Summary**: 장 마감 후(15:30~09:00) 조건검색이 작동하지 않던 근본 원인 해결.
+- **Detail**:
+  - **근본 원인 1**: KIS 시가총액 랭킹 API(`FHPST01730000`)가 장외 시간에 `rt_cd: ""`와 `output: undefined`를 반환하여 빈 배열 리턴.
+  - **해결책**: 사전 정의된 KOSPI 상위 50종목을 개별 조회하는 **Fallback 모드** 구현. 장 운영 시간에는 기존 랭킹 API, 장외에는 개별 조회 자동 전환.
+  - **근본 원인 2**: 재무 데이터 API 호출 시 파라미터명 대소문자 불일치(`fid_input_iscd` → `FID_INPUT_ISCD`) 및 응답 필드명 매핑 오류.
+  - **수정**: `FID_DIV_CLS_CODE=0` → `1`(연간), 필드명을 실제 API 응답 기준으로 교정(`opr_pft_grs` → `bsop_prfi_inrt`, `sales_grs` → `grs`, `opr_pft_rt` → `sale_totl_rate`).
+- **Build Time**: 2026-02-10 07:45:00
+
+
 
 ### 📈 Feature: Investment Opinion (HTS 0640) Integration
 - **Summary**: Added 'Investment Opinion' section to Condition Search page.
