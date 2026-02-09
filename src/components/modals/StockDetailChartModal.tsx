@@ -450,7 +450,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                                        매도 하한 목표
+                                        하한 목표
                                         {lowerRate !== null && (
                                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${lowerRate >= 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
                                                 {lowerRate > 0 ? '+' : ''}{lowerRate.toFixed(2)}%
@@ -467,7 +467,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                                        매도 상한 목표
+                                        상한 목표
                                         {upperRate !== null && (
                                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${upperRate >= 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
                                                 {upperRate > 0 ? '+' : ''}{upperRate.toFixed(2)}%

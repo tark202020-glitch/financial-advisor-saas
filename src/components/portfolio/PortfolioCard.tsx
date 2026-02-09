@@ -145,7 +145,7 @@ export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) 
                     <div className="flex gap-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex-1">
                             <label className="block text-xs text-slate-500 mb-1 flex items-center justify-between">
-                                매도 하한 목표
+                                하한 목표
                                 {getGoalRate(targetLower) !== null && (
                                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getGoalRate(targetLower)! >= 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
                                         {getGoalRate(targetLower)! > 0 ? '+' : ''}{getGoalRate(targetLower)!.toFixed(1)}%
@@ -163,7 +163,7 @@ export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) 
                         </div>
                         <div className="flex-1">
                             <label className="block text-xs text-slate-500 mb-1 flex items-center justify-between">
-                                매도 상한 목표
+                                상한 목표
                                 {getGoalRate(targetUpper) !== null && (
                                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getGoalRate(targetUpper)! >= 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
                                         {getGoalRate(targetUpper)! > 0 ? '+' : ''}{getGoalRate(targetUpper)!.toFixed(1)}%
