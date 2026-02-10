@@ -1019,39 +1019,76 @@ export async function getOverseasDailyPriceHistory(symbol: string): Promise<KisC
     const token = await getAccessToken();
     const exchangeCode = getUSExchangeCode(symbol);
 
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    // Use KST date to avoid timezone issues
+    const now = new Date();
+    const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const today = kst.toISOString().slice(0, 10).replace(/-/g, "");
 
-    // TR_ID: HHDFS76240000 (Overseas Stock Daily Price)
-    // URL: /uapi/overseas-price/v1/quotations/daily-price
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/daily-price?AUTH=&EXCD=${exchangeCode}&SYMB=${symbol}&GUBN=0&BYMD=${today}&MODP=1`, {
-        method: "GET",
-        headers: {
-            "content-type": "application/json",
-            "authorization": `Bearer ${token}`,
-            "appkey": APP_KEY!,
-            "appsecret": APP_SECRET!,
-            "tr_id": "HHDFS76240000",
-        },
-    }));
+    const fetchDaily = async (exch: string) => {
+        return await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/daily-price?AUTH=&EXCD=${exch}&SYMB=${symbol}&GUBN=0&BYMD=${today}&MODP=1`, {
+            method: "GET",
+            headers: {
+                "content-type": "application/json",
+                "authorization": `Bearer ${token}`,
+                "appkey": APP_KEY!,
+                "appsecret": APP_SECRET!,
+                "tr_id": "HHDFS76240000",
+            },
+        }));
+    };
 
-    if (!response.ok) {
-        console.error(`Failed to fetch Overseas Daily History for ${symbol}:`, await response.text());
-        return null;
+    try {
+        // 1. Initial Request
+        let response = await fetchDaily(exchangeCode);
+
+        if (!response.ok) {
+            console.error(`[OV Daily] HTTP Error for ${symbol} (${exchangeCode}):`, response.status);
+            // Retry with alternate exchange
+            const altExch = exchangeCode === 'NYS' ? 'NAS' : 'NYS';
+            response = await fetchDaily(altExch);
+            if (!response.ok) {
+                console.error(`[OV Daily] HTTP Error for ${symbol} (${altExch}):`, response.status);
+                return [];
+            }
+        }
+
+        let data = await response.json();
+
+        // 2. Check rt_cd and retry if error
+        if (data.rt_cd !== "0") {
+            console.warn(`[OV Daily] API Error for ${symbol} (${exchangeCode}): ${data.msg1}. Retrying...`);
+            const altExch = exchangeCode === 'NYS' ? 'NAS' : 'NYS';
+            const altResponse = await fetchDaily(altExch);
+            if (altResponse.ok) {
+                const altData = await altResponse.json();
+                if (altData.rt_cd === "0") {
+                    data = altData;
+                } else {
+                    console.error(`[OV Daily] Retry also failed for ${symbol}: ${altData.msg1}`);
+                    return [];
+                }
+            } else {
+                return [];
+            }
+        }
+
+        const list = data.output2 || [];
+        if (list.length === 0) {
+            console.warn(`[OV Daily] Empty data for ${symbol}`);
+            return [];
+        }
+
+        return list.map((item: any) => ({
+            stck_bsop_date: item.xymd,
+            stck_oprc: item.open,
+            stck_hgpr: item.high,
+            stck_lwpr: item.low,
+            stck_clpr: item.clos,
+            acml_vol: item.tvol
+        }));
+    } catch (error: any) {
+        console.error(`[OV Daily] Exception for ${symbol}:`, error.message);
+        return [];
     }
-
-    const data = await response.json();
-    if (data.rt_cd !== "0") {
-        console.error(`KIS API Error (OV Daily History): ${data.msg1}`);
-        return null;
-    }
-
-    const list = data.output2 || [];
-    return list.map((item: any) => ({
-        stck_bsop_date: item.xymd,
-        stck_oprc: item.open,
-        stck_hgpr: item.high,
-        stck_lwpr: item.low,
-        stck_clpr: item.clos,
-        acml_vol: item.tvol
-    }));
 }
+

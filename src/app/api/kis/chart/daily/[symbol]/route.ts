@@ -21,8 +21,9 @@ export async function GET(
             data = await getDailyPriceHistory(symbol);
         }
 
-        if (!data) {
-            return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 });
+        // Return empty array instead of 500 for no data
+        if (!data || (Array.isArray(data) && data.length === 0)) {
+            return NextResponse.json([]);
         }
 
         return NextResponse.json(data);

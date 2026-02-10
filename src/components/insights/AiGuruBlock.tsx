@@ -125,9 +125,9 @@ export default function AiGuruBlock() {
                     />
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-indigo-700 mb-1">AI 주식 도사 고래가 분석 중이여유...</h3>
+                    <h3 className="text-lg font-bold text-indigo-700 mb-1">AI 분석 리포트 작성 중...</h3>
                     <p className="text-sm text-indigo-500 animate-pulse">
-                        "잠깐만 기달려봐유, 자네 주식들 싹 훑어보고 있응께!"
+                        포트폴리오를 분석하고 맞춤형 투자 조언을 준비하고 있습니다.
                     </p>
                 </div>
             </div>
@@ -166,22 +166,19 @@ export default function AiGuruBlock() {
 
                     {hasError ? (
                         <div className="text-slate-400 text-sm">
-                            "오늘은 목이 좀 아퍼서... 나중에 다시 오슈." (조언 불러오기 실패)
+                            AI 분석 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.
                         </div>
                     ) : (
-                        <ul className="space-y-3">
+                        <div className="space-y-4">
                             {adviceList.map((item, idx) => (
-                                <li key={idx} className="flex gap-3 text-slate-700 text-sm leading-relaxed items-start">
-                                    <span className="flex-shrink-0 w-6 h-6 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center text-xs font-bold mt-0.5">
-                                        {idx + 1}
+                                <div key={idx} className="text-slate-700 text-sm leading-relaxed">
+                                    <span className="inline-block bg-indigo-50 text-indigo-600 text-xs font-medium px-2 py-0.5 rounded-md mr-2 mb-1">
+                                        {item.category}
                                     </span>
-                                    <span>
-                                        <b className="text-indigo-900 mr-1">[{item.category}]</b>
-                                        {item.text}
-                                    </span>
-                                </li>
+                                    <span>{item.text}</span>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
                     )}
                 </div>
             </div>

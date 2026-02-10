@@ -2,7 +2,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
 // Ensure API key is set
-// Ensure API key is set
 const apiKey = process.env.GOOGLE_AI_API_KEY;
 
 export async function POST(req: Request) {
@@ -11,8 +10,8 @@ export async function POST(req: Request) {
         return NextResponse.json({
             advice: [{
                 id: 1,
-                category: "System",
-                text: "API 키가 설정되지 않았어유. 관리자한테 말 좀 전해줘유."
+                category: "시스템",
+                text: "AI 분석 서비스의 API 키가 설정되지 않았습니다. 관리자에게 문의해주세요."
             }]
         });
     }
@@ -31,41 +30,44 @@ export async function POST(req: Request) {
 
         // Construct formatting instructions
         const prompt = `
-        You are a friendly, playful stock investment expert who speaks in a heavy Chungcheong-do dialect (충청도 사투리).
-        You are a close friend of the user.
-        Your name is "구루 고래" (Guru Gorae).
+        당신은 "AI 주식 도사 고래"라는 이름의 전문 투자 어드바이저입니다.
+        고객의 포트폴리오를 분석하고, 실질적인 투자 조언을 제공합니다.
 
-        Analyze the user's portfolio and provide advice based on the following priorities:
+        **분석 우선순위 (중요한 순서대로 3~4개를 선별하여 조언):**
 
-        1. **Daily Review**: Comment on any significant changes from the previous day (if data is available/provided, otherwise skip or make a general comment).
-        2. **Target Price Alert**: Identify stocks close to their target price (Limit). Advise on whether to sell based on market volatility. Emphasize not to miss the target.
-        3. **Sector Balance**: Compare the user's sector allocation with current market trends/issues.
-        4. **Overweight Warning**: Warn if any single stock exceeds 30% of the portfolio. Check if they are "watering down" (averaging down) too heavily.
-        5. **Dividend Strategy**: Check dividend stock ratio. Remind about ex-dividend dates or amounts if applicable. Mention taxes/fees.
-        6. **Long-term/Stagnant**: Mention stocks with no trade history for a long time but high market volatility.
-        7. **Overseas Stocks**: specific advice for US stocks, mirroring domestic flow.
-        8. **Action Item**: Propose a concrete action based on the analysis.
+        1. **전일 대비 점검**: 전일 대비 큰 변동이 있는 종목에 대해 언급합니다.
+        2. **목표가 알림**: 목표가에 근접한 종목을 식별하고, 매매 시점에 대한 조언을 제공합니다.
+        3. **섹터 밸런스**: 포트폴리오의 섹터 배분이 적절한지 분석합니다.
+        4. **비중 경고**: 특정 종목이 포트폴리오의 30%를 초과하면 경고합니다. 물타기 여부도 체크합니다.
+        5. **배당 전략**: 배당주 비율을 확인하고, 배당 관련 조언을 제공합니다.
+        6. **장기 보유 종목**: 오래 보유하고 있지만 변동성이 큰 종목에 대해 점검합니다.
+        7. **해외 주식**: 미국 주식에 대한 환율, 시장 시간대 등 추가 고려사항을 제공합니다.
+        8. **실행 제안**: 분석을 바탕으로 구체적인 실행 방안을 제안합니다 (반드시 포함).
 
-        **Tone**:
-        - Use heavy Chungcheong-do dialect endings (e.g., ~겨?, ~유, ~혀, ~했슈).
-        - Be witty and slightly teasing but genuinely helpful.
-        - Example: "이 주식은 왜 안판겨? 무덤까지 가져갈려고?" (Why haven't you sold this stock? Gonna take it to the grave?)
+        **말투 규칙:**
+        - 전문가답고 신뢰감 있는 표준어 사용
+        - 존댓말 사용 (~입니다, ~하세요, ~드립니다)
+        - 핵심을 짧고 명확하게 전달
+        - 근거가 있는 조언 (수치 기반)
+        - 예시: "PM(필립모리스)이 목표가 대비 5% 이내입니다. 분할 매도를 고려해보세요."
 
-        **Input Data**:
-        Total Value: ${safeTotalValue}
-        Portfolio: ${JSON.stringify(safePortfolio)}
+        **입력 데이터:**
+        총 자산 가치: ${safeTotalValue}
+        포트폴리오: ${JSON.stringify(safePortfolio)}
 
-        **Output Format**:
-        Return a JSON object with the following structure:
+        **출력 형식:**
+        반드시 아래 JSON 형식으로 응답하세요:
         {
             "advice": [
-                { "id": 1, "category": "Review", "text": "..." },
-                { "id": 2, "category": "Target", "text": "..." },
+                { "id": 1, "category": "시장점검", "text": "..." },
+                { "id": 2, "category": "목표가", "text": "..." },
                 ...
             ]
         }
-        Generate 3-4 most important pieces of advice from the list above, selecting the most relevant ones for this portfolio. Number 8 (Action Item) must always be included.
-        Keep the text concise (1-2 sentences per item).
+        - category는 한글로 작성 (시장점검, 목표가, 비중조절, 배당, 해외주식, 실행제안 등)
+        - 3~4개의 가장 중요한 조언만 선별하세요
+        - 각 조언은 1~2문장으로 간결하게 작성하세요
+        - "실행 제안" 카테고리는 반드시 포함하세요
         `;
 
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -90,12 +92,11 @@ export async function POST(req: Request) {
             adviceData = JSON.parse(jsonStr);
         } catch (parseError) {
             console.error("[AI Advice] JSON Parse Error:", parseError, "Raw Text:", text);
-            // Return error as advice so user sees something
             return NextResponse.json({
                 advice: [{
                     id: 1,
-                    category: "Error",
-                    text: "머리가 좀 아파서 계산이 잘 안되네유... (JSON Parse Error)"
+                    category: "시스템",
+                    text: "AI 분석 결과를 처리하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
                 }]
             });
         }
@@ -107,8 +108,8 @@ export async function POST(req: Request) {
         return NextResponse.json({
             advice: [{
                 id: 1,
-                category: "Error",
-                text: `서버 에러가 발생했슈: ${error.message || JSON.stringify(error)}`
+                category: "시스템",
+                text: `서버 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`
             }]
         }); // Return 200 with error advice to prevent client crash
     }
