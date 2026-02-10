@@ -68,6 +68,12 @@ export default function PortfolioCompositionBlock() {
     }, [assets, subscribe]);
 
     const [viewMode, setViewMode] = useState<'ASSET' | 'SECTOR'>('ASSET');
+    const [selectedSector, setSelectedSector] = useState<string | null>(null);
+
+    // Reset selection when view mode changes
+    useEffect(() => {
+        setSelectedSector(null);
+    }, [viewMode]);
 
     // Data Processing
     const processedData = useMemo(() => {
@@ -105,7 +111,7 @@ export default function PortfolioCompositionBlock() {
     }, [assets, initialPrices, lastData]);
 
     // Filtering & Sorting
-    const { chartData, top10Data, totalPortfolioValue } = useMemo(() => {
+    const { chartData, top10Data, totalPortfolioValue, sectorAssets } = useMemo(() => {
         let filtered = processedData;
 
         // 1. Filter Market
@@ -123,7 +129,8 @@ export default function PortfolioCompositionBlock() {
         const totalValue = filtered.reduce((sum, item) => sum + item.totalValue, 0);
 
         // 3. Top 10 for List (Always Assets)
-        const top10 = filtered.slice(0, 10);
+        let top10 = filtered.slice(0, 10);
+        let sectorAssetList: any[] = [];
 
         // 4. Data for Pie Chart
         let finalPie: any[] = [];
@@ -172,10 +179,17 @@ export default function PortfolioCompositionBlock() {
             } else {
                 finalPie = sectorArray;
             }
+
+            // If a sector is selected, filter assets for that sector
+            if (selectedSector) {
+                sectorAssetList = filtered.filter(item => (item.sector || '미분류') === selectedSector);
+                // Sort sector assets by total value by default
+                sectorAssetList.sort((a, b) => b.totalValue - a.totalValue);
+            }
         }
 
-        return { chartData: finalPie, top10Data: top10, totalPortfolioValue: totalValue };
-    }, [processedData, marketFilter, sortFilter, viewMode]);
+        return { chartData: finalPie, top10Data: top10, totalPortfolioValue: totalValue, sectorAssets: sectorAssetList };
+    }, [processedData, marketFilter, sortFilter, viewMode, selectedSector]);
 
     // Formatters
     const formatCurrency = (val: number, cat: string = 'KR') => {
@@ -185,6 +199,19 @@ export default function PortfolioCompositionBlock() {
     };
 
     const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b', '#06b6d4', '#84cc16', '#a855f7', '#f43f5e'];
+
+    // Handlers
+    const handlePieClick = (data: any) => {
+        if (viewMode === 'SECTOR' && data && data.name && data.name !== '기타 (Others)') {
+            setSelectedSector(data.name);
+        }
+    };
+
+    const handleSectorListClick = (sectorName: string) => {
+        if (viewMode === 'SECTOR' && sectorName !== '기타 (Others)') {
+            setSelectedSector(sectorName);
+        }
+    };
 
     if (isLoading && initialPrices.size === 0) {
         return <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-200 h-64 flex items-center justify-center text-slate-400">
@@ -266,6 +293,8 @@ export default function PortfolioCompositionBlock() {
                                 outerRadius={180}
                                 paddingAngle={2}
                                 dataKey="value"
+                                onClick={handlePieClick}
+                                style={{ cursor: viewMode === 'SECTOR' ? 'pointer' : 'default' }}
                             >
                                 {chartData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill || COLORS[index % COLORS.length]} />
@@ -288,11 +317,23 @@ export default function PortfolioCompositionBlock() {
                     </div>
                 </div>
 
-                {/* Right: Top List (Asset or Sector based on ViewMode?) */}
-                {/* User Request: "Update Pie Chart". Usually list follows chart. 
-                    Let's update list to show Sector info if ViewMode is Sector.
-                */}
-                <div className="flex flex-col gap-3">
+                {/* Right: List (Asset / Sector / Sector Details) */}
+                <div className="flex flex-col gap-3 h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+
+                    {/* Header for Sector Details */}
+                    {viewMode === 'SECTOR' && selectedSector && (
+                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+                            <button
+                                onClick={() => setSelectedSector(null)}
+                                className="p-1 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+                            >
+                                ⬅
+                            </button>
+                            <span className="font-bold text-indigo-600">{selectedSector}</span>
+                            <span className="text-xs text-slate-400">보유 종목</span>
+                        </div>
+                    )}
+
                     {viewMode === 'ASSET' ? (
                         /* Asset List */
                         top10Data.map((asset, index) => {
@@ -337,36 +378,94 @@ export default function PortfolioCompositionBlock() {
                             );
                         })
                     ) : (
-                        /* Sector List (Re-using chartData which is already sorted sector data) */
-                        chartData.map((sector: any, index: number) => {
-                            const weight = totalPortfolioValue > 0 ? (sector.value / totalPortfolioValue) * 100 : 0;
-                            return (
-                                <div key={sector.name} className="flex flex-col pb-3 border-b border-slate-100 last:border-0">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <div className="flex items-center gap-3">
-                                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${index < 3 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                {index + 1}
-                                            </span>
-                                            <span className="font-bold text-slate-800 truncate" title={sector.name}>
-                                                {sector.name}
-                                            </span>
+                        /* SECTOR MODE */
+                        selectedSector ? (
+                            /* Sector Details (Filtered Assets) */
+                            sectorAssets.length > 0 ? (
+                                sectorAssets.map((asset, index) => {
+                                    const isProfit = asset.profitLoss >= 0;
+                                    // Weight within the sector or total? Let's show weight within total for consistency, or maybe local?
+                                    // User usually cares about global impact.
+                                    const weight = totalPortfolioValue > 0 ? (asset.totalValue / totalPortfolioValue) * 100 : 0;
+
+                                    return (
+                                        <div key={asset.symbol} className="flex flex-col pb-3 border-b border-slate-100 last:border-0 animate-in fade-in slide-in-from-right-4 duration-300">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-bold text-slate-800 truncate max-w-[150px]" title={asset.name}>
+                                                        {asset.name}
+                                                    </span>
+                                                </div>
+                                                <div className="text-right font-bold text-slate-800">
+                                                    ₩{Math.round(asset.totalValue).toLocaleString()}
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs">
+                                                <div className="flex items-center gap-2 w-1/3">
+                                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full rounded-full"
+                                                            style={{ width: `${weight}%`, backgroundColor: COLORS[index % COLORS.length] }}
+                                                        />
+                                                    </div>
+                                                    <span className="text-slate-400 w-8">{weight.toFixed(1)}%</span>
+                                                </div>
+                                                <div className="flex items-center gap-4 text-right">
+                                                    <div className="text-slate-500">
+                                                        {asset.currentPrice.toLocaleString()}
+                                                    </div>
+                                                    <div className={`${isProfit ? 'text-red-500' : 'text-blue-500'} font-medium`}>
+                                                        {isProfit ? '▲' : '▼'} {Math.abs(asset.profitLoss).toLocaleString()} ({asset.returnRate.toFixed(2)}%)
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div className="text-right font-bold text-slate-800">
-                                            ₩{Math.round(sector.value).toLocaleString()}
+                                    );
+                                })
+                            ) : (
+                                <div className="text-center text-slate-400 py-10">이 업종에 해당하는 종목이 없습니다.</div>
+                            )
+                        ) : (
+                            /* Sector List (Overview) */
+                            chartData.map((sector: any, index: number) => {
+                                const weight = totalPortfolioValue > 0 ? (sector.value / totalPortfolioValue) * 100 : 0;
+                                return (
+                                    <div
+                                        key={sector.name}
+                                        className="flex flex-col pb-3 border-b border-slate-100 last:border-0 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors"
+                                        onClick={() => handleSectorListClick(sector.name)}
+                                    >
+                                        <div className="flex justify-between items-center mb-1">
+                                            <div className="flex items-center gap-3">
+                                                <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${index < 3 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                    {index + 1}
+                                                </span>
+                                                <span className="font-bold text-slate-800 truncate" title={sector.name}>
+                                                    {sector.name}
+                                                </span>
+                                            </div>
+                                            <div className="text-right font-bold text-slate-800">
+                                                ₩{Math.round(sector.value).toLocaleString()}
+                                            </div>
                                         </div>
+                                        <div className="flex items-center gap-2 text-xs w-full">
+                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full"
+                                                    style={{ width: `${weight}%`, backgroundColor: COLORS[index % COLORS.length] }}
+                                                />
+                                            </div>
+                                            <span className="text-slate-500 font-bold min-w-[40px] text-right">{weight.toFixed(1)}%</span>
+                                        </div>
+                                        {sector.name !== '기타 (Others)' && (
+                                            <div className="text-[10px] text-slate-400 text-right mt-1">
+                                                클릭하여 상세 보기 ➡
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex items-center gap-2 text-xs w-full">
-                                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full"
-                                                style={{ width: `${weight}%`, backgroundColor: COLORS[index % COLORS.length] }}
-                                            />
-                                        </div>
-                                        <span className="text-slate-500 font-bold min-w-[40px] text-right">{weight.toFixed(1)}%</span>
-                                    </div>
-                                </div>
-                            );
-                        })
+                                );
+                            })
+                        )
                     )}
 
                     {top10Data.length === 0 && (

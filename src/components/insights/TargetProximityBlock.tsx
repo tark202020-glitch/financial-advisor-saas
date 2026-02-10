@@ -189,16 +189,21 @@ export default function TargetProximityBlock() {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
             const isLower = type === 'lower';
+            const isUrgent5 = Math.abs(data.distance) <= 5;
+
             return (
-                <div className="bg-white p-3 border border-slate-200 shadow-lg rounded-lg text-xs z-50">
-                    <p className="font-bold mb-1 text-slate-800">{data.name}</p>
+                <div className={`bg-white p-3 border shadow-lg rounded-lg text-xs z-50 ${isUrgent5 ? 'border-red-500 ring-2 ring-red-100' : 'border-slate-200'}`}>
+                    <p className="font-bold mb-1 text-slate-800 flex items-center gap-1">
+                        {data.name}
+                        {isUrgent5 && <span className="text-red-500 text-[10px] animate-pulse">🔥 Limit 5%</span>}
+                    </p>
                     <p className="text-slate-600">현재가: <span className="font-mono">{data.currentPrice.toLocaleString()}</span></p>
                     <p className={isLower ? "text-blue-600" : "text-red-500"}>
                         {isLower ? "하한목표" : "상한목표"}: {data.target.toLocaleString()}
                     </p>
                     <p className="text-slate-500 mt-1">
                         남은 거리:
-                        <span className="font-bold ml-1">
+                        <span className={`font-bold ml-1 ${isUrgent5 ? 'text-red-600 text-sm' : ''}`}>
                             {Math.abs(data.distance).toFixed(2)}%
                         </span>
                     </p>
@@ -208,13 +213,18 @@ export default function TargetProximityBlock() {
         return null;
     };
 
-    // Custom Y-Axis Tick with Text Wrapping
-    const CustomYAxisTick = ({ x, y, payload }: any) => {
+    // Custom Y-Axis Tick with Text Wrapping & Highlight
+    const CustomYAxisTick = ({ x, y, payload, data }: any) => {
+        // Find the specific item data to check urgency
+        const item = data && data.find((d: any) => d.name === payload.value);
+        const isUrgent5 = item ? Math.abs(item.distance) <= 5 : false;
+
         return (
             <g transform={`translate(${x},${y})`}>
                 <foreignObject x={-100} y={-15} width={90} height={40}>
                     <div className="h-full flex items-center justify-end">
-                        <p className="text-[11px] font-bold text-slate-700 leading-tight text-right line-clamp-2 overflow-hidden text-ellipsis break-keep">
+                        <p className={`text-[11px] font-bold leading-tight text-right line-clamp-2 overflow-hidden text-ellipsis break-keep ${isUrgent5 ? 'text-red-600 scale-105 origin-right' : 'text-slate-700'}`}>
+                            {isUrgent5 && <span className="mr-1 inline-block animate-bounce">🔥</span>}
                             {payload.value}
                         </p>
                     </div>
@@ -277,20 +287,26 @@ export default function TargetProximityBlock() {
                                         dataKey="name"
                                         type="category"
                                         width={100}
-                                        tick={<CustomYAxisTick />}
+                                        tick={<CustomYAxisTick data={upperData} />}
                                         interval={0}
                                         onClick={handleBarClick}
                                     />
                                     <Tooltip content={<CustomTooltip type='upper' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
                                     <Bar dataKey="distance" barSize={16} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
-                                        {upperData.map((entry: any, index: number) => (
-                                            <Cell
-                                                key={`cell-${index}`}
-                                                fill='#ef4444'
-                                                fillOpacity={0.8}
-                                                style={{ cursor: 'pointer' }}
-                                            />
-                                        ))}
+                                        {upperData.map((entry: any, index: number) => {
+                                            const isUrgent5 = Math.abs(entry.distance) <= 5;
+                                            return (
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={isUrgent5 ? '#dc2626' : '#ef4444'}
+                                                    fillOpacity={isUrgent5 ? 1 : 0.6}
+                                                    stroke={isUrgent5 ? '#f87171' : 'none'}
+                                                    strokeWidth={isUrgent5 ? 2 : 0}
+                                                    className={isUrgent5 ? "animate-pulse" : ""}
+                                                    style={{ cursor: 'pointer', filter: isUrgent5 ? 'drop-shadow(0 0 4px rgba(220, 38, 38, 0.5))' : 'none' }}
+                                                />
+                                            );
+                                        })}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
@@ -320,20 +336,26 @@ export default function TargetProximityBlock() {
                                         dataKey="name"
                                         type="category"
                                         width={100}
-                                        tick={<CustomYAxisTick />}
+                                        tick={<CustomYAxisTick data={lowerData} />}
                                         interval={0}
                                         onClick={handleBarClick}
                                     />
                                     <Tooltip content={<CustomTooltip type='lower' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
                                     <Bar dataKey="distance" barSize={16} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
-                                        {lowerData.map((entry: any, index: number) => (
-                                            <Cell
-                                                key={`cell-${index}`}
-                                                fill='#3b82f6'
-                                                fillOpacity={0.8}
-                                                style={{ cursor: 'pointer' }}
-                                            />
-                                        ))}
+                                        {lowerData.map((entry: any, index: number) => {
+                                            const isUrgent5 = Math.abs(entry.distance) <= 5;
+                                            return (
+                                                <Cell
+                                                    key={`cell-${index}`}
+                                                    fill={isUrgent5 ? '#2563eb' : '#3b82f6'}
+                                                    fillOpacity={isUrgent5 ? 1 : 0.6}
+                                                    stroke={isUrgent5 ? '#60a5fa' : 'none'}
+                                                    strokeWidth={isUrgent5 ? 2 : 0}
+                                                    className={isUrgent5 ? "animate-pulse" : ""}
+                                                    style={{ cursor: 'pointer', filter: isUrgent5 ? 'drop-shadow(0 0 4px rgba(37, 99, 235, 0.5))' : 'none' }}
+                                                />
+                                            );
+                                        })}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
