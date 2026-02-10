@@ -102,13 +102,13 @@ export async function POST(req: Request) {
 
         return NextResponse.json(adviceData);
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("[AI Advice] Internal Error:", error);
         return NextResponse.json({
             advice: [{
                 id: 1,
                 category: "Error",
-                text: "서버쪽에서 뭔가 꼬였나봐유. 잠시만 기다려봐유."
+                text: `서버 에러가 발생했슈: ${error.message || JSON.stringify(error)}`
             }]
         }); // Return 200 with error advice to prevent client crash
     }
