@@ -258,7 +258,7 @@ export default function TargetProximityBlock() {
                             상한 목표가 설정된 종목이 없습니다.
                         </div>
                     ) : (
-                        <div className="h-[400px] w-full">
+                        <div className="w-full" style={{ height: Math.max(400, upperData.length * 100) }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
                                     layout="vertical"
@@ -269,13 +269,13 @@ export default function TargetProximityBlock() {
                                     <YAxis
                                         dataKey="name"
                                         type="category"
-                                        width={80}
+                                        width={100}
                                         tick={{ fontSize: 12, fill: '#475569', fontWeight: 500, cursor: 'pointer' }}
                                         interval={0}
                                         onClick={handleBarClick}
                                     />
                                     <Tooltip content={<CustomTooltip type='upper' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
-                                    <Bar dataKey="distance" barSize={20} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
+                                    <Bar dataKey="distance" barSize={24} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
                                         {upperData.map((entry: any, index: number) => {
                                             const isUrgent = Math.abs(entry.distance) < 10;
                                             return (
@@ -306,7 +306,7 @@ export default function TargetProximityBlock() {
                             하한 목표가 설정된 종목이 없습니다.
                         </div>
                     ) : (
-                        <div className="h-[400px] w-full">
+                        <div className="w-full" style={{ height: Math.max(400, lowerData.length * 100) }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
                                     layout="vertical"
@@ -317,13 +317,13 @@ export default function TargetProximityBlock() {
                                     <YAxis
                                         dataKey="name"
                                         type="category"
-                                        width={80}
+                                        width={100}
                                         tick={{ fontSize: 12, fill: '#475569', fontWeight: 500, cursor: 'pointer' }}
                                         interval={0}
                                         onClick={handleBarClick}
                                     />
                                     <Tooltip content={<CustomTooltip type='lower' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
-                                    <Bar dataKey="distance" barSize={20} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
+                                    <Bar dataKey="distance" barSize={24} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
                                         {lowerData.map((entry: any, index: number) => {
                                             const isUrgent = Math.abs(entry.distance) < 10;
                                             return (

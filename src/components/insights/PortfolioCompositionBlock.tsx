@@ -3,7 +3,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import { useWebSocketContext } from '@/context/WebSocketContext';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 export default function PortfolioCompositionBlock() {
     const { assets } = usePortfolio();
@@ -103,7 +103,7 @@ export default function PortfolioCompositionBlock() {
     }, [assets, initialPrices, lastData]);
 
     // Filtering & Sorting
-    const { chartData, top5Data, totalPortfolioValue } = useMemo(() => {
+    const { chartData, top10Data, totalPortfolioValue } = useMemo(() => {
         let filtered = processedData;
 
         // 1. Filter Market
@@ -120,15 +120,14 @@ export default function PortfolioCompositionBlock() {
 
         const totalValue = filtered.reduce((sum, item) => sum + item.totalValue, 0);
 
-        // 3. Top 5 for List
-        const top5 = filtered.slice(0, 5);
+        // 3. Top 10 for List
+        const top10 = filtered.slice(0, 10);
 
         // 4. Data for Pie Chart (Top 4 + Others)
         // Re-sort by Value for Pie Chart visual consistency usually, but here likely want to match list or just Value
-        // Pie Chart is ALWAYS allocation (Value), regardless of list sort
         const valueSorted = [...filtered].sort((a, b) => b.totalValue - a.totalValue);
-        let pieSlice = valueSorted.slice(0, 4);
-        const others = valueSorted.slice(4);
+        let pieSlice = valueSorted.slice(0, 10);
+        const others = valueSorted.slice(10);
 
         const finalPie = pieSlice.map(item => ({
             name: item.name,
@@ -141,7 +140,7 @@ export default function PortfolioCompositionBlock() {
             finalPie.push({ name: '기타 (Others)', value: othersValue, fill: '#cbd5e1' });
         }
 
-        return { chartData: finalPie, top5Data: top5, totalPortfolioValue: totalValue };
+        return { chartData: finalPie, top10Data: top10, totalPortfolioValue: totalValue };
     }, [processedData, marketFilter, sortFilter]);
 
     // Formatters
@@ -204,15 +203,15 @@ export default function PortfolioCompositionBlock() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
 
                 {/* Left: Pie Chart */}
-                <div className="h-[300px] w-full relative">
+                <div className="h-[500px] w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
                                 data={chartData}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={60}
-                                outerRadius={80}
+                                innerRadius={120}
+                                outerRadius={180}
                                 paddingAngle={5}
                                 dataKey="value"
                             >
@@ -224,7 +223,6 @@ export default function PortfolioCompositionBlock() {
                                 formatter={(value: any) => `₩${Math.round(value).toLocaleString()}`}
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                             />
-                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
                         </PieChart>
                     </ResponsiveContainer>
                     {/* Center Label */}
@@ -238,9 +236,9 @@ export default function PortfolioCompositionBlock() {
                     </div>
                 </div>
 
-                {/* Right: Top 5 List */}
+                {/* Right: Top 10 List */}
                 <div className="flex flex-col gap-3">
-                    {top5Data.map((asset, index) => {
+                    {top10Data.map((asset, index) => {
                         const isProfit = asset.profitLoss >= 0;
                         const weight = totalPortfolioValue > 0 ? (asset.totalValue / totalPortfolioValue) * 100 : 0;
 
@@ -288,7 +286,7 @@ export default function PortfolioCompositionBlock() {
                             </div>
                         );
                     })}
-                    {top5Data.length === 0 && (
+                    {top10Data.length === 0 && (
                         <div className="text-center text-slate-400 py-10">
                             데이터가 없습니다.
                         </div>
