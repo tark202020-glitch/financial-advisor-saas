@@ -67,6 +67,8 @@ export default function PortfolioCompositionBlock() {
         return () => { isMounted = false; };
     }, [assets, subscribe]);
 
+    const [viewMode, setViewMode] = useState<'ASSET' | 'SECTOR'>('ASSET');
+
     // Data Processing
     const processedData = useMemo(() => {
         if (!assets) return [];
@@ -111,7 +113,7 @@ export default function PortfolioCompositionBlock() {
             filtered = filtered.filter(item => item.category === marketFilter);
         }
 
-        // 2. Sort
+        // 2. Sort (Assets)
         if (sortFilter === 'AMOUNT') {
             filtered.sort((a, b) => b.totalValue - a.totalValue);
         } else {
@@ -120,28 +122,60 @@ export default function PortfolioCompositionBlock() {
 
         const totalValue = filtered.reduce((sum, item) => sum + item.totalValue, 0);
 
-        // 3. Top 10 for List
+        // 3. Top 10 for List (Always Assets)
         const top10 = filtered.slice(0, 10);
 
-        // 4. Data for Pie Chart (Top 4 + Others)
-        // Re-sort by Value for Pie Chart visual consistency usually, but here likely want to match list or just Value
-        const valueSorted = [...filtered].sort((a, b) => b.totalValue - a.totalValue);
-        let pieSlice = valueSorted.slice(0, 10);
-        const others = valueSorted.slice(10);
+        // 4. Data for Pie Chart
+        let finalPie: any[] = [];
 
-        const finalPie = pieSlice.map(item => ({
-            name: item.name,
-            value: item.totalValue,
-            fill: '' // will assign colors later
-        }));
+        if (viewMode === 'ASSET') {
+            const valueSorted = [...filtered].sort((a, b) => b.totalValue - a.totalValue);
+            let pieSlice = valueSorted.slice(0, 10);
+            const others = valueSorted.slice(10);
 
-        if (others.length > 0) {
-            const othersValue = others.reduce((sum, item) => sum + item.totalValue, 0);
-            finalPie.push({ name: '기타 (Others)', value: othersValue, fill: '#cbd5e1' });
+            finalPie = pieSlice.map(item => ({
+                name: item.name,
+                value: item.totalValue,
+                fill: ''
+            }));
+
+            if (others.length > 0) {
+                const othersValue = others.reduce((sum, item) => sum + item.totalValue, 0);
+                finalPie.push({ name: '기타 (Others)', value: othersValue, fill: '#cbd5e1' });
+            }
+        } else {
+            // SECTOR Mode
+            const sectorMap = new Map<string, number>();
+            filtered.forEach(item => {
+                const sector = item.sector || '미분류';
+                const current = sectorMap.get(sector) || 0;
+                sectorMap.set(sector, current + item.totalValue);
+            });
+
+            // Convert to array and sort
+            const sectorArray = Array.from(sectorMap.entries()).map(([name, value]) => ({
+                name,
+                value,
+                fill: ''
+            }));
+            sectorArray.sort((a, b) => b.value - a.value);
+
+            // Cap at Top 10 Sectors if too many? usually sectors aren't that many
+            // But let's apply same logic just in case
+            if (sectorArray.length > 10) {
+                const topSectors = sectorArray.slice(0, 10);
+                const otherSectors = sectorArray.slice(10);
+                const othersValue = otherSectors.reduce((sum, item) => sum + item.value, 0);
+
+                finalPie = topSectors;
+                finalPie.push({ name: '기타 (Others)', value: othersValue, fill: '#cbd5e1' });
+            } else {
+                finalPie = sectorArray;
+            }
         }
 
         return { chartData: finalPie, top10Data: top10, totalPortfolioValue: totalValue };
-    }, [processedData, marketFilter, sortFilter]);
+    }, [processedData, marketFilter, sortFilter, viewMode]);
 
     // Formatters
     const formatCurrency = (val: number, cat: string = 'KR') => {
@@ -150,7 +184,7 @@ export default function PortfolioCompositionBlock() {
             : `₩${Math.round(val).toLocaleString()}`;
     };
 
-    const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b'];
+    const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b', '#06b6d4', '#84cc16', '#a855f7', '#f43f5e'];
 
     if (isLoading && initialPrices.size === 0) {
         return <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-200 h-64 flex items-center justify-center text-slate-400">
@@ -162,9 +196,27 @@ export default function PortfolioCompositionBlock() {
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-6 relative animate-in fade-in zoom-in duration-500">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <span className="text-indigo-600">📊</span> 포트폴리오 구성 (Top Holdings)
-                </h2>
+                <div className="flex items-center gap-4">
+                    <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <span className="text-indigo-600">📊</span> 포트폴리오 구성
+                    </h2>
+
+                    {/* View Mode Toggle */}
+                    <div className="flex bg-slate-100 rounded-lg p-1">
+                        <button
+                            onClick={() => setViewMode('ASSET')}
+                            className={`px-3 py-1 text-sm rounded-md transition-all ${viewMode === 'ASSET' ? 'bg-white shadow text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            종목별
+                        </button>
+                        <button
+                            onClick={() => setViewMode('SECTOR')}
+                            className={`px-3 py-1 text-sm rounded-md transition-all ${viewMode === 'SECTOR' ? 'bg-white shadow text-slate-800 font-bold' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                            업종별
+                        </button>
+                    </div>
+                </div>
 
                 {/* Controls */}
                 <div className="flex items-center gap-4 text-sm">
@@ -181,7 +233,7 @@ export default function PortfolioCompositionBlock() {
                         ))}
                     </div>
 
-                    {/* Sort Filter */}
+                    {/* Sort Filter (Only affects List) */}
                     <div className="flex bg-slate-100 rounded-lg p-1">
                         <button
                             onClick={() => setSortFilter('AMOUNT')}
@@ -212,7 +264,7 @@ export default function PortfolioCompositionBlock() {
                                 cy="50%"
                                 innerRadius={120}
                                 outerRadius={180}
-                                paddingAngle={5}
+                                paddingAngle={2}
                                 dataKey="value"
                             >
                                 {chartData.map((entry, index) => (
@@ -226,8 +278,8 @@ export default function PortfolioCompositionBlock() {
                         </PieChart>
                     </ResponsiveContainer>
                     {/* Center Label */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none pb-8">
-                        <div className="text-xs text-slate-400">총 평가금액</div>
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none pb-4">
+                        <div className="text-xs text-slate-400">{viewMode === 'ASSET' ? '총 평가금액' : '업종별 비중'}</div>
                         <div className="text-sm font-bold text-slate-800">
                             {totalPortfolioValue > 100000000
                                 ? `${(totalPortfolioValue / 100000000).toFixed(2)}억`
@@ -236,56 +288,87 @@ export default function PortfolioCompositionBlock() {
                     </div>
                 </div>
 
-                {/* Right: Top 10 List */}
+                {/* Right: Top List (Asset or Sector based on ViewMode?) */}
+                {/* User Request: "Update Pie Chart". Usually list follows chart. 
+                    Let's update list to show Sector info if ViewMode is Sector.
+                */}
                 <div className="flex flex-col gap-3">
-                    {top10Data.map((asset, index) => {
-                        const isProfit = asset.profitLoss >= 0;
-                        const weight = totalPortfolioValue > 0 ? (asset.totalValue / totalPortfolioValue) * 100 : 0;
+                    {viewMode === 'ASSET' ? (
+                        /* Asset List */
+                        top10Data.map((asset, index) => {
+                            const isProfit = asset.profitLoss >= 0;
+                            const weight = totalPortfolioValue > 0 ? (asset.totalValue / totalPortfolioValue) * 100 : 0;
 
-                        return (
-                            <div key={asset.symbol} className="flex flex-col pb-3 border-b border-slate-100 last:border-0">
-                                {/* Top Row: Rank, Name, Total Value */}
-                                <div className="flexjustify-between items-center mb-1">
-                                    <div className="flex items-center gap-3">
-                                        <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${index < 3 ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
-                                            {index + 1}
-                                        </span>
-                                        <span className="font-bold text-slate-800 truncate max-w-[120px] md:max-w-[200px]" title={asset.name}>
-                                            {asset.name}
-                                        </span>
+                            return (
+                                <div key={asset.symbol} className="flex flex-col pb-3 border-b border-slate-100 last:border-0">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <div className="flex items-center gap-3">
+                                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${index < 3 ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                {index + 1}
+                                            </span>
+                                            <span className="font-bold text-slate-800 truncate max-w-[120px] md:max-w-[200px]" title={asset.name}>
+                                                {asset.name}
+                                            </span>
+                                        </div>
+                                        <div className="text-right font-bold text-slate-800">
+                                            ₩{Math.round(asset.totalValue).toLocaleString()}
+                                        </div>
                                     </div>
-                                    <div className="text-right font-bold text-slate-800">
-                                        ₩{Math.round(asset.totalValue).toLocaleString()}
+                                    <div className="flex justify-between items-center text-xs">
+                                        <div className="flex items-center gap-2 w-1/3">
+                                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full"
+                                                    style={{ width: `${weight}%`, backgroundColor: COLORS[index % COLORS.length] }}
+                                                />
+                                            </div>
+                                            <span className="text-slate-400 w-8">{weight.toFixed(1)}%</span>
+                                        </div>
+                                        <div className="flex items-center gap-4 text-right">
+                                            <div className="text-slate-500">
+                                                {asset.currentPrice.toLocaleString()}
+                                            </div>
+                                            <div className={`${isProfit ? 'text-red-500' : 'text-blue-500'} font-medium`}>
+                                                {isProfit ? '▲' : '▼'} {Math.abs(asset.profitLoss).toLocaleString()} ({asset.returnRate.toFixed(2)}%)
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-
-                                {/* Bottom Row: Price, Changes */}
-                                <div className="flex justify-between items-center text-xs">
-                                    {/* Left: Weight Bar */}
-                                    <div className="flex items-center gap-2 w-1/3">
-                                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                            );
+                        })
+                    ) : (
+                        /* Sector List (Re-using chartData which is already sorted sector data) */
+                        chartData.map((sector: any, index: number) => {
+                            const weight = totalPortfolioValue > 0 ? (sector.value / totalPortfolioValue) * 100 : 0;
+                            return (
+                                <div key={sector.name} className="flex flex-col pb-3 border-b border-slate-100 last:border-0">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <div className="flex items-center gap-3">
+                                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${index < 3 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                {index + 1}
+                                            </span>
+                                            <span className="font-bold text-slate-800 truncate" title={sector.name}>
+                                                {sector.name}
+                                            </span>
+                                        </div>
+                                        <div className="text-right font-bold text-slate-800">
+                                            ₩{Math.round(sector.value).toLocaleString()}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs w-full">
+                                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                                             <div
                                                 className="h-full rounded-full"
                                                 style={{ width: `${weight}%`, backgroundColor: COLORS[index % COLORS.length] }}
                                             />
                                         </div>
-                                        <span className="text-slate-400 w-8">{weight.toFixed(1)}%</span>
-                                    </div>
-
-                                    {/* Right: Price & Returns */}
-                                    <div className="flex items-center gap-4 text-right">
-                                        <div className="text-slate-500">
-                                            {asset.currentPrice.toLocaleString()}
-                                            {/* Daily Change could go here if available */}
-                                        </div>
-                                        <div className={`${isProfit ? 'text-red-500' : 'text-blue-500'} font-medium`}>
-                                            {isProfit ? '▲' : '▼'} {Math.abs(asset.profitLoss).toLocaleString()} ({asset.returnRate.toFixed(2)}%)
-                                        </div>
+                                        <span className="text-slate-500 font-bold min-w-[40px] text-right">{weight.toFixed(1)}%</span>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })
+                    )}
+
                     {top10Data.length === 0 && (
                         <div className="text-center text-slate-400 py-10">
                             데이터가 없습니다.
