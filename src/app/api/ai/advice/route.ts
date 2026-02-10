@@ -2,12 +2,32 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
 // Ensure API key is set
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
+// Ensure API key is set
+const apiKey = process.env.GOOGLE_AI_API_KEY;
 
 export async function POST(req: Request) {
+    if (!apiKey) {
+        console.error("[AI Advice] Missing GOOGLE_AI_API_KEY");
+        return NextResponse.json({
+            advice: [{
+                id: 1,
+                category: "System",
+                text: "API 키가 설정되지 않았어유. 관리자한테 말 좀 전해줘유."
+            }]
+        });
+    }
+
     try {
         const body = await req.json();
         const { portfolio, totalValue } = body;
+
+        // Safety check for data
+        const safeTotalValue = isNaN(Number(totalValue)) ? 0 : Number(totalValue);
+        const safePortfolio = Array.isArray(portfolio) ? portfolio.map(p => ({
+            ...p,
+            currentPrice: isNaN(Number(p.currentPrice)) ? 0 : Number(p.currentPrice),
+            changeRate: isNaN(Number(p.changeRate)) ? 0 : Number(p.changeRate)
+        })) : [];
 
         // Construct formatting instructions
         const prompt = `
@@ -32,8 +52,8 @@ export async function POST(req: Request) {
         - Example: "이 주식은 왜 안판겨? 무덤까지 가져갈려고?" (Why haven't you sold this stock? Gonna take it to the grave?)
 
         **Input Data**:
-        Total Value: ${totalValue}
-        Portfolio: ${JSON.stringify(portfolio)}
+        Total Value: ${safeTotalValue}
+        Portfolio: ${JSON.stringify(safePortfolio)}
 
         **Output Format**:
         Return a JSON object with the following structure:
@@ -48,6 +68,7 @@ export async function POST(req: Request) {
         Keep the text concise (1-2 sentences per item).
         `;
 
+        const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await model.generateContent(prompt);
         const response = await result.response;
@@ -69,14 +90,26 @@ export async function POST(req: Request) {
             adviceData = JSON.parse(jsonStr);
         } catch (parseError) {
             console.error("[AI Advice] JSON Parse Error:", parseError, "Raw Text:", text);
-            // Fallback or retry logic could go here, for now return error to client to see it
-            return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
+            // Return error as advice so user sees something
+            return NextResponse.json({
+                advice: [{
+                    id: 1,
+                    category: "Error",
+                    text: "머리가 좀 아파서 계산이 잘 안되네유... (JSON Parse Error)"
+                }]
+            });
         }
 
         return NextResponse.json(adviceData);
 
     } catch (error) {
-        console.error("AI Advice Error:", error);
-        return NextResponse.json({ error: "Failed to generate advice" }, { status: 500 });
+        console.error("[AI Advice] Internal Error:", error);
+        return NextResponse.json({
+            advice: [{
+                id: 1,
+                category: "Error",
+                text: "서버쪽에서 뭔가 꼬였나봐유. 잠시만 기다려봐유."
+            }]
+        }); // Return 200 with error advice to prevent client crash
     }
 }
