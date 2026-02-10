@@ -30,8 +30,9 @@ export async function POST(req: Request) {
 
         // Construct formatting instructions
         const prompt = `
-        당신은 "AI 주식 도사 고래"라는 이름의 전문 투자 어드바이저입니다.
+        당신은 전문 투자 어드바이저입니다.
         고객의 포트폴리오를 분석하고, 실질적인 투자 조언을 제공합니다.
+        제공된 데이터는 전체 포트폴리오 중 비중 3% 이상인 주요 종목만 포함되어 있습니다. 이 종목들만 분석하세요.
 
         **분석 우선순위 (중요한 순서대로 3~4개를 선별하여 조언):**
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { usePortfolio } from '@/context/PortfolioContext';
 
 interface Advice {
@@ -11,7 +10,7 @@ interface Advice {
 }
 
 export default function AiGuruBlock() {
-    const { assets, isLoading: isPortfolioLoading } = usePortfolio(); // Updated destructuring
+    const { assets, isLoading: isPortfolioLoading } = usePortfolio();
     const [adviceList, setAdviceList] = useState<Advice[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -31,7 +30,7 @@ export default function AiGuruBlock() {
                     try {
                         const res = await fetch(`/api/kis/price/batch?market=${market}&symbols=${symbols}`);
                         if (!res.ok) return {};
-                        return await res.json(); // Returns { symbol: data, ... }
+                        return await res.json();
                     } catch (e) {
                         console.error(e);
                         return {};
@@ -50,14 +49,12 @@ export default function AiGuruBlock() {
 
                 const enrichedPortfolio = assets.map(a => {
                     const rawData = priceMap[a.symbol];
-                    let currentPrice = a.pricePerShare; // Default fallback
+                    let currentPrice = a.pricePerShare;
                     let changeRate = 0;
 
                     if (rawData) {
                         if (a.category === 'US') {
                             currentPrice = parseFloat(rawData.last || rawData.base || rawData.clos || 0);
-                            // US Mock/API usually has 'rate' or similar? KIS Overseas structure varies.
-                            // Assuming 'rate' is change rate if available, or calc from open/close.
                             changeRate = parseFloat(rawData.rate || 0);
                         } else {
                             currentPrice = parseInt(rawData.stck_prpr || '0');
@@ -80,16 +77,22 @@ export default function AiGuruBlock() {
                         category: a.category,
                         targetLower: a.targetPriceLower,
                         targetUpper: a.targetPriceUpper,
-                        changeRate: changeRate
+                        changeRate: changeRate,
+                        totalValue: value
                     };
                 });
 
-                // 3. Call AI Advice API
+                // 3. Filter: exclude stocks under 3% of total portfolio
+                const significantPortfolio = enrichedPortfolio.filter(p =>
+                    calculatedTotalValue > 0 ? (p.totalValue / calculatedTotalValue) * 100 >= 3 : true
+                );
+
+                // 4. Call AI Advice API
                 const res = await fetch('/api/ai/advice', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        portfolio: enrichedPortfolio,
+                        portfolio: significantPortfolio,
                         totalValue: calculatedTotalValue
                     })
                 });
@@ -111,24 +114,27 @@ export default function AiGuruBlock() {
         if (assets.length > 0 && adviceList.length === 0) {
             fetchPricesAndAdvice();
         }
-    }, [assets]); // Removed adviceList from dep array to avoid loops, though handled by condition
+    }, [assets]);
 
     if (isPortfolioLoading || isLoading) {
         return (
-            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-8 shadow-sm border border-indigo-100 mb-6 flex flex-col items-center justify-center gap-4 text-center min-h-[200px] animate-in fade-in duration-500">
-                <div className="relative w-24 h-24 md:w-32 md:h-32 animate-bounce">
-                    <Image
-                        src="/images/guru_dog.png"
-                        alt="AI Guru Loading"
-                        fill
-                        className="object-contain drop-shadow-md"
-                    />
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 mb-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white text-lg">
+                        🔍
+                    </div>
+                    <div>
+                        <h3 className="text-base font-bold text-slate-800">AI 투자 분석</h3>
+                        <p className="text-xs text-slate-400">포트폴리오 분석 중...</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="text-lg font-bold text-indigo-700 mb-1">AI 분석 리포트 작성 중...</h3>
-                    <p className="text-sm text-indigo-500 animate-pulse">
-                        포트폴리오를 분석하고 맞춤형 투자 조언을 준비하고 있습니다.
-                    </p>
+                <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="animate-pulse flex gap-3">
+                            <div className="w-16 h-5 bg-slate-100 rounded-md"></div>
+                            <div className="flex-1 h-5 bg-slate-50 rounded-md"></div>
+                        </div>
+                    ))}
                 </div>
             </div>
         );
@@ -137,55 +143,38 @@ export default function AiGuruBlock() {
     if (!assets || assets.length === 0) return null;
 
     return (
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-6 shadow-sm border border-indigo-100 mb-6 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden animate-in fade-in duration-700">
-
-            {/* Character Section */}
-            <div className="flex-shrink-0 relative z-10 text-center">
-                <div className="relative w-32 h-32 md:w-40 md:h-40 mx-auto">
-                    <Image
-                        src="/images/guru_dog.png"
-                        alt="AI Guru"
-                        fill
-                        className="object-contain drop-shadow-lg transform hover:scale-105 transition-transform duration-300"
-                    />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 mb-6 shadow-sm relative overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white text-lg shadow-sm">
+                    📊
                 </div>
-                <div className="mt-2 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-indigo-600 shadow-sm inline-block">
-                    AI 주식 도사 고래
+                <div>
+                    <h3 className="text-base font-bold text-slate-800">AI 투자 분석 리포트</h3>
+                    <p className="text-xs text-slate-400">포트폴리오 비중 3% 이상 종목 대상</p>
                 </div>
             </div>
 
-            {/* Bubble Section */}
-            <div className="flex-grow w-full z-10 relative">
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 relative">
-                    {/* Triangle for bubble effect */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-[8px] w-4 h-4 bg-white border-t border-l border-slate-100 transform rotate-45 md:top-1/2 md:left-0 md:-translate-x-[8px] md:-translate-y-1/2 md:-rotate-45"></div>
-
-                    <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-                        <span>📢</span> 오늘의 훈수
-                    </h3>
-
-                    {hasError ? (
-                        <div className="text-slate-400 text-sm">
-                            AI 분석 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {adviceList.map((item, idx) => (
-                                <div key={idx} className="text-slate-700 text-sm leading-relaxed">
-                                    <span className="inline-block bg-indigo-50 text-indigo-600 text-xs font-medium px-2 py-0.5 rounded-md mr-2 mb-1">
-                                        {item.category}
-                                    </span>
-                                    <span>{item.text}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+            {/* Advice Content */}
+            {hasError ? (
+                <div className="text-slate-400 text-sm py-4 text-center">
+                    AI 분석 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.
                 </div>
-            </div>
+            ) : (
+                <div className="space-y-3">
+                    {adviceList.map((item, idx) => (
+                        <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50/80 hover:bg-slate-50 transition-colors">
+                            <span className="inline-flex items-center justify-center flex-shrink-0 bg-indigo-100 text-indigo-600 text-[11px] font-semibold px-2.5 py-1 rounded-lg mt-0.5 whitespace-nowrap">
+                                {item.category}
+                            </span>
+                            <span className="text-sm text-slate-700 leading-relaxed">{item.text}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
 
-            {/* Background Decoration */}
-            <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-yellow-300/10 rounded-full blur-3xl z-0"></div>
-            <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-64 h-64 bg-blue-300/10 rounded-full blur-3xl z-0"></div>
+            {/* Subtle accent */}
+            <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl"></div>
         </div>
     );
 }
