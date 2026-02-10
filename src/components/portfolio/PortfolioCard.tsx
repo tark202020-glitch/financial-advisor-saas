@@ -2,7 +2,7 @@
 
 // import { useStockPrice } from '@/hooks/useStockPrice';
 import { Asset, usePortfolio } from '@/context/PortfolioContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import StockDetailChartModal from '../modals/StockDetailChartModal';
 
 interface PortfolioCardProps {
@@ -12,6 +12,7 @@ interface PortfolioCardProps {
         change: number;
         changePercent: number;
         time?: string;
+        sector?: string; // Add sector
     } | null;
 }
 
@@ -19,6 +20,16 @@ export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) 
     const { updateAsset } = usePortfolio();
     // const stockData = useStockPrice(asset.symbol, asset.pricePerShare, asset.category);
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Auto-update sector if missing in DB but available in live data
+    useEffect(() => {
+        if (asset.category === 'KR' && !asset.sector && stockData?.sector) {
+            // Debounce or just call? 
+            // useEffect runs once when data arrives.
+            // Check if we already have it to avoid loops (dependency array handles it)
+            updateAsset(asset.id, { sector: stockData.sector });
+        }
+    }, [stockData?.sector, asset.sector, asset.id, asset.category, updateAsset]);
 
     // Current Price Logic
     const currentPrice = stockData?.price || asset.pricePerShare; // Fallback to buy price if no data
@@ -47,6 +58,8 @@ export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) 
     // Formatting Logic
     const isUS = asset.category !== 'KR';
     const currencyPrefix = isUS ? '$' : '';
+    const marketLabel = asset.category === 'KR' ? 'KR' : 'US'; // Keep simple or match Watchlist
+    const sectorDisplay = stockData?.sector || asset.sector; // Priority to live data, fallback to DB
 
     // Helper for currency formatting
     const formatCurrency = (value: number, isInteger: boolean = false) => {
@@ -88,10 +101,16 @@ export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) 
                 {/* Header Section */}
                 <div className="bg-slate-50/50 p-6 border-b border-slate-100 flex justify-between items-start">
                     <div className="flex-1 min-w-0 pr-4">
-                        <div className="text-xs text-slate-500 mb-1 flex gap-1">
+                        <div className="text-xs text-slate-500 mb-1 flex gap-1 truncate">
                             <span>{asset.symbol}</span>
                             <span className="text-slate-300">|</span>
-                            <span>{asset.category === 'KR' ? 'KOSPI' : asset.category}</span>
+                            <span>{marketLabel}</span>
+                            {sectorDisplay && (
+                                <>
+                                    <span className="text-slate-300">|</span>
+                                    <span className="truncate">{sectorDisplay}</span>
+                                </>
+                            )}
                         </div>
                         <div className="h-14 flex items-center">
                             <h3 className="text-2xl font-bold text-slate-900 tracking-tight transition group-hover:text-indigo-600 line-clamp-2">

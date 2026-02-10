@@ -66,7 +66,7 @@ export default function AddAssetForm() {
         setView('FORM');
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedStock) return;
 
@@ -74,10 +74,25 @@ export default function AddAssetForm() {
         const price = Number(formData.price);
         const kospi = Number(formData.kospiIndex);
 
-        addAsset({
+        // Fetch sector info (KOSPI Sector Name)
+        let fetchedSector = '';
+        try {
+            const res = await fetch(`/api/kis/price/domestic/${selectedStock.symbol}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.bstp_kor_isnm) {
+                    fetchedSector = data.bstp_kor_isnm;
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to fetch sector info", e);
+        }
+
+        await addAsset({
             symbol: selectedStock.symbol,
             name: selectedStock.name,
             category: 'KR', // Default to KR for KIS Master
+            sector: fetchedSector, // Save fetched sector
 
             // Asset Summary (Initial Holding)
             quantity: formData.type === 'BUY' ? qty : -qty,

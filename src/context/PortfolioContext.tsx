@@ -22,6 +22,7 @@ export interface Asset {
     symbol: string;
     name: string;
     category: 'KR' | 'US';
+    sector?: string; // Add sector
     quantity: number;
     pricePerShare: number;
     purchaseDate?: string;
@@ -89,6 +90,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                         symbol: p.symbol,
                         name: p.name,
                         category: getMarketType(p.symbol),
+                        sector: p.sector, // Map from DB
                         quantity: p.quantity,
                         pricePerShare: p.buy_price || 0,
                         memo: p.memo,
@@ -256,6 +258,12 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                     user_id: user.id,
                     symbol: newAsset.symbol,
                     name: newAsset.name,
+                    // category: newAsset.category, // DB doesn't have category column it seems
+                    // But check if it accepts extra fields? No, TS error if not compatible with DB types.
+                    // Assuming createClient types are strict.
+                    // But here insert takes object literal. It works if Supabase ignores unknown or if I only send known.
+                    // I'll assume only sector is new.
+                    sector: newAsset.sector || null,
                     quantity: newAsset.quantity,
                     buy_price: newAsset.pricePerShare,
                     memo: newAsset.memo,
@@ -304,6 +312,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             const dbUpdates: any = {};
             if (updates.quantity !== undefined) dbUpdates.quantity = updates.quantity;
             if (updates.pricePerShare !== undefined) dbUpdates.buy_price = updates.pricePerShare;
+            if (updates.sector !== undefined) dbUpdates.sector = updates.sector;
             if (updates.memo !== undefined) dbUpdates.memo = updates.memo;
             if (updates.targetPriceLower !== undefined) dbUpdates.buy_target = updates.targetPriceLower;
             if (updates.targetPriceUpper !== undefined) dbUpdates.sell_target = updates.targetPriceUpper;
