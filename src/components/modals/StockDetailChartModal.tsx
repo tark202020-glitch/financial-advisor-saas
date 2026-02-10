@@ -394,6 +394,14 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                             <div className="h-[300px] w-full">
                                 {chartLoading ? (
                                     <div className="h-full flex items-center justify-center text-slate-300">Loading Chart...</div>
+                                ) : history.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                        </svg>
+                                        <span className="text-sm">차트 데이터를 불러올 수 없습니다</span>
+                                        <span className="text-xs text-slate-300">현재가 및 포트폴리오 정보는 정상 표시됩니다</span>
+                                    </div>
                                 ) : (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={displayData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }} syncId="stockDetail">
