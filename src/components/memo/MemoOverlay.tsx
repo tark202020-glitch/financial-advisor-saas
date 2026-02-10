@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { createClient } from '@/utils/supabase/client';
 import { X, Minus, Save, Trash2, ChevronDown } from 'lucide-react';
 
 const PAGE_NAMES: Record<string, string> = {
@@ -40,26 +39,16 @@ export default function MemoOverlay({ isOpen, onClose, onMinimize }: MemoOverlay
     useEffect(() => {
         if (isOpen) {
             loadRecentMemos();
-            // Focus textarea
             setTimeout(() => textareaRef.current?.focus(), 200);
         }
     }, [isOpen]);
 
-    const getAuthToken = async () => {
-        const supabase = createClient();
-        const { data } = await supabase.auth.getSession();
-        return data.session?.access_token || '';
-    };
-
     const loadRecentMemos = async () => {
         try {
-            const token = await getAuthToken();
-            const res = await fetch('/api/memos', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch('/api/memos');
             if (res.ok) {
                 const data = await res.json();
-                setRecentMemos(data.slice(0, 5)); // Show last 5
+                setRecentMemos(data.slice(0, 5));
             }
         } catch (e) {
             console.error('Failed to load memos:', e);
@@ -73,27 +62,17 @@ export default function MemoOverlay({ isOpen, onClose, onMinimize }: MemoOverlay
         setSaveStatus('idle');
 
         try {
-            const token = await getAuthToken();
-
             if (editingMemoId) {
-                // Update existing
                 const res = await fetch('/api/memos', {
                     method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: editingMemoId, title, content })
                 });
                 if (!res.ok) throw new Error('Update failed');
             } else {
-                // Create new
                 const res = await fetch('/api/memos', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         title,
                         content,
@@ -131,11 +110,7 @@ export default function MemoOverlay({ isOpen, onClose, onMinimize }: MemoOverlay
         if (!confirm('이 메모를 삭제하시겠습니까?')) return;
 
         try {
-            const token = await getAuthToken();
-            const res = await fetch(`/api/memos?id=${memoId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch(`/api/memos?id=${memoId}`, { method: 'DELETE' });
             if (res.ok) {
                 loadRecentMemos();
                 if (editingMemoId === memoId) {

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { createClient } from '@/utils/supabase/client';
 import { Edit3, Trash2, Search, X, Save } from 'lucide-react';
 
 interface Memo {
@@ -27,19 +26,10 @@ export default function MemoPage() {
         loadMemos();
     }, []);
 
-    const getAuthToken = async () => {
-        const supabase = createClient();
-        const { data } = await supabase.auth.getSession();
-        return data.session?.access_token || '';
-    };
-
     const loadMemos = async () => {
         setIsLoading(true);
         try {
-            const token = await getAuthToken();
-            const res = await fetch('/api/memos', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch('/api/memos');
             if (res.ok) {
                 const data = await res.json();
                 setMemos(data);
@@ -54,11 +44,7 @@ export default function MemoPage() {
     const handleDelete = async (id: string) => {
         if (!confirm('이 메모를 삭제하시겠습니까?')) return;
         try {
-            const token = await getAuthToken();
-            const res = await fetch(`/api/memos?id=${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch(`/api/memos?id=${id}`, { method: 'DELETE' });
             if (res.ok) {
                 setMemos(prev => prev.filter(m => m.id !== id));
             }
@@ -82,13 +68,9 @@ export default function MemoPage() {
     const saveEdit = async () => {
         if (!editingId) return;
         try {
-            const token = await getAuthToken();
             const res = await fetch('/api/memos', {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id: editingId, title: editTitle, content: editContent })
             });
             if (res.ok) {
