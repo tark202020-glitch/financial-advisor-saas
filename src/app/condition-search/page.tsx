@@ -291,8 +291,8 @@ export default function ConditionSearchPage() {
                                         <button
                                             onClick={() => handleLoadPreset(preset.id)}
                                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${selectedPresetId === preset.id
-                                                    ? 'bg-blue-600 text-white shadow-sm'
-                                                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50 hover:border-blue-300'
+                                                ? 'bg-blue-600 text-white shadow-sm'
+                                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50 hover:border-blue-300'
                                                 }`}
                                         >
                                             {preset.name}
@@ -402,6 +402,7 @@ export default function ConditionSearchPage() {
                                         <th className="px-3 py-3 text-right">PEG</th>
                                         <th className="px-3 py-3 text-right">PER</th>
                                         <th className="px-3 py-3 text-right">PBR</th>
+                                        <th className="px-3 py-3 text-right">배당률</th>
                                         <th className="px-3 py-3 text-right">부채비율</th>
                                         <th className="px-3 py-3 text-right">시가총액</th>
                                         <th className="px-3 py-3 text-right">거래량</th>
@@ -425,12 +426,16 @@ export default function ConditionSearchPage() {
                                             <td className="px-3 py-3 text-right text-slate-600">{item.peg > 0 ? item.peg?.toFixed(2) : '-'}</td>
                                             <td className="px-3 py-3 text-right text-slate-600">{item.per?.toFixed(1)}</td>
                                             <td className="px-3 py-3 text-right text-slate-600">{item.pbr?.toFixed(2)}</td>
+                                            <td className={`px-3 py-3 text-right font-medium ${item.dividend_yield > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                                                {item.dividend_yield > 0 ? `${item.dividend_yield?.toFixed(2)}%` : '-'}
+                                            </td>
                                             <td className="px-3 py-3 text-right text-slate-600">{item.debt_ratio?.toFixed(1)}%</td>
                                             <td className="px-3 py-3 text-right text-slate-600">{(item.market_cap || 0).toLocaleString()}억</td>
                                             <td className="px-3 py-3 text-right text-slate-600">{(item.volume || 0).toLocaleString()}</td>
                                         </tr>
                                     ))}
                                 </tbody>
+
                             </table>
                         </div>
                     )}

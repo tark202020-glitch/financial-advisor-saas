@@ -1,4 +1,15 @@
-## [Alpha V1.127] - 2026-02-10 09:18:00
+## [Alpha V1.128] - 2026-02-10 10:30:00
+
+### 🔧 Fix: 배당수익률 데이터 연동 (Naver Finance API)
+- **Summary**: 배당수익률 0 하드코딩 문제 해결. Naver Finance API로 실제 배당수익률 데이터 조회.
+- **Detail**:
+  - **원인 분석**: KIS API 6개 엔드포인트 모두 배당수익률 필드 미제공 확인
+  - **해결**: Naver Finance mobile API(`dividendYieldRatio` 필드)에서 실제 배당수익률 조회
+  - **병렬 호출**: KIS 재무 API 3건 + Naver 배당 API 1건을 동시 호출하여 성능 최적화
+  - **UI**: 결과 테이블에 배당률 컬럼 추가 (amber 색상으로 강조)
+- **Build Time**: 2026-02-10 10:30:00
+
+
 
 ### 🚀 Feature: SSE 스트리밍 조건검색 + 전체 종목 분석 로딩 UI
 - **Summary**: 실시간 진행률 표시 로딩 화면 추가 및 재무분석 종목 수 제한 해제.

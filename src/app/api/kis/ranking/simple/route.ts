@@ -10,7 +10,36 @@ import {
 } from '@/lib/kis/client';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300; // Allow up to 5 minutes for full scan
 
+// Fetch dividend yield from Naver Finance (KIS API doesn't provide this)
+async function fetchDividendYield(symbol: string): Promise<number> {
+    try {
+        const res = await fetch(
+            `https://m.stock.naver.com/api/stock/${symbol}/integration`,
+            {
+                headers: { "User-Agent": "Mozilla/5.0" },
+                signal: AbortSignal.timeout(5000),
+            }
+        );
+        if (!res.ok) return 0;
+        const data = await res.json();
+
+        if (Array.isArray(data.totalInfos)) {
+            const dividendInfo = data.totalInfos.find(
+                (info: any) => info.code === 'dividendYieldRatio'
+            );
+            if (dividendInfo && dividendInfo.value) {
+                return parseFloat(dividendInfo.value.replace('%', '')) || 0;
+            }
+        }
+        return 0;
+    } catch {
+        return 0;
+    }
+}
+
+// Fetch KIS financial data (growth, profit, stability ratios)
 async function fetchFinancials(symbol: string, token: string) {
     const headers = {
         "content-type": "application/json",
@@ -105,7 +134,7 @@ export async function GET(request: NextRequest) {
 
                 send({ type: 'status', message: `${rankingData.length}개 종목 수집 완료. 1차 필터링 중...` });
 
-                // Step 2: Stage 1 filter (price-data based)
+                // Step 2: Stage 1 filter (price-data based: PER, PBR, market cap, volume)
                 const candidates = rankingData.map((item: any) => ({
                     symbol: item.mksc_shrn_iscd || item.mksc_shra || '',
                     name: item.hts_kor_isnm || '',
@@ -125,11 +154,11 @@ export async function GET(request: NextRequest) {
 
                 send({
                     type: 'status',
-                    message: `1차 필터 통과: ${candidates.length}개 (전체 ${rankingData.length}개 중). 재무 데이터 분석 시작...`,
+                    message: `1차 필터 통과: ${candidates.length}개 (전체 ${rankingData.length}개 중). 재무+배당 데이터 분석 시작...`,
                     progress: { total: candidates.length, current: 0 }
                 });
 
-                // Step 3: Fetch financials for ALL pre-filtered candidates (no limit!)
+                // Step 3: Fetch financials + dividend for ALL pre-filtered candidates
                 const token = await getAccessToken();
                 const results: any[] = [];
                 const BATCH_SIZE = 5;
@@ -139,7 +168,12 @@ export async function GET(request: NextRequest) {
 
                     const batchResults = await Promise.all(batch.map(async (stock) => {
                         try {
-                            const financials = await fetchFinancials(stock.symbol, token);
+                            // Fetch KIS financials and Naver dividend in parallel
+                            const [financials, dividendYield] = await Promise.all([
+                                fetchFinancials(stock.symbol, token),
+                                fetchDividendYield(stock.symbol),
+                            ]);
+
                             if (!financials) return null;
 
                             const epsGrowth = financials.revenue_growth;
@@ -155,7 +189,7 @@ export async function GET(request: NextRequest) {
                                 pbr: stock.pbr,
                                 roe: financials.roe,
                                 peg,
-                                dividend_yield: 0,
+                                dividend_yield: dividendYield,
                                 market_cap: stock.market_cap,
                                 volume: stock.volume,
                                 operating_profit_margin: financials.operating_profit_margin,
@@ -184,7 +218,7 @@ export async function GET(request: NextRequest) {
                     const processed = Math.min(i + BATCH_SIZE, candidates.length);
                     send({
                         type: 'progress',
-                        message: `재무 분석 중... ${processed}/${candidates.length} (${results.length}건 발견)`,
+                        message: `재무+배당 분석 중... ${processed}/${candidates.length} (${results.length}건 발견)`,
                         progress: { total: candidates.length, current: processed, matched: results.length }
                     });
                 }
