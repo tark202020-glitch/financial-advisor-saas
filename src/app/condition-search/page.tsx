@@ -78,10 +78,7 @@ export default function ConditionSearchPage() {
     const [selectedPresetId, setSelectedPresetId] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    // Opinion State
-    const [opinionData, setOpinionData] = useState<any[]>([]);
-    const [opinionSymbol, setOpinionSymbol] = useState('005930');
-    const [isOpinionLoading, setIsOpinionLoading] = useState(false);
+
 
     // === Load Presets ===
     const loadPresets = useCallback(async () => {
@@ -98,7 +95,6 @@ export default function ConditionSearchPage() {
 
     useEffect(() => {
         loadPresets();
-        fetchOpinion();
     }, [loadPresets]);
 
     // === Search Handler with SSE streaming ===
@@ -214,26 +210,7 @@ export default function ConditionSearchPage() {
         setStatusMsg('조건이 초기화되었습니다.');
     };
 
-    // === Opinion Handler ===
-    const fetchOpinion = async () => {
-        setIsOpinionLoading(true);
-        try {
-            const today = new Date();
-            const yearAgo = new Date();
-            yearAgo.setFullYear(today.getFullYear() - 1);
-            const todayStr = today.toISOString().slice(0, 10).replace(/-/g, "");
-            const yearAgoStr = yearAgo.toISOString().slice(0, 10).replace(/-/g, "");
-            const res = await fetch(`/api/kis/invest-opinion?symbol=${opinionSymbol}&startDate=${yearAgoStr}&endDate=${todayStr}`);
-            if (!res.ok) throw new Error("Failed");
-            const data = await res.json();
-            setOpinionData(Array.isArray(data) ? data : (data ? [data] : []));
-        } catch (e) {
-            console.error(e);
-            setOpinionData([]);
-        } finally {
-            setIsOpinionLoading(false);
-        }
-    };
+
 
     // === Condition Change Handler ===
     const updateCondition = (key: keyof SimpleConditions, field: 'min' | 'max', value: string) => {
@@ -451,48 +428,7 @@ export default function ConditionSearchPage() {
                     </p>
                 </div>
 
-                {/* === HTS 0640 투자의견 === */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-slate-800">투자의견 (HTS 0640)</h2>
-                        <div className="flex gap-2">
-                            <input value={opinionSymbol} onChange={(e) => setOpinionSymbol(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm w-32 outline-none" placeholder="종목코드" />
-                            <button onClick={fetchOpinion} disabled={isOpinionLoading}
-                                className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition disabled:opacity-50">
-                                {isOpinionLoading ? '조회 중...' : '조회'}
-                            </button>
-                        </div>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 text-slate-500 font-medium">
-                                <tr>
-                                    <th className="px-4 py-2 rounded-l-lg">일자</th>
-                                    <th className="px-4 py-2">증권사</th>
-                                    <th className="px-4 py-2">투자의견</th>
-                                    <th className="px-4 py-2">목표가</th>
-                                    <th className="px-4 py-2 rounded-r-lg">작성자</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {opinionData.length === 0 ? (
-                                    <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-400">데이터가 없습니다.</td></tr>
-                                ) : (
-                                    opinionData.map((item, idx) => (
-                                        <tr key={idx} className="hover:bg-slate-50">
-                                            <td className="px-4 py-2">{item.stck_bsop_date}</td>
-                                            <td className="px-4 py-2">{item.mbcr_name}</td>
-                                            <td className="px-4 py-2 font-medium text-slate-700">{item.invt_opnn}</td>
-                                            <td className="px-4 py-2 font-bold text-slate-900">{parseInt(item.htgt_prce || '0').toLocaleString()}</td>
-                                            <td className="px-4 py-2 text-slate-500">{item.wrtg_nm}</td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+
             </div>
         </SidebarLayout>
     );
