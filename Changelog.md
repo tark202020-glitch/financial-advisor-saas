@@ -1,3 +1,12 @@
+## [Alpha V1.152] - 2026-02-10 21:20:00
+
+### 23. Gemini 모델 업그레이드 (2.5-flash)
+- **Summary**: `gemini-1.5-flash` 모델이 API에서 제거(404)되어 `gemini-2.5-flash`로 업그레이드.
+- **Detail**:
+  - **모델 변경**: `gemini-1.5-flash` → `gemini-2.5-flash`
+  - **원인**: Google API v1beta에서 1.5-flash 모델 지원 중단.
+- **Build Time**: 2026-02-10 21:20:00
+
 ## [Alpha V1.151] - 2026-02-10 21:15:00
 
 ### 22. AI 오류 진단 및 이미지 복구
