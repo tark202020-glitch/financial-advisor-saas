@@ -1,3 +1,13 @@
+## [Alpha V1.155] - 2026-02-10 22:40:00
+
+### 26. 해외 주식 일봉 차트 API URL 수정
+- **Summary**: KIS API 해외 일봉 엔드포인트 URL 오류 수정 (`daily-price` → `dailyprice`).
+- **Detail**:
+  - KIS API URL에서 하이픈이 포함된 `/quotations/daily-price`가 404 반환 확인
+  - 정확한 URL `/quotations/dailyprice` (하이픈 없음)로 교체
+  - 교환코드 재시도, KST 날짜, 에러 허용 로직은 V1.154에서 이미 적용
+- **Build Time**: 2026-02-10 22:40:00
+
 ## [Alpha V1.154] - 2026-02-10 21:55:00
 
 ### 25. AI 조언 전문가 말투 전환 & 해외 주식 차트 수정

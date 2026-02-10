@@ -1025,7 +1025,7 @@ export async function getOverseasDailyPriceHistory(symbol: string): Promise<KisC
     const today = kst.toISOString().slice(0, 10).replace(/-/g, "");
 
     const fetchDaily = async (exch: string) => {
-        return await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/daily-price?AUTH=&EXCD=${exch}&SYMB=${symbol}&GUBN=0&BYMD=${today}&MODP=1`, {
+        return await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/dailyprice?AUTH=&EXCD=${exch}&SYMB=${symbol}&GUBN=0&BYMD=${today}&MODP=1`, {
             method: "GET",
             headers: {
                 "content-type": "application/json",
