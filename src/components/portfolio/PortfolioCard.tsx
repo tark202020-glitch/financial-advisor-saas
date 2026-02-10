@@ -78,15 +78,15 @@ export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) 
     const handleSave = () => {
         updateAsset(asset.id, {
             memo,
-            targetPriceLower: targetLower ? parseInt(targetLower.replace(/,/g, '')) : undefined,
-            targetPriceUpper: targetUpper ? parseInt(targetUpper.replace(/,/g, '')) : undefined,
+            targetPriceLower: targetLower ? parseFloat(targetLower.replace(/,/g, '')) : undefined,
+            targetPriceUpper: targetUpper ? parseFloat(targetUpper.replace(/,/g, '')) : undefined,
         });
     };
 
     // Calculate Goal Rate
     const getGoalRate = (target: string) => {
         if (!target || !asset.pricePerShare) return null;
-        const t = parseInt(target.replace(/,/g, ''));
+        const t = parseFloat(target.replace(/,/g, ''));
         if (isNaN(t)) return null;
         const r = ((t - asset.pricePerShare) / asset.pricePerShare) * 100;
         return r;

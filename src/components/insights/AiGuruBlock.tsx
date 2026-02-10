@@ -118,7 +118,7 @@ export default function AiGuruBlock() {
             <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-8 shadow-sm border border-indigo-100 mb-6 flex flex-col items-center justify-center gap-4 text-center min-h-[200px] animate-in fade-in duration-500">
                 <div className="relative w-24 h-24 md:w-32 md:h-32 animate-bounce">
                     <Image
-                        src="/images/guru_whale.png"
+                        src="/images/guru_dog.png"
                         alt="AI Guru Loading"
                         fill
                         className="object-contain drop-shadow-md"

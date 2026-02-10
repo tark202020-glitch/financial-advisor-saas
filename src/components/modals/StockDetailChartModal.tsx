@@ -48,7 +48,7 @@ interface CandleData {
 
 export default function StockDetailModal({ isOpen, onClose, asset }: StockDetailModalProps) {
     const { updateAsset, removeAsset, addTradeLog, updateTradeLog, removeTradeLog } = usePortfolio();
-    const stockLive = useStockPrice(asset.symbol, 0, 'KR');
+    const stockLive = useStockPrice(asset.symbol, 0, asset.category);
 
     // Local State for Chart
     const [history, setHistory] = useState<CandleData[]>([]);
@@ -98,10 +98,10 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                     if (Array.isArray(data)) {
                         const sorted = [...data].reverse().map(d => ({
                             date: d.stck_bsop_date,
-                            open: parseInt(d.stck_oprc),
-                            high: parseInt(d.stck_hgpr),
-                            low: parseInt(d.stck_lwpr),
-                            close: parseInt(d.stck_clpr),
+                            open: parseFloat(d.stck_oprc),
+                            high: parseFloat(d.stck_hgpr),
+                            low: parseFloat(d.stck_lwpr),
+                            close: parseFloat(d.stck_clpr),
                             volume: parseInt(d.acml_vol),
                         }));
 
@@ -222,8 +222,8 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
     const handleSaveGoals = () => {
         updateAsset(asset.id, {
             memo,
-            targetPriceLower: targetLower ? parseInt(targetLower.replace(/,/g, '')) : undefined,
-            targetPriceUpper: targetUpper ? parseInt(targetUpper.replace(/,/g, '')) : undefined,
+            targetPriceLower: targetLower ? parseFloat(targetLower.replace(/,/g, '')) : undefined,
+            targetPriceUpper: targetUpper ? parseFloat(targetUpper.replace(/,/g, '')) : undefined,
         });
     };
 
@@ -324,7 +324,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
     // Goal Return Rates
     const getGoalRate = (target: string) => {
         if (!target || !asset.pricePerShare) return null;
-        const t = parseInt(target.replace(/,/g, ''));
+        const t = parseFloat(target.replace(/,/g, ''));
         if (isNaN(t)) return null;
         const r = ((t - asset.pricePerShare) / asset.pricePerShare) * 100;
         return r;

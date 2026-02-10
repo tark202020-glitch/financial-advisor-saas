@@ -1,3 +1,13 @@
+## [Alpha V1.153] - 2026-02-10 21:38:00
+
+### 24. 해외 주식 현재가/차트 수정 (핵심 버그 수정)
+- **Summary**: 해외 주식의 현재가가 매입단가로 표시되던 핵심 버그 수정.
+- **Detail**:
+  - **핵심 수정**: `StockDetailChartModal`에서 `useStockPrice(symbol, 0, 'KR')` → `useStockPrice(symbol, 0, asset.category)`로 변경. 해외 주식도 올바른 API를 호출하여 실시간 시세 표시.
+  - **소수점 지원**: 해외 주식 가격(USD)의 소수점 처리를 위해 차트 데이터와 목표가 파싱을 `parseInt` → `parseFloat`로 전면 변경.
+  - **적용 파일**: `StockDetailChartModal.tsx`, `PortfolioCard.tsx`, `AiGuruBlock.tsx`
+- **Build Time**: 2026-02-10 21:38:00
+
 ## [Alpha V1.152] - 2026-02-10 21:20:00
 
 ### 23. Gemini 모델 업그레이드 (2.5-flash)
