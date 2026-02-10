@@ -1072,10 +1072,25 @@ export async function getOverseasDailyPriceHistory(symbol: string): Promise<KisC
             }
         }
 
-        const list = data.output2 || [];
+        let list = data.output2 || [];
+
+        // 3. If data is empty, retry with alternate exchange code
         if (list.length === 0) {
-            console.warn(`[OV Daily] Empty data for ${symbol}`);
-            return [];
+            console.warn(`[OV Daily] Empty output2 for ${symbol} (${exchangeCode}). Retrying with alternate exchange...`);
+            const altExch = exchangeCode === 'NYS' ? 'NAS' : 'NYS';
+            const altResponse = await fetchDaily(altExch);
+            if (altResponse.ok) {
+                const altData = await altResponse.json();
+                if (altData.rt_cd === "0" && altData.output2 && altData.output2.length > 0) {
+                    list = altData.output2;
+                    console.log(`[OV Daily] Retry success for ${symbol} with ${altExch}: ${list.length} items`);
+                } else {
+                    console.warn(`[OV Daily] No data for ${symbol} even after retry`);
+                    return [];
+                }
+            } else {
+                return [];
+            }
         }
 
         return list.map((item: any) => ({
