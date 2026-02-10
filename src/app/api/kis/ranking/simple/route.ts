@@ -1,5 +1,5 @@
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import {
     getAccessToken,
     getMarketCapRanking,
@@ -10,24 +10,6 @@ import {
 } from '@/lib/kis/client';
 
 export const dynamic = 'force-dynamic';
-
-interface ConditionStock {
-    symbol: string;
-    name: string;
-    price: number;
-    per: number;
-    pbr: number;
-    roe: number;
-    peg: number;
-    dividend_yield: number;
-    market_cap: number;
-    volume: number;
-    operating_profit_margin: number;
-    operating_profit_growth: number;
-    revenue_growth: number;
-    debt_ratio: number;
-    revenue: number;
-}
 
 async function fetchFinancials(symbol: string, token: string) {
     const headers = {
@@ -48,7 +30,6 @@ async function fetchFinancials(symbol: string, token: string) {
                 return res.json();
             });
         } catch (e) {
-            console.warn(`[fetchFinancials] Failed ${symbol} tr_id=${tr_id}`, e);
             return { output: [] };
         }
     };
@@ -75,7 +56,6 @@ async function fetchFinancials(symbol: string, token: string) {
             roe,
         };
     } catch (e) {
-        console.error(`[fetchFinancials] Exception for ${symbol}`, e);
         return null;
     }
 }
@@ -83,7 +63,6 @@ async function fetchFinancials(symbol: string, token: string) {
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
 
-    // === All range filter parameters ===
     const getRange = (name: string, defaultMin: number = -999999, defaultMax: number = 999999) => ({
         min: parseFloat(searchParams.get(`min${name}`) ?? String(defaultMin)),
         max: parseFloat(searchParams.get(`max${name}`) ?? String(defaultMax)),
@@ -105,124 +84,135 @@ export async function GET(request: NextRequest) {
     const inRange = (val: number, range: { min: number; max: number }) =>
         val >= range.min && val <= range.max;
 
-    // Check which filters require financial API data
-    const needsFinancialData =
-        filters.revenueGrowth.min > -999999 || filters.revenueGrowth.max < 999999 ||
-        filters.opGrowth.min > -999999 || filters.opGrowth.max < 999999 ||
-        filters.roe.min > -999999 || filters.roe.max < 999999 ||
-        filters.peg.min > -999999 || filters.peg.max < 999999 ||
-        filters.debt.min > -999999 || filters.debt.max < 999999 ||
-        true; // Always fetch financials since we want to display them
+    // Use Server-Sent Events for real-time progress
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+        async start(controller) {
+            const send = (data: any) => {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+            };
 
-    try {
-        // Step 1: Get all KOSPI candidates (up to 200 in fallback, all in live)
-        const rankingData = await getMarketCapRanking(200);
+            try {
+                // Step 1: Get all KOSPI candidates
+                send({ type: 'status', message: 'KOSPI 종목 리스트 수집 중...' });
+                const rankingData = await getMarketCapRanking(200);
 
-        if (!rankingData || rankingData.length === 0) {
-            console.warn("[SimpleSearch] No ranking data returned");
-            return NextResponse.json([]);
-        }
-
-        console.log(`[SimpleSearch] Got ${rankingData.length} total candidates`);
-
-        // Step 2: Map and apply STAGE 1 filters (price-data based — no extra API calls)
-        const candidates = rankingData.map((item: any) => ({
-            symbol: item.mksc_shrn_iscd || item.mksc_shra || '',
-            name: item.hts_kor_isnm || '',
-            price: parseInt(item.stck_prpr || '0'),
-            per: parseFloat(item.per || '0'),
-            pbr: parseFloat(item.pbr || '0'),
-            volume: parseInt(item.acml_vol || '0'),
-            market_cap: parseInt(item.stck_avls || item.lstn_stcn || '0')
-        })).filter((c: any) => {
-            if (!c.symbol) return false;
-
-            // STAGE 1: Filter by fields available from ranking/price data
-            if (!inRange(c.per, filters.per)) return false;
-            if (!inRange(c.pbr, filters.pbr)) return false;
-            if (!inRange(c.market_cap, filters.marketCap)) return false;
-            if (!inRange(c.volume, filters.volume)) return false;
-
-            return true;
-        });
-
-        console.log(`[SimpleSearch] After Stage 1 filter: ${candidates.length} candidates (from ${rankingData.length})`);
-
-        // Step 3: Get access token for financial data APIs
-        const token = await getAccessToken();
-
-        // Step 4: STAGE 2 — Fetch financials for pre-filtered candidates and apply remaining filters
-        // Process in parallel batches for speed
-        const BATCH_SIZE = 5;
-        const results: ConditionStock[] = [];
-        const MAX_FINANCIAL_FETCHES = 100; // Safety limit to prevent excessive API calls
-        const toProcess = candidates.slice(0, MAX_FINANCIAL_FETCHES);
-
-        for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
-            const batch = toProcess.slice(i, i + BATCH_SIZE);
-
-            const batchResults = await Promise.all(batch.map(async (stock) => {
-                try {
-                    const financials = await fetchFinancials(stock.symbol, token);
-                    if (!financials) return null;
-
-                    const epsGrowth = financials.revenue_growth;
-                    const peg = (stock.per > 0 && epsGrowth > 0.01)
-                        ? Math.round((stock.per / epsGrowth) * 100) / 100
-                        : 0;
-
-                    const finalStock: ConditionStock = {
-                        symbol: stock.symbol,
-                        name: stock.name,
-                        price: stock.price,
-                        per: stock.per,
-                        pbr: stock.pbr,
-                        roe: financials.roe,
-                        peg,
-                        dividend_yield: 0,
-                        market_cap: stock.market_cap,
-                        volume: stock.volume,
-                        operating_profit_margin: financials.operating_profit_margin,
-                        operating_profit_growth: financials.operating_profit_growth,
-                        revenue_growth: financials.revenue_growth,
-                        debt_ratio: financials.debt_ratio,
-                        revenue: 0,
-                    };
-
-                    // STAGE 2: Apply financial-data filters
-                    if (!inRange(finalStock.revenue_growth, filters.revenueGrowth)) return null;
-                    if (!inRange(finalStock.operating_profit_growth, filters.opGrowth)) return null;
-                    if (!inRange(finalStock.roe, filters.roe)) return null;
-                    if (finalStock.peg > 0 && !inRange(finalStock.peg, filters.peg)) return null;
-                    if (!inRange(finalStock.debt_ratio, filters.debt)) return null;
-                    if (!inRange(finalStock.dividend_yield, filters.dividend)) return null;
-
-                    return finalStock;
-                } catch (innerErr) {
-                    console.error(`[SimpleSearch] Error processing ${stock.symbol}`, innerErr);
-                    return null;
+                if (!rankingData || rankingData.length === 0) {
+                    send({ type: 'done', results: [], meta: { totalCandidates: 0, afterStage1: 0, processed: 0, matched: 0 } });
+                    controller.close();
+                    return;
                 }
-            }));
 
-            batchResults.forEach(r => { if (r) results.push(r); });
-        }
+                send({ type: 'status', message: `${rankingData.length}개 종목 수집 완료. 1차 필터링 중...` });
 
-        const skipped = candidates.length - toProcess.length;
-        console.log(`[SimpleSearch] Returning ${results.length} results (processed ${toProcess.length}, skipped ${skipped})`);
+                // Step 2: Stage 1 filter (price-data based)
+                const candidates = rankingData.map((item: any) => ({
+                    symbol: item.mksc_shrn_iscd || item.mksc_shra || '',
+                    name: item.hts_kor_isnm || '',
+                    price: parseInt(item.stck_prpr || '0'),
+                    per: parseFloat(item.per || '0'),
+                    pbr: parseFloat(item.pbr || '0'),
+                    volume: parseInt(item.acml_vol || '0'),
+                    market_cap: parseInt(item.stck_avls || item.lstn_stcn || '0')
+                })).filter((c: any) => {
+                    if (!c.symbol) return false;
+                    if (!inRange(c.per, filters.per)) return false;
+                    if (!inRange(c.pbr, filters.pbr)) return false;
+                    if (!inRange(c.market_cap, filters.marketCap)) return false;
+                    if (!inRange(c.volume, filters.volume)) return false;
+                    return true;
+                });
 
-        return NextResponse.json({
-            results,
-            meta: {
-                totalCandidates: rankingData.length,
-                afterStage1: candidates.length,
-                processed: toProcess.length,
-                matched: results.length,
-                skipped,
+                send({
+                    type: 'status',
+                    message: `1차 필터 통과: ${candidates.length}개 (전체 ${rankingData.length}개 중). 재무 데이터 분석 시작...`,
+                    progress: { total: candidates.length, current: 0 }
+                });
+
+                // Step 3: Fetch financials for ALL pre-filtered candidates (no limit!)
+                const token = await getAccessToken();
+                const results: any[] = [];
+                const BATCH_SIZE = 5;
+
+                for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+                    const batch = candidates.slice(i, i + BATCH_SIZE);
+
+                    const batchResults = await Promise.all(batch.map(async (stock) => {
+                        try {
+                            const financials = await fetchFinancials(stock.symbol, token);
+                            if (!financials) return null;
+
+                            const epsGrowth = financials.revenue_growth;
+                            const peg = (stock.per > 0 && epsGrowth > 0.01)
+                                ? Math.round((stock.per / epsGrowth) * 100) / 100
+                                : 0;
+
+                            const finalStock = {
+                                symbol: stock.symbol,
+                                name: stock.name,
+                                price: stock.price,
+                                per: stock.per,
+                                pbr: stock.pbr,
+                                roe: financials.roe,
+                                peg,
+                                dividend_yield: 0,
+                                market_cap: stock.market_cap,
+                                volume: stock.volume,
+                                operating_profit_margin: financials.operating_profit_margin,
+                                operating_profit_growth: financials.operating_profit_growth,
+                                revenue_growth: financials.revenue_growth,
+                                debt_ratio: financials.debt_ratio,
+                                revenue: 0,
+                            };
+
+                            // Stage 2 filters
+                            if (!inRange(finalStock.revenue_growth, filters.revenueGrowth)) return null;
+                            if (!inRange(finalStock.operating_profit_growth, filters.opGrowth)) return null;
+                            if (!inRange(finalStock.roe, filters.roe)) return null;
+                            if (finalStock.peg > 0 && !inRange(finalStock.peg, filters.peg)) return null;
+                            if (!inRange(finalStock.debt_ratio, filters.debt)) return null;
+                            if (!inRange(finalStock.dividend_yield, filters.dividend)) return null;
+
+                            return finalStock;
+                        } catch {
+                            return null;
+                        }
+                    }));
+
+                    batchResults.forEach(r => { if (r) results.push(r); });
+
+                    const processed = Math.min(i + BATCH_SIZE, candidates.length);
+                    send({
+                        type: 'progress',
+                        message: `재무 분석 중... ${processed}/${candidates.length} (${results.length}건 발견)`,
+                        progress: { total: candidates.length, current: processed, matched: results.length }
+                    });
+                }
+
+                send({
+                    type: 'done',
+                    results,
+                    meta: {
+                        totalCandidates: rankingData.length,
+                        afterStage1: candidates.length,
+                        processed: candidates.length,
+                        matched: results.length,
+                    }
+                });
+
+            } catch (e: any) {
+                send({ type: 'error', message: e.message || 'Internal Server Error' });
+            } finally {
+                controller.close();
             }
-        });
+        }
+    });
 
-    } catch (e: any) {
-        console.error("[SimpleSearch] Global Error:", e);
-        return NextResponse.json({ error: e.message || "Internal Server Error" }, { status: 500 });
-    }
+    return new Response(stream, {
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        },
+    });
 }

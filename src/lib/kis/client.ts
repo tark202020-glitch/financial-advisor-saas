@@ -895,8 +895,62 @@ export async function getMarketCapRanking(limit: number = 200): Promise<KisMarke
         if (response.ok) {
             const data = await response.json();
             if (data.rt_cd === "0" && Array.isArray(data.output) && data.output.length > 0) {
-                console.log(`[MarketCapRanking] Live data: ${data.output.length} items (returning all)`);
-                // Return ALL data from the API, no artificial limit during market hours
+                console.log(`[MarketCapRanking] Live data: ${data.output.length} items`);
+
+                // Merge: supplement live data with fallback stocks not already present
+                const liveSymbols = new Set(data.output.map((item: any) => item.mksc_shrn_iscd || item.mksc_shra));
+                const missingStocks = TOP_KOSPI_STOCKS.filter(s => !liveSymbols.has(s.symbol));
+
+                if (missingStocks.length > 0) {
+                    console.log(`[MarketCapRanking] Supplementing with ${missingStocks.length} additional fallback stocks...`);
+                    const supplementResults: KisMarketCapItem[] = [];
+
+                    const chunkSize = 10;
+                    for (let i = 0; i < missingStocks.length; i += chunkSize) {
+                        const chunk = missingStocks.slice(i, i + chunkSize);
+                        const promises = chunk.map(async (stock) => {
+                            try {
+                                const res = await kisRateLimiter.add(() => fetch(
+                                    `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${stock.symbol}`, {
+                                    method: "GET",
+                                    headers: {
+                                        "content-type": "application/json",
+                                        "authorization": `Bearer ${token}`,
+                                        "appkey": APP_KEY!,
+                                        "appsecret": APP_SECRET!,
+                                        "tr_id": "FHKST01010100",
+                                    },
+                                }));
+                                if (!res.ok) return null;
+                                const d = await res.json();
+                                if (d.rt_cd !== "0") return null;
+                                const output = d.output;
+                                return {
+                                    mksc_shrn_iscd: stock.symbol,
+                                    mksc_shra: stock.symbol,
+                                    hts_kor_isnm: stock.name,
+                                    stck_prpr: output.stck_prpr || '0',
+                                    prdy_vrss: output.prdy_vrss || '0',
+                                    prdy_ctrt: output.prdy_ctrt || '0',
+                                    acml_vol: output.acml_vol || '0',
+                                    stck_avls: output.hts_avls || '0',
+                                    lstn_stcn: output.lstn_stcn || '0',
+                                    per: output.per || '0',
+                                    pbr: output.pbr || '0',
+                                } as KisMarketCapItem;
+                            } catch {
+                                return null;
+                            }
+                        });
+                        const chunkResults = await Promise.all(promises);
+                        chunkResults.forEach(r => { if (r) supplementResults.push(r); });
+                    }
+
+                    const merged = [...data.output, ...supplementResults];
+                    console.log(`[MarketCapRanking] Merged total: ${merged.length} items (${data.output.length} live + ${supplementResults.length} supplemented)`);
+                    return merged;
+                }
+
                 return data.output;
             }
             console.warn(`[MarketCapRanking] API returned rt_cd="${data.rt_cd}", msg="${data.msg1}" — likely off-market hours. Using fallback.`);
@@ -912,7 +966,6 @@ export async function getMarketCapRanking(limit: number = 200): Promise<KisMarke
     console.log(`[MarketCapRanking] Fallback mode: fetching ${stocksToFetch.length} individual stocks...`);
     const results: KisMarketCapItem[] = [];
 
-    // Fetch in chunks of 10 (increased from 5 for faster processing)
     const chunkSize = 10;
     for (let i = 0; i < stocksToFetch.length; i += chunkSize) {
         const chunk = stocksToFetch.slice(i, i + chunkSize);
@@ -960,3 +1013,4 @@ export async function getMarketCapRanking(limit: number = 200): Promise<KisMarke
     console.log(`[MarketCapRanking] Fallback returned ${results.length} items`);
     return results;
 }
+
