@@ -67,6 +67,17 @@ export default function AiGuruBlock() {
                     const value = currentPrice * a.quantity;
                     calculatedTotalValue += value;
 
+                    // Calculate proximity to targets
+                    let proximity = null;
+                    const diffLower = a.targetPriceLower ? ((currentPrice - a.targetPriceLower) / currentPrice) * 100 : null;
+                    const diffUpper = a.targetPriceUpper ? ((a.targetPriceUpper - currentPrice) / currentPrice) * 100 : null;
+
+                    if (diffLower !== null && Math.abs(diffLower) <= 5) {
+                        proximity = `하한가 근접 (${diffLower.toFixed(1)}%)`;
+                    } else if (diffUpper !== null && Math.abs(diffUpper) <= 5) {
+                        proximity = `상한가 근접 (${diffUpper.toFixed(1)}%)`;
+                    }
+
                     return {
                         symbol: a.symbol,
                         name: a.name,
@@ -78,7 +89,8 @@ export default function AiGuruBlock() {
                         targetLower: a.targetPriceLower,
                         targetUpper: a.targetPriceUpper,
                         changeRate: changeRate,
-                        totalValue: value
+                        totalValue: value,
+                        proximity: proximity // Explicitly tell AI about target proximity
                     };
                 });
 
