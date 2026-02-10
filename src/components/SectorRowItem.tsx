@@ -52,6 +52,7 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
 
     // Simplified market type derivation
     const marketType = category === 'US' ? 'US' : 'KR';
+    const sectorDisplay = (stockData as any)?.sector || (stockData as any)?.bstp_kor_isnm || stock.sector;
 
     return (
         <div
@@ -70,10 +71,10 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
                         <span className="truncate">{stock.symbol}</span>
                         <span className="text-slate-300">|</span>
                         <span className="truncate">{marketType}</span>
-                        {stock.sector && (
+                        {sectorDisplay && (
                             <>
                                 <span className="text-slate-300">|</span>
-                                <span className="truncate">{stock.sector}</span>
+                                <span className="truncate">{sectorDisplay}</span>
                             </>
                         )}
                     </div>

@@ -6,6 +6,7 @@ interface StockData {
     change: number;
     changePercent: number;
     time: string;
+    sector?: string;
 }
 
 export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
@@ -48,11 +49,13 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
                                 if (!item) return;
 
                                 let price = 0, diff = 0, rate = 0;
+                                let sector: string | undefined = undefined;
 
                                 if (market === 'KR') {
                                     price = parseFloat(item.stck_prpr || '0');
                                     diff = parseFloat(item.prdy_vrss || '0');
                                     rate = parseFloat(item.prdy_ctrt || '0');
+                                    sector = item.bstp_kor_isnm;
                                 } else {
                                     price = parseFloat(item.last?.replace(/,/g, '') || item.rsym?.last || '0');
                                     diff = parseFloat(item.diff?.replace(/,/g, '') || item.rsym?.diff || '0');
@@ -68,7 +71,8 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
                                         price,
                                         change,
                                         changePercent: rate,
-                                        time: timeDisplay
+                                        time: timeDisplay,
+                                        sector
                                     };
                                 }
                             });
@@ -121,7 +125,8 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
                 price: wsItem.price,
                 change: wsItem.change,
                 changePercent: wsItem.rate,
-                time: wsItem.time || 'Realtime'
+                time: wsItem.time || 'Realtime',
+                sector: batchData[symbol]?.sector // Preserve sector from batch if available (WS doesn't usually send sector)
             };
         }
 

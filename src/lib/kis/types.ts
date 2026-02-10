@@ -10,6 +10,7 @@ export interface KisDomStockPrice {
     prdy_ctrt: string; // 전일 대비율
     stck_bsop_date?: string; // 영업 일자 (YYYYMMDD)
     stck_cntg_hour?: string; // 체결 시간 (HHMMSS)
+    bstp_kor_isnm?: string; // 업종명 (KOSPI Sector Name)
 }
 
 export interface KisOvStockPrice {

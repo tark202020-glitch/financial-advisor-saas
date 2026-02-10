@@ -61,11 +61,27 @@ export default function StockSearchModal({ isOpen, onClose, targetWatchlistId }:
     const handleAdd = async (stock: StockMaster) => {
         if (!targetWatchlistId) return;
 
+        // Fetch sector info (KOSPI Sector Name)
+        let sector = '';
+        try {
+            // Only try to fetch if it looks like a stock code (6 digits usually, fund codes differ)
+            // But API handles most.
+            const res = await fetch(`/api/kis/price/domestic/${stock.symbol}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.bstp_kor_isnm) {
+                    sector = data.bstp_kor_isnm;
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to fetch sector info for", stock.symbol, e);
+        }
+
         await addItem(targetWatchlistId, {
             symbol: stock.symbol,
             name: stock.name,
-            market: 'KR', // Defaulting to KR for now as master data is KOSPI
-            sector: '' // We don't have sector in master json usually, or we can look it up
+            market: 'KR', // Defaulting to KR as master data is KOSPI
+            sector: sector // Save the fetched sector (or empty if not found)
         });
     };
 
