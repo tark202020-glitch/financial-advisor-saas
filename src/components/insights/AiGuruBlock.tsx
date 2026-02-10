@@ -143,7 +143,7 @@ export default function AiGuruBlock() {
             <div className="flex-shrink-0 relative z-10 text-center">
                 <div className="relative w-32 h-32 md:w-40 md:h-40 mx-auto">
                     <Image
-                        src="/images/guru_whale.png"
+                        src="/images/guru_dog.png"
                         alt="AI Guru"
                         fill
                         className="object-contain drop-shadow-lg transform hover:scale-105 transition-transform duration-300"
