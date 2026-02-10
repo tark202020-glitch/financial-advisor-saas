@@ -6,6 +6,7 @@ export interface Stock {
   changePercent: number;
   sparklineData?: number[];
   sector?: string;
+  id?: string;
   market?: 'KR' | 'US';
 }
 

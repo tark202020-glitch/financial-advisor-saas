@@ -9,11 +9,12 @@ interface SectorWatchListProps {
     title: string;
     stocks: Stock[];
     onAddClick?: () => void; // Optional Add Handler
+    onRemoveItem?: (stockId: string) => void;
 }
 
 import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 
-export default function SectorWatchList({ title, stocks, onAddClick }: SectorWatchListProps) {
+export default function SectorWatchList({ title, stocks, onAddClick, onRemoveItem }: SectorWatchListProps) {
     const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
     // Helper to determine market
@@ -64,6 +65,7 @@ export default function SectorWatchList({ title, stocks, onAddClick }: SectorWat
                         // We don't really need onTimeUpdate for batch usually, 
                         // but we can keep it if SectorRowItem emits it.
                         onTimeUpdate={setLastUpdated}
+                        onRemove={onRemoveItem && stock.id ? () => onRemoveItem(stock.id!) : undefined}
                     />
                 ))}
             </div>

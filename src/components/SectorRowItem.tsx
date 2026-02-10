@@ -1,7 +1,7 @@
 "use client";
 
 import { Stock } from '@/lib/mockData';
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { useStockPrice } from '@/hooks/useStockPrice';
 
 import { useEffect } from 'react';
@@ -15,9 +15,10 @@ interface SectorRowItemProps {
     onTimeUpdate?: (time: string) => void;
     overrideData?: any; // Accepting injected data from Batch
     disableSelfFetch?: boolean;
+    onRemove?: () => void;
 }
 
-export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, overrideData, disableSelfFetch = false }: SectorRowItemProps) {
+export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, overrideData, disableSelfFetch = false, onRemove }: SectorRowItemProps) {
     // Use custom hook to get real-time price ONLY if overrideData is NOT provided AND self-fetch is enabled
     const shouldSkip = !!overrideData || disableSelfFetch;
     const hookData = useStockPrice(stock.symbol, stock.price, category, { skip: shouldSkip });
@@ -55,7 +56,7 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
     return (
         <div
             onClick={() => onClick(currentStock)}
-            className={`grid grid-cols-12 items-center p-3 rounded-lg cursor-pointer transition-all hover:shadow-md border gap-2 ${isVolatile ? 'bg-amber-50 border-amber-200' : 'bg-white border-transparent hover:border-slate-100'
+            className={`grid grid-cols-12 items-center p-3 rounded-lg cursor-pointer transition-all hover:shadow-md border gap-2 relative group ${isVolatile ? 'bg-amber-50 border-amber-200' : 'bg-white border-transparent hover:border-slate-100'
                 }`}
         >
             {/* 1. Name & Sector (Col 1-6) */}
@@ -96,6 +97,25 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
                     {change > 0 ? '+' : ''}{change.toLocaleString()}
                 </div>
             </div>
+
+            {/* Remove Button */}
+            {onRemove && (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // if (confirm(`'${stock.name}' 종목을 삭제하시겠습니까?`)) { // Confirm logic handled by parent or here? 
+                        // User request: "추가한 종목을 삭제 할 수 있는 기능이 필요합니다."
+                        // Usually better to confirm.
+                        if (confirm(`'${stock.name}' 종목을 삭제하시겠습니까?`)) {
+                            onRemove();
+                        }
+                    }}
+                    className="absolute -top-2 -right-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 p-1 transition-all z-10"
+                    title="종목 삭제"
+                >
+                    <X size={12} />
+                </button>
+            )}
         </div>
     );
 }

@@ -11,7 +11,7 @@ import { Plus, Pencil } from 'lucide-react';
 export default function DashboardWatchlists() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [targetWatchlistId, setTargetWatchlistId] = useState<string | undefined>(undefined);
-    const { watchlists, addWatchlist, removeWatchlist, updateWatchlistTitle, user } = useWatchlist();
+    const { watchlists, addWatchlist, removeWatchlist, updateWatchlistTitle, removeItem, user } = useWatchlist();
     const [newGroupTitle, setNewGroupTitle] = useState('');
     const [isAddingGroup, setIsAddingGroup] = useState(false);
 
@@ -37,6 +37,7 @@ export default function DashboardWatchlists() {
     // Helper to convert WatchlistItem items to Stock[] for SectorWatchList
     const getStocksFromList = (list: Watchlist): Stock[] => {
         return list.items.map(item => ({
+            id: item.id, // Add id for deletion
             symbol: item.symbol,
             name: item.name || item.symbol,
             price: 0,
@@ -93,6 +94,7 @@ export default function DashboardWatchlists() {
                             title={list.title}
                             stocks={getStocksFromList(list)}
                             onAddClick={() => handleOpenSearch(list.id)}
+                            onRemoveItem={removeItem}
                         />
                         {/* Edit Group Button (Visible on hover) */}
                         <button
