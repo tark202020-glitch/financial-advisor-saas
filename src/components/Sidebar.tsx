@@ -12,6 +12,7 @@ import {
     ChevronRight,
     Search,
     LineChart,
+    StickyNote,
 } from "lucide-react";
 import { usePortfolio } from "@/context/PortfolioContext";
 
@@ -33,7 +34,8 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
         { name: "내 주식일지", href: "/portfolio", icon: BookOpen },
         { name: "내 주식 인사이트", href: "/insights", icon: LineChart },
         { name: "조건검색", href: "/condition-search", icon: Search },
-        { name: "설정", href: "#", icon: Settings, disabled: true }, // Placeholder
+        { name: "주식일지메모", href: "/memo", icon: StickyNote },
+        { name: "설정", href: "#", icon: Settings, disabled: true },
     ];
 
     return (
