@@ -128,51 +128,47 @@ export default function TargetProximityBlock() {
         const upperList: any[] = [];
 
         assets.forEach(asset => {
-            // 1. Filter: Sold Out
             if (!asset.symbol || asset.quantity <= 0) {
-                logs.push(`[제외] ${asset.name}: 보유수량 0 또는 기호 없음`);
+                // logs.push(`[제외] ${asset.name}: 보유수량 0 또는 기호 없음`); // log noise reduction
                 return;
             }
 
             const liveData = lastData.get(asset.symbol);
             const currentPrice = liveData?.price || initialPrices.get(asset.symbol);
 
-            // 2. Filter: No Price
-            if (!currentPrice) {
-                logs.push(`[제외] ${asset.name}: 현재가 조회 실패 (API/WS 미수신)`);
-                return;
-            }
+            if (!currentPrice) return;
+
+            // Common Logic: Filter > 30%
+            const isRelevant = (dist: number) => Math.abs(dist) <= 30;
 
             // --- Upper Target Processing ---
             if (asset.targetPriceUpper) {
                 const dist = ((asset.targetPriceUpper - currentPrice) / currentPrice) * 100;
-                upperList.push({
-                    name: asset.name,
-                    symbol: asset.symbol,
-                    currentPrice,
-                    target: asset.targetPriceUpper,
-                    distance: dist,
-                    displayDist: dist.toFixed(2),
-                    assetObj: asset // Keep reference for modal
-                });
+                if (isRelevant(dist)) {
+                    upperList.push({
+                        name: asset.name,
+                        symbol: asset.symbol,
+                        currentPrice,
+                        target: asset.targetPriceUpper,
+                        distance: dist,
+                        assetObj: asset
+                    });
+                }
             }
 
             // --- Lower Target Processing ---
             if (asset.targetPriceLower) {
                 const dist = ((currentPrice - asset.targetPriceLower) / currentPrice) * 100;
-                lowerList.push({
-                    name: asset.name,
-                    symbol: asset.symbol,
-                    currentPrice,
-                    target: asset.targetPriceLower,
-                    distance: dist,
-                    displayDist: dist.toFixed(2),
-                    assetObj: asset // Keep reference for modal
-                });
-            }
-
-            if (!asset.targetPriceLower && !asset.targetPriceUpper) {
-                logs.push(`[제외] ${asset.name}: 목표가 미설정`);
+                if (isRelevant(dist)) {
+                    lowerList.push({
+                        name: asset.name,
+                        symbol: asset.symbol,
+                        currentPrice,
+                        target: asset.targetPriceLower,
+                        distance: dist,
+                        assetObj: asset
+                    });
+                }
             }
         });
 
@@ -205,15 +201,26 @@ export default function TargetProximityBlock() {
                         <span className="font-bold ml-1">
                             {Math.abs(data.distance).toFixed(2)}%
                         </span>
-                        {data.distance < 0 && <span className="text-xs text-red-400 ml-1">(도달/초과)</span>}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-2 text-center border-t pt-1">
-                        클릭하여 상세 보기
                     </p>
                 </div>
             );
         }
         return null;
+    };
+
+    // Custom Y-Axis Tick with Text Wrapping
+    const CustomYAxisTick = ({ x, y, payload }: any) => {
+        return (
+            <g transform={`translate(${x},${y})`}>
+                <foreignObject x={-100} y={-15} width={90} height={40}>
+                    <div className="h-full flex items-center justify-end">
+                        <p className="text-[11px] font-bold text-slate-700 leading-tight text-right line-clamp-2 overflow-hidden text-ellipsis break-keep">
+                            {payload.value}
+                        </p>
+                    </div>
+                </foreignObject>
+            </g>
+        );
     };
 
     // Render Loading State
@@ -251,44 +258,39 @@ export default function TargetProximityBlock() {
                 {/* Block 1: Upper Target (Red) */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative animate-in fade-in zoom-in duration-500">
                     <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <span className="text-red-500">⬆️</span> 상한 목표 달성 순위
+                        <span className="text-red-500">⬆️</span> 상한 목표 (30% 이내)
                     </h2>
                     {upperData.length === 0 ? (
                         <div className="h-[400px] flex items-center justify-center text-slate-400 text-sm">
-                            상한 목표가 설정된 종목이 없습니다.
+                            설정된 범위(30%) 내 종목이 없습니다.
                         </div>
                     ) : (
-                        <div className="w-full" style={{ height: Math.max(400, upperData.length * 100) }}>
+                        <div className="w-full" style={{ height: Math.max(400, upperData.length * 50) }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
                                     layout="vertical"
                                     data={upperData}
-                                    margin={{ top: 5, right: 30, left: 30, bottom: 5 }}
+                                    margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
                                 >
-                                    <XAxis type="number" hide />
+                                    <XAxis type="number" domain={[0, 30]} hide />
                                     <YAxis
                                         dataKey="name"
                                         type="category"
                                         width={100}
-                                        tick={{ fontSize: 12, fill: '#475569', fontWeight: 500, cursor: 'pointer' }}
+                                        tick={<CustomYAxisTick />}
                                         interval={0}
                                         onClick={handleBarClick}
                                     />
                                     <Tooltip content={<CustomTooltip type='upper' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
-                                    <Bar dataKey="distance" barSize={24} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
-                                        {upperData.map((entry: any, index: number) => {
-                                            const isUrgent = Math.abs(entry.distance) < 10;
-                                            return (
-                                                <Cell
-                                                    key={`cell-${index}`}
-                                                    fill='#ef4444'
-                                                    fillOpacity={isUrgent ? 1 : 0.6}
-                                                    stroke={isUrgent ? '#fbbf24' : 'none'}
-                                                    strokeWidth={isUrgent ? 3 : 0}
-                                                    style={{ cursor: 'pointer' }}
-                                                />
-                                            );
-                                        })}
+                                    <Bar dataKey="distance" barSize={16} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
+                                        {upperData.map((entry: any, index: number) => (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill='#ef4444'
+                                                fillOpacity={0.8}
+                                                style={{ cursor: 'pointer' }}
+                                            />
+                                        ))}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
@@ -299,44 +301,39 @@ export default function TargetProximityBlock() {
                 {/* Block 2: Lower Target (Blue) */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative animate-in fade-in zoom-in duration-500">
                     <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <span className="text-blue-500">⬇️</span> 하한 목표 달성 순위
+                        <span className="text-blue-500">⬇️</span> 하한 목표 (30% 이내)
                     </h2>
                     {lowerData.length === 0 ? (
                         <div className="h-[400px] flex items-center justify-center text-slate-400 text-sm">
-                            하한 목표가 설정된 종목이 없습니다.
+                            설정된 범위(30%) 내 종목이 없습니다.
                         </div>
                     ) : (
-                        <div className="w-full" style={{ height: Math.max(400, lowerData.length * 100) }}>
+                        <div className="w-full" style={{ height: Math.max(400, lowerData.length * 50) }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart
                                     layout="vertical"
                                     data={lowerData}
-                                    margin={{ top: 5, right: 30, left: 30, bottom: 5 }}
+                                    margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
                                 >
-                                    <XAxis type="number" hide />
+                                    <XAxis type="number" domain={[0, 30]} hide />
                                     <YAxis
                                         dataKey="name"
                                         type="category"
                                         width={100}
-                                        tick={{ fontSize: 12, fill: '#475569', fontWeight: 500, cursor: 'pointer' }}
+                                        tick={<CustomYAxisTick />}
                                         interval={0}
                                         onClick={handleBarClick}
                                     />
                                     <Tooltip content={<CustomTooltip type='lower' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
-                                    <Bar dataKey="distance" barSize={24} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
-                                        {lowerData.map((entry: any, index: number) => {
-                                            const isUrgent = Math.abs(entry.distance) < 10;
-                                            return (
-                                                <Cell
-                                                    key={`cell-${index}`}
-                                                    fill='#3b82f6'
-                                                    fillOpacity={isUrgent ? 1 : 0.6}
-                                                    stroke={isUrgent ? '#fbbf24' : 'none'}
-                                                    strokeWidth={isUrgent ? 3 : 0}
-                                                    style={{ cursor: 'pointer' }}
-                                                />
-                                            );
-                                        })}
+                                    <Bar dataKey="distance" barSize={16} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
+                                        {lowerData.map((entry: any, index: number) => (
+                                            <Cell
+                                                key={`cell-${index}`}
+                                                fill='#3b82f6'
+                                                fillOpacity={0.8}
+                                                style={{ cursor: 'pointer' }}
+                                            />
+                                        ))}
                                     </Bar>
                                 </BarChart>
                             </ResponsiveContainer>
