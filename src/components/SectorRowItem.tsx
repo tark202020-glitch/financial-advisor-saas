@@ -60,17 +60,21 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
         >
             {/* 1. Name & Sector (Col 1-6) */}
             <div className="col-span-6 flex items-center gap-3 overflow-hidden">
-                {isVolatile && <div className="text-amber-500 font-bold shrink-0">⭐</div>}
-
                 <div className="min-w-0">
                     <div className="font-bold text-slate-800 flex items-center gap-2 truncate">
                         <span className="truncate">{stock.name}</span>
                         {marketType === 'US' && <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded shrink-0">US</span>}
                     </div>
-                    <div className="text-xs text-slate-500 flex items-center gap-1 truncate">
+                    <div className="text-xs text-slate-500 flex items-center gap-1 truncate mt-0.5">
                         <span className="truncate">{stock.symbol}</span>
                         <span className="text-slate-300">|</span>
-                        <span className="truncate">{stock.sector}</span>
+                        <span className="truncate">{marketType}</span>
+                        {stock.sector && (
+                            <>
+                                <span className="text-slate-300">|</span>
+                                <span className="truncate">{stock.sector}</span>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

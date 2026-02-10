@@ -2,11 +2,41 @@
 
 import SectorWatchList from '@/components/SectorWatchList';
 import StockSearchModal from '@/components/modals/StockSearchModal';
-import { SECTOR_STOCKS } from '@/lib/mockData';
+import { SECTOR_STOCKS, Stock } from '@/lib/mockData';
 import { useState } from 'react';
+import { useWatchlist, Watchlist } from '@/context/WatchlistContext';
+import { Plus, Trash2 } from 'lucide-react';
 
 export default function DashboardWatchlists() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [targetWatchlistId, setTargetWatchlistId] = useState<string | undefined>(undefined);
+    const { watchlists, addWatchlist, removeWatchlist, user } = useWatchlist();
+    const [newGroupTitle, setNewGroupTitle] = useState('');
+    const [isAddingGroup, setIsAddingGroup] = useState(false);
+
+    const handleOpenSearch = (watchlistId?: string) => {
+        setTargetWatchlistId(watchlistId);
+        setIsSearchOpen(true);
+    };
+
+    const handleAddGroup = async () => {
+        if (!newGroupTitle.trim()) return;
+        await addWatchlist(newGroupTitle);
+        setNewGroupTitle('');
+        setIsAddingGroup(false);
+    };
+
+    // Helper to convert WatchlistItem items to Stock[] for SectorWatchList
+    const getStocksFromList = (list: Watchlist): Stock[] => {
+        return list.items.map(item => ({
+            symbol: item.symbol,
+            name: item.name || item.symbol,
+            price: 0,
+            change: 0,
+            changePercent: 0,
+            sector: item.sector
+        }));
+    };
 
     return (
         <>
@@ -16,43 +46,110 @@ export default function DashboardWatchlists() {
                 <SectorWatchList
                     title="🇺🇸 미국 빅테크 (Big Tech)"
                     stocks={SECTOR_STOCKS['Global Big Tech']}
-                    onAddClick={() => setIsSearchOpen(true)}
+                    // Static lists don't support adding in this requirement context
+                    onAddClick={undefined}
                 />
                 <SectorWatchList
                     title="🇺🇸 미국 금융 & 소비"
                     stocks={SECTOR_STOCKS['Global Finance & Consumption']}
-                    onAddClick={() => setIsSearchOpen(true)}
+                    onAddClick={undefined}
                 />
                 <SectorWatchList
                     title="🇺🇸 미국 반도체"
                     stocks={SECTOR_STOCKS['Global Semiconductor']}
-                    onAddClick={() => setIsSearchOpen(true)}
+                    onAddClick={undefined}
                 />
 
                 {/* Row 2: Korea */}
                 <SectorWatchList
                     title="🇰🇷 한국 기술 & 제조"
                     stocks={SECTOR_STOCKS['KR Tech & Manufacturing']}
-                    onAddClick={() => setIsSearchOpen(true)}
+                    onAddClick={undefined}
                 />
                 <SectorWatchList
                     title="🇰🇷 한국 산업 & 인프라"
                     stocks={SECTOR_STOCKS['KR Industrial & Infra']}
-                    onAddClick={() => setIsSearchOpen(true)}
+                    onAddClick={undefined}
                 />
                 <SectorWatchList
                     title="🇰🇷 한국 금융 & 지수"
                     stocks={SECTOR_STOCKS['KR Finance & Index']}
-                    onAddClick={() => setIsSearchOpen(true)}
+                    onAddClick={undefined}
                 />
+
+                {/* Row 3: Custom Watchlists (DB) */}
+                {watchlists.map((list) => (
+                    <div key={list.id} className="relative group">
+                        <SectorWatchList
+                            title={list.title}
+                            stocks={getStocksFromList(list)}
+                            onAddClick={() => handleOpenSearch(list.id)}
+                        />
+                        {/* Delete Group Button (Visible on hover) */}
+                        <button
+                            onClick={() => {
+                                if (confirm(`'${list.title}' 그룹을 삭제하시겠습니까?`)) {
+                                    removeWatchlist(list.id);
+                                }
+                            }}
+                            className="absolute top-4 right-12 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="그룹 삭제"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
+                ))}
+
+                {/* Add Group Block */}
+                {watchlists.length < 3 && (
+                    <div className="bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 p-6 flex flex-col items-center justify-center min-h-[300px] hover:border-blue-300 hover:bg-blue-50/30 transition-all group">
+                        {!isAddingGroup ? (
+                            <button
+                                onClick={() => setIsAddingGroup(true)}
+                                className="flex flex-col items-center gap-3 text-slate-400 group-hover:text-blue-500 transition-colors"
+                            >
+                                <div className="w-12 h-12 rounded-full bg-white border border-slate-200 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                    <Plus size={24} />
+                                </div>
+                                <span className="font-medium">관심종목 그룹 추가</span>
+                            </button>
+                        ) : (
+                            <div className="w-full max-w-xs space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                                <h4 className="font-bold text-slate-700 text-center">새 그룹 만들기</h4>
+                                <input
+                                    type="text"
+                                    value={newGroupTitle}
+                                    onChange={(e) => setNewGroupTitle(e.target.value)}
+                                    placeholder="그룹 이름 (예: 반도체, ETF)"
+                                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    autoFocus
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddGroup()}
+                                />
+                                <div className="flex gap-2 justify-center">
+                                    <button
+                                        onClick={() => setIsAddingGroup(false)}
+                                        className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-200 rounded-lg transition-colors"
+                                    >
+                                        취소
+                                    </button>
+                                    <button
+                                        onClick={handleAddGroup}
+                                        disabled={!newGroupTitle.trim()}
+                                        className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        생성
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {/* Kept Search Modal for "Adding" to Context, though context is not displayed here directly anymore.
-                This allows adding to "My Stock Journal" behind the scenes or if we add a "My List" section later.
-                For now, the "+" button is on the KR headers as a convenience entrance. */}
             <StockSearchModal
                 isOpen={isSearchOpen}
                 onClose={() => setIsSearchOpen(false)}
+                targetWatchlistId={targetWatchlistId}
             />
         </>
     );

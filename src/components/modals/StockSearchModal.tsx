@@ -14,14 +14,15 @@ interface StockMaster {
 interface StockSearchModalProps {
     isOpen: boolean;
     onClose: () => void;
+    targetWatchlistId?: string; // ID of the watchlist to add to
 }
 
-export default function StockSearchModal({ isOpen, onClose }: StockSearchModalProps) {
+export default function StockSearchModal({ isOpen, onClose, targetWatchlistId }: StockSearchModalProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [masterData, setMasterData] = useState<StockMaster[]>([]);
     const [results, setResults] = useState<StockMaster[]>([]);
     const [loading, setLoading] = useState(false);
-    const { addStock, isInWatchlist } = useWatchlist();
+    const { addItem, watchlists } = useWatchlist();
 
     useEffect(() => {
         if (isOpen && masterData.length === 0) {
@@ -57,18 +58,22 @@ export default function StockSearchModal({ isOpen, onClose }: StockSearchModalPr
 
     if (!isOpen) return null;
 
-    const handleAdd = (stock: StockMaster) => {
-        // Adapt StockMaster to Stock interface
-        // We might need to fetch price later, but for now we add basic info.
-        // Price fetching happens in the Dashboard components (useStockPrice or SectorRowItem).
-        addStock({
+    const handleAdd = async (stock: StockMaster) => {
+        if (!targetWatchlistId) return;
+
+        await addItem(targetWatchlistId, {
             symbol: stock.symbol,
             name: stock.name,
-            price: 0, // Placeholder
-            change: 0,
-            changePercent: 0,
-            sector: 'KOSPI' // Default
-        }, 'KR');
+            market: 'KR', // Defaulting to KR for now as master data is KOSPI
+            sector: '' // We don't have sector in master json usually, or we can look it up
+        });
+    };
+
+    // Helper to check if in target list
+    const isInTargetList = (symbol: string) => {
+        if (!targetWatchlistId) return false;
+        const list = watchlists.find(w => w.id === targetWatchlistId);
+        return list?.items.some(i => i.symbol === symbol) || false;
     };
 
     return (
@@ -104,13 +109,13 @@ export default function StockSearchModal({ isOpen, onClose }: StockSearchModalPr
 
                     {!loading && results.length === 0 && !searchTerm && (
                         <div className="p-4 text-center text-slate-400 text-sm">
-                            종목을 검색하여 관심목록에 추가하세요.
+                            종목을 검색하여 선택한 관심목록에 추가하세요.
                         </div>
                     )}
 
                     <div className="space-y-1">
                         {results.map((stock) => {
-                            const isAdded = isInWatchlist(stock.symbol);
+                            const isAdded = isInTargetList(stock.symbol);
                             return (
                                 <div key={stock.symbol} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg group transition-colors">
                                     <div>
@@ -121,8 +126,8 @@ export default function StockSearchModal({ isOpen, onClose }: StockSearchModalPr
                                         onClick={() => !isAdded && handleAdd(stock)}
                                         disabled={isAdded}
                                         className={`p-2 rounded-full transition-all ${isAdded
-                                                ? 'bg-green-50 text-green-600'
-                                                : 'bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-600'
+                                            ? 'bg-green-50 text-green-600'
+                                            : 'bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-600'
                                             }`}
                                     >
                                         {isAdded ? <Check size={16} /> : <Plus size={16} />}

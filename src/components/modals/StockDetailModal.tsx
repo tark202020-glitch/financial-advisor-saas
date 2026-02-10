@@ -37,8 +37,14 @@ interface CompanyData {
 }
 
 export default function StockDetailModal({ symbol, marketType, name, onClose }: StockDetailModalProps) {
-    const { isInWatchlist, addStock, removeStock } = useWatchlist();
-    const isAdded = isInWatchlist(symbol);
+    const { watchlists, addItem, removeItem } = useWatchlist();
+
+    // Find if the stock is in ANY watchlist
+    const foundItem = watchlists
+        .flatMap(w => w.items)
+        .find(item => item.symbol === symbol);
+
+    const isAdded = !!foundItem;
 
     const [data, setData] = useState<CompanyData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -74,19 +80,27 @@ export default function StockDetailModal({ symbol, marketType, name, onClose }: 
         return () => window.removeEventListener('keydown', handleEsc);
     }, [onClose]);
 
-    const handleToggleWatchlist = () => {
+    const handleToggleWatchlist = async () => {
         if (isAdded) {
-            removeStock(symbol, marketType);
+            // Remove from whichever list it was found in
+            if (foundItem) {
+                await removeItem(foundItem.id);
+            }
         } else {
-            // Add with minimal info (Mock Price will be updated by list)
-            addStock({
+            // Add to the first available watchlist
+            // Ideally we should ask which list, but for simplified modal toggle, we pick first.
+            if (watchlists.length === 0) {
+                alert("관심종목 그룹이 없습니다. 대시보드에서 먼저 그룹을 생성해주세요.");
+                return;
+            }
+            const targetListId = watchlists[0].id;
+
+            await addItem(targetListId, {
                 symbol,
                 name,
-                price: 0,
-                change: 0,
-                changePercent: 0,
+                market: marketType,
                 sector: marketType === 'KR' ? 'KOSPI' : 'US'
-            }, marketType);
+            });
         }
     };
 
