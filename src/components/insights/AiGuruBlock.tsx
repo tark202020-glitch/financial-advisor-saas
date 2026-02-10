@@ -101,7 +101,7 @@ export default function AiGuruBlock() {
                     setAdviceList(data.advice);
                 }
             } catch (err) {
-                console.error(err);
+                console.error("[AiGuruBlock] Fetch Error:", err);
                 setHasError(true);
             } finally {
                 setIsLoading(false);

@@ -53,9 +53,25 @@ export async function POST(req: Request) {
         const response = await result.response;
         const text = response.text();
 
-        // Clean up markdown code blocks if present
-        const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const adviceData = JSON.parse(jsonStr);
+        console.log("[AI Advice] Gemini Response:", text); // Debug Log
+
+        // Robust JSON Extraction
+        let jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const firstBrace = jsonStr.indexOf('{');
+        const lastBrace = jsonStr.lastIndexOf('}');
+
+        if (firstBrace !== -1 && lastBrace !== -1) {
+            jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+        }
+
+        let adviceData;
+        try {
+            adviceData = JSON.parse(jsonStr);
+        } catch (parseError) {
+            console.error("[AI Advice] JSON Parse Error:", parseError, "Raw Text:", text);
+            // Fallback or retry logic could go here, for now return error to client to see it
+            return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
+        }
 
         return NextResponse.json(adviceData);
 
