@@ -3,6 +3,7 @@
 import { useMemo, useEffect, useState } from 'react';
 import { ArrowUp, ArrowDown } from 'lucide-react';
 import { useMarketIndex } from '@/hooks/useMarketIndex';
+import SectorBarChart from './SectorBarChart';
 
 // --- Types ---
 interface InvestorData {
@@ -194,6 +195,9 @@ export default function MarketFlowChart() {
                 <DomesticIndexCard name="KOSPI" symbol="0001" marketCode="0001" />
                 <DomesticIndexCard name="KOSDAQ" symbol="1001" marketCode="1001" />
             </div>
+
+            {/* Sector Bar Chart (HTS 0218) */}
+            <SectorBarChart />
 
             {/* Bottom Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -1,4 +1,16 @@
-## [Alpha V1.128] - 2026-02-10 10:30:00
+## [Alpha V1.129] - 2026-02-10 11:55:00
+
+### 🚀 Feature: KOSPI 업종별 등락률 Bar Chart (HTS 0218)
+- **Summary**: HTS 0218 스타일 KOSPI 업종 Bar Chart 추가. 25개 업종 실시간 등락률 시각화.
+- **Detail**:
+  - KIS `inquire-index-price` API(FHPUP02100000)로 25개 업종 데이터 조회
+  - 상승(빨강)/하락(파랑) 양방향 바 차트 + 0기준선
+  - 하단 3컬럼 범례 테이블: 업종명, 지수, 등락률
+  - 위치: 지수종합(KOSPI/KOSDAQ) 아래, 해외/마켓트렌드 위
+  - 업종: 종합, 대형주, 중형주, 소형주, 음식료·담배, 섬유·의류 등 25개
+- **Build Time**: 2026-02-10 11:55:00
+
+
 
 ### 🔧 Fix: 배당수익률 데이터 연동 (Naver Finance API)
 - **Summary**: 배당수익률 0 하드코딩 문제 해결. Naver Finance API로 실제 배당수익률 데이터 조회.
