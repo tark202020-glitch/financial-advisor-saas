@@ -11,7 +11,7 @@ interface Advice {
 }
 
 export default function AiGuruBlock() {
-    const { assets } = usePortfolio(); // Removed non-existent totalValue
+    const { assets, isLoading: isPortfolioLoading } = usePortfolio(); // Updated destructuring
     const [adviceList, setAdviceList] = useState<Advice[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -113,43 +113,58 @@ export default function AiGuruBlock() {
         }
     }, [assets]); // Removed adviceList from dep array to avoid loops, though handled by condition
 
+    if (isPortfolioLoading || isLoading) {
+        return (
+            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-8 shadow-sm border border-indigo-100 mb-6 flex flex-col items-center justify-center gap-4 text-center min-h-[200px] animate-in fade-in duration-500">
+                <div className="relative w-24 h-24 md:w-32 md:h-32 animate-bounce">
+                    <Image
+                        src="/images/guru_whale.png"
+                        alt="AI Guru Loading"
+                        fill
+                        className="object-contain drop-shadow-md"
+                    />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold text-indigo-700 mb-1">AI 주식 도사 고래가 분석 중이여유...</h3>
+                    <p className="text-sm text-indigo-500 animate-pulse">
+                        "잠깐만 기달려봐유, 자네 주식들 싹 훑어보고 있응께!"
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     if (!assets || assets.length === 0) return null;
 
     return (
-        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-6 shadow-sm border border-indigo-100 mb-6 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-6 shadow-sm border border-indigo-100 mb-6 flex flex-col md:flex-row items-center gap-6 relative overflow-hidden animate-in fade-in duration-700">
 
             {/* Character Section */}
             <div className="flex-shrink-0 relative z-10 text-center">
                 <div className="relative w-32 h-32 md:w-40 md:h-40 mx-auto">
                     <Image
-                        src="/images/guru_dog.png"
+                        src="/images/guru_whale.png"
                         alt="AI Guru"
                         fill
                         className="object-contain drop-shadow-lg transform hover:scale-105 transition-transform duration-300"
                     />
                 </div>
                 <div className="mt-2 bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-indigo-600 shadow-sm inline-block">
-                    AI 주식 도사 멍구루
+                    AI 주식 도사 고래
                 </div>
             </div>
 
             {/* Bubble Section */}
             <div className="flex-grow w-full z-10 relative">
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 relative">
-                    {/* Triangle for bubble effect (Desktop: Left, Mobile: Top) */}
+                    {/* Triangle for bubble effect */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-[8px] w-4 h-4 bg-white border-t border-l border-slate-100 transform rotate-45 md:top-1/2 md:left-0 md:-translate-x-[8px] md:-translate-y-1/2 md:-rotate-45"></div>
 
                     <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
                         <span>📢</span> 오늘의 훈수
                     </h3>
 
-                    {isLoading ? (
-                        <div className="space-y-3 animate-pulse">
-                            <div className="h-4 bg-slate-100 rounded w-3/4"></div>
-                            <div className="h-4 bg-slate-100 rounded w-1/2"></div>
-                            <div className="h-4 bg-slate-100 rounded w-5/6"></div>
-                        </div>
-                    ) : hasError ? (
+                    {hasError ? (
                         <div className="text-slate-400 text-sm">
                             "오늘은 목이 좀 아퍼서... 나중에 다시 오슈." (조언 불러오기 실패)
                         </div>
