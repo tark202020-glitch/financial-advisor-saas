@@ -1,27 +1,30 @@
-"use client";
-
+import AiGuruBlock from '@/components/insights/AiGuruBlock';
+import PortfolioCompositionBlock from '@/components/insights/PortfolioCompositionBlock';
+import TargetProximityBlock from '@/components/insights/TargetProximityBlock';
 import SidebarLayout from "@/components/SidebarLayout";
-import PortfolioCompositionBlock from "@/components/insights/PortfolioCompositionBlock";
-import TargetProximityBlock from "@/components/insights/TargetProximityBlock";
+
+export const metadata = {
+    title: '내 주식 인사이트 - Financial Advisor',
+    description: '보유 주식에 대한 심층 분석 및 목표가 관리',
+};
 
 export default function InsightsPage() {
     return (
         <SidebarLayout>
-            <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+            <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 <header className="mb-8">
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">내 주식 인사이트</h1>
-                    <p className="text-slate-500 mt-2">보유 종목의 다양한 분석 정보를 한눈에 확인하세요.</p>
+                    <h1 className="text-2xl font-bold text-slate-800 mb-2">내 주식 인사이트</h1>
+                    <p className="text-slate-500">보유한 주식의 목표가 달성 현황과 포트폴리오 구성을 분석합니다.</p>
                 </header>
 
-                {/* Block 1: Portfolio Composition (Pie Chart & Top 5) */}
-                <section>
-                    <PortfolioCompositionBlock />
-                </section>
+                {/* AI Guru Advice */}
+                <AiGuruBlock />
 
-                {/* Block 2: Target Price Proximity */}
-                <section>
-                    <TargetProximityBlock />
-                </section>
+                {/* 1. Target Price Graphs */}
+                <TargetProximityBlock />
+
+                {/* 2. Portfolio Composition */}
+                <PortfolioCompositionBlock />
             </div>
         </SidebarLayout>
     );

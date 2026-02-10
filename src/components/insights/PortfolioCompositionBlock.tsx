@@ -322,15 +322,19 @@ export default function PortfolioCompositionBlock() {
 
                     {/* Header for Sector Details */}
                     {viewMode === 'SECTOR' && selectedSector && (
-                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-100">
+                        <div className="mb-4 sticky top-0 bg-white z-10 pb-2 border-b border-slate-100">
                             <button
                                 onClick={() => setSelectedSector(null)}
-                                className="p-1 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+                                className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-sm mb-3 group"
                             >
-                                ⬅
+                                <span className="group-hover:-translate-x-1 transition-transform">⬅</span>
+                                전체 업종 목록으로 돌아가기
                             </button>
-                            <span className="font-bold text-indigo-600">{selectedSector}</span>
-                            <span className="text-xs text-slate-400">보유 종목</span>
+                            <div className="flex items-center gap-2 px-1">
+                                <span className="text-indigo-600 text-xl">📂</span>
+                                <span className="font-bold text-slate-800 text-lg">{selectedSector}</span>
+                                <span className="text-sm text-slate-500 ml-auto">보유 종목</span>
+                            </div>
                         </div>
                     )}
 
