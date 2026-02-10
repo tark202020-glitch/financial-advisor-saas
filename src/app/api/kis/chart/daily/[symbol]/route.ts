@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDailyPriceHistory } from '@/lib/kis/client';
+import { getDailyPriceHistory, getOverseasDailyPriceHistory } from '@/lib/kis/client';
 
 export async function GET(
     request: NextRequest,
@@ -9,8 +9,17 @@ export async function GET(
     const rawSymbol = (await params).symbol;
     const symbol = rawSymbol.split('.')[0];
 
+    // Check Market type from Query Param
+    const { searchParams } = new URL(request.url);
+    const market = searchParams.get('market'); // 'KR' or 'US'
+
     try {
-        const data = await getDailyPriceHistory(symbol);
+        let data;
+        if (market === 'US') {
+            data = await getOverseasDailyPriceHistory(symbol);
+        } else {
+            data = await getDailyPriceHistory(symbol);
+        }
 
         if (!data) {
             return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 });

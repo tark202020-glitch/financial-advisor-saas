@@ -1014,3 +1014,44 @@ export async function getMarketCapRanking(limit: number = 200): Promise<KisMarke
     return results;
 }
 
+
+export async function getOverseasDailyPriceHistory(symbol: string): Promise<KisCandleData[] | null> {
+    const token = await getAccessToken();
+    const exchangeCode = getUSExchangeCode(symbol);
+
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+
+    // TR_ID: HHDFS76240000 (Overseas Stock Daily Price)
+    // URL: /uapi/overseas-price/v1/quotations/daily-price
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/daily-price?AUTH=&EXCD=${exchangeCode}&SYMB=${symbol}&GUBN=0&BYMD=${today}&MODP=1`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "HHDFS76240000",
+        },
+    }));
+
+    if (!response.ok) {
+        console.error(`Failed to fetch Overseas Daily History for ${symbol}:`, await response.text());
+        return null;
+    }
+
+    const data = await response.json();
+    if (data.rt_cd !== "0") {
+        console.error(`KIS API Error (OV Daily History): ${data.msg1}`);
+        return null;
+    }
+
+    const list = data.output2 || [];
+    return list.map((item: any) => ({
+        stck_bsop_date: item.xymd,
+        stck_oprc: item.open,
+        stck_hgpr: item.high,
+        stck_lwpr: item.low,
+        stck_clpr: item.clos,
+        acml_vol: item.tvol
+    }));
+}

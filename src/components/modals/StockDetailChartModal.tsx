@@ -87,10 +87,12 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
     // --- Effects ---
 
     // 1. Fetch Chart Data
+    // 1. Fetch Chart Data (Depend only on symbol/category/isOpen)
     useEffect(() => {
         if (isOpen && asset.symbol) {
             setChartLoading(true);
-            fetch(`/api/kis/chart/daily/${asset.symbol}`)
+            // Append market query param
+            fetch(`/api/kis/chart/daily/${asset.symbol}?market=${asset.category}`)
                 .then(res => res.json())
                 .then(data => {
                     if (Array.isArray(data)) {
@@ -115,13 +117,15 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                 ma120: avg(getSlice(120)),
                             };
                         });
+                        // Limit to last 100 or so for performance if needed, but displayData slices it anyway.
+                        // Actually displayData slices -30.
                         setHistory(withMA);
                     }
                 })
                 .catch(err => console.error(err))
                 .finally(() => setChartLoading(false));
 
-            // Sync local state with asset prop changes
+            // Sync local state with asset prop changes (Only when modal opens or asset changes essentially)
             setMemo(asset.memo || '');
             setTargetLower(asset.targetPriceLower?.toString() || '');
             setTargetUpper(asset.targetPriceUpper?.toString() || '');
@@ -129,6 +133,13 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
             // Determine Benchmark
             const benchmark = getBenchmarkInfo(asset.category);
             setBenchmarkName(benchmark.name);
+        }
+    }, [isOpen, asset.symbol, asset.category]); // Removed 'asset' dependence to avoid reload on trade updates
+
+    // 1.5 Fetch Benchmark History (Depends on asset.trades)
+    useEffect(() => {
+        if (isOpen && asset.symbol) {
+            const benchmark = getBenchmarkInfo(asset.category);
 
             // Fetch Benchmark History for Trades
             if (asset.trades && asset.trades.length > 0) {
@@ -182,7 +193,8 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                     .catch(e => console.error("Failed to fetch current index:", e));
             }
         }
-    }, [isOpen, asset]);
+    }, [isOpen, asset.symbol, asset.category, asset.trades]); // Re-run when trades change
+
 
     // 2. Auto-fetch Index for New Trade Date (Manual Entry)
     useEffect(() => {
@@ -329,7 +341,14 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                     <div>
                         <div className="flex items-center gap-2 text-slate-500 text-sm mb-1">
                             <span>{asset.symbol}</span>
-                            <span>{asset.category}</span>
+                            <span className="text-slate-300">|</span>
+                            <span>{asset.category === 'KR' ? 'KOSPI' : 'US'}</span>
+                            {asset.sector && (
+                                <>
+                                    <span className="text-slate-300">|</span>
+                                    <span>{asset.sector}</span>
+                                </>
+                            )}
                         </div>
                         <h2 className="text-3xl font-bold text-slate-900 tracking-tight">{asset.name || asset.symbol}</h2>
                     </div>
@@ -562,8 +581,13 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                     </div>
                                 </div>
                                 <div className="flex gap-1">
-                                    <button onClick={handleSaveTrade} className="bg-indigo-600 text-white p-2 rounded font-bold hover:bg-indigo-700 flex-1">{editingTradeId ? '수정' : '저장'}</button>
-                                    {editingTradeId && <button onClick={() => { setIsAddingLog(false); setEditingTradeId(null); }} className="bg-slate-300 text-slate-700 p-2 rounded font-bold hover:bg-slate-400">취소</button>}
+                                    <button onClick={handleSaveTrade} className="bg-indigo-600 text-white p-2 rounded font-bold hover:bg-indigo-700 flex-1">{editingTradeId ? '수정 저장' : '기록 추가'}</button>
+                                    {editingTradeId && (
+                                        <>
+                                            <button onClick={() => handleDeleteTrade(editingTradeId)} className="bg-red-50 text-red-600 p-2 rounded font-bold hover:bg-red-100 flex-1">삭제</button>
+                                            <button onClick={() => { setIsAddingLog(false); setEditingTradeId(null); }} className="bg-slate-300 text-slate-700 p-2 rounded font-bold hover:bg-slate-400">취소</button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -601,7 +625,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                             <div className="truncate text-slate-500">{trade.memo || '-'}</div>
                                             <div className="text-right flex gap-2 justify-end">
                                                 <button onClick={() => handleEditTrade(trade)} className="text-slate-400 hover:text-indigo-600 text-xs"><Edit3 size={12} /></button>
-                                                <button onClick={() => handleDeleteTrade(trade.id)} className="text-slate-400 hover:text-red-500 text-xs"><Trash2 size={12} /></button>
+                                                <button onClick={() => handleDeleteTrade(trade.id)} className="hidden text-slate-400 hover:text-red-500 text-xs"><Trash2 size={12} /></button>
                                             </div>
                                         </div>
                                     ))

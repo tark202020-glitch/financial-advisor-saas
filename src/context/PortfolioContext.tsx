@@ -69,8 +69,8 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     const supabase = supabaseRef.current;
 
     // Core: Fetch portfolio data from Supabase
-    const fetchPortfolio = useCallback(async (userId: string) => {
-        setIsLoading(true);
+    const fetchPortfolio = useCallback(async (userId: string, skipLoading = false) => {
+        if (!skipLoading) setIsLoading(true);
         setError(null);
 
         try {
@@ -112,7 +112,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             console.error('Error fetching portfolio:', err);
             setError(err.message || "데이터를 불러오는데 실패했습니다.");
         } finally {
-            setIsLoading(false);
+            if (!skipLoading) setIsLoading(false);
         }
     }, [supabase]);
 
@@ -297,7 +297,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 await recalculateAssetMetrics(portfolioData.id);
             }
 
-            await fetchPortfolio(user.id);
+            await fetchPortfolio(user.id, true);
         } catch (error: any) {
             console.error("Error adding asset:", error);
             alert(`저장 실패: ${error.message}`);
@@ -325,7 +325,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 if (error) throw error;
             }
 
-            await fetchPortfolio(user.id);
+            await fetchPortfolio(user.id, true);
         } catch (error) {
             console.error("Error updating asset:", error);
         }
@@ -359,7 +359,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             });
 
             await recalculateAssetMetrics(assetId);
-            await fetchPortfolio(user.id);
+            await fetchPortfolio(user.id, true);
         } catch (e) { console.error(e); }
     };
 
@@ -383,7 +383,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             if (error) throw error;
 
             await recalculateAssetMetrics(assetId);
-            await fetchPortfolio(user.id);
+            await fetchPortfolio(user.id, true);
         } catch (e) { console.error(e); }
     };
 
@@ -395,7 +395,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             if (error) throw error;
 
             await recalculateAssetMetrics(assetId);
-            await fetchPortfolio(user.id);
+            await fetchPortfolio(user.id, true);
         } catch (e) { console.error(e); }
     };
 
