@@ -29,6 +29,7 @@ interface WatchlistContextType {
     refreshWatchlists: () => Promise<void>;
     addWatchlist: (title: string) => Promise<void>;
     removeWatchlist: (id: string) => Promise<void>;
+    updateWatchlistTitle: (id: string, newTitle: string) => Promise<void>;
     addItem: (watchlistId: string, item: Omit<WatchlistItem, 'id' | 'watchlist_id' | 'display_order'>) => Promise<void>;
     removeItem: (itemId: string) => Promise<void>;
     user: User | null;
@@ -142,6 +143,17 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const updateWatchlistTitle = async (id: string, newTitle: string) => {
+        try {
+            const { error } = await supabase.from('watchlists').update({ title: newTitle }).eq('id', id);
+            if (error) throw error;
+            await refreshWatchlists();
+        } catch (error) {
+            console.error(error);
+            alert("그룹명 수정 중 오류가 발생했습니다.");
+        }
+    };
+
     const addItem = async (watchlistId: string, item: Omit<WatchlistItem, 'id' | 'watchlist_id' | 'display_order'>) => {
         try {
             // Check if already exists in this watchlist
@@ -180,7 +192,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <WatchlistContext.Provider value={{ watchlists, loading, refreshWatchlists, addWatchlist, removeWatchlist, addItem, removeItem, user }}>
+        <WatchlistContext.Provider value={{ watchlists, loading, refreshWatchlists, addWatchlist, removeWatchlist, updateWatchlistTitle, addItem, removeItem, user }}>
             {children}
         </WatchlistContext.Provider>
     );

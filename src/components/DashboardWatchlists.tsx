@@ -5,14 +5,22 @@ import StockSearchModal from '@/components/modals/StockSearchModal';
 import { SECTOR_STOCKS, Stock } from '@/lib/mockData';
 import { useState } from 'react';
 import { useWatchlist, Watchlist } from '@/context/WatchlistContext';
-import { Plus, Trash2 } from 'lucide-react';
+import WatchlistEditModal from './modals/WatchlistEditModal';
+import { Plus, Pencil } from 'lucide-react';
 
 export default function DashboardWatchlists() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [targetWatchlistId, setTargetWatchlistId] = useState<string | undefined>(undefined);
-    const { watchlists, addWatchlist, removeWatchlist, user } = useWatchlist();
+    const { watchlists, addWatchlist, removeWatchlist, updateWatchlistTitle, user } = useWatchlist();
     const [newGroupTitle, setNewGroupTitle] = useState('');
     const [isAddingGroup, setIsAddingGroup] = useState(false);
+
+    // Edit Modal State
+    const [editModal, setEditModal] = useState<{ isOpen: boolean; id: string; title: string }>({
+        isOpen: false,
+        id: '',
+        title: ''
+    });
 
     const handleOpenSearch = (watchlistId?: string) => {
         setTargetWatchlistId(watchlistId);
@@ -34,7 +42,8 @@ export default function DashboardWatchlists() {
             price: 0,
             change: 0,
             changePercent: 0,
-            sector: item.sector
+            sector: item.sector,
+            market: item.market
         }));
     };
 
@@ -85,17 +94,13 @@ export default function DashboardWatchlists() {
                             stocks={getStocksFromList(list)}
                             onAddClick={() => handleOpenSearch(list.id)}
                         />
-                        {/* Delete Group Button (Visible on hover) */}
+                        {/* Edit Group Button (Visible on hover) */}
                         <button
-                            onClick={() => {
-                                if (confirm(`'${list.title}' 그룹을 삭제하시겠습니까?`)) {
-                                    removeWatchlist(list.id);
-                                }
-                            }}
-                            className="absolute top-4 right-12 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="그룹 삭제"
+                            onClick={() => setEditModal({ isOpen: true, id: list.id, title: list.title })}
+                            className="absolute top-4 right-12 text-slate-300 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="그룹 설정"
                         >
-                            <Trash2 size={16} />
+                            <Pencil size={16} />
                         </button>
                     </div>
                 ))}
@@ -150,6 +155,13 @@ export default function DashboardWatchlists() {
                 isOpen={isSearchOpen}
                 onClose={() => setIsSearchOpen(false)}
                 targetWatchlistId={targetWatchlistId}
+            />
+
+            <WatchlistEditModal
+                isOpen={editModal.isOpen}
+                onClose={() => setEditModal(prev => ({ ...prev, isOpen: false }))}
+                watchlistId={editModal.id}
+                currentTitle={editModal.title}
             />
         </>
     );

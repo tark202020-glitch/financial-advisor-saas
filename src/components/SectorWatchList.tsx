@@ -16,10 +16,20 @@ import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 export default function SectorWatchList({ title, stocks, onAddClick }: SectorWatchListProps) {
     const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-    // Batch Fetching Logic
-    const market = title.includes('Korea') || title.includes('KR') || title.includes('한국') ? 'KR' : 'US';
-    const symbols = stocks.map(s => s.symbol);
-    const { getStockData, isLoading } = useBatchStockPrice(symbols, market);
+    // Helper to determine market
+    const getMarket = (stock: Stock): 'KR' | 'US' => {
+        if (stock.market) return stock.market;
+        // Fallback to title-based detection for static lists
+        return (title.includes('Korea') || title.includes('KR') || title.includes('한국')) ? 'KR' : 'US';
+    };
+
+    const krSymbols = stocks.filter(s => getMarket(s) === 'KR').map(s => s.symbol);
+    const usSymbols = stocks.filter(s => getMarket(s) === 'US').map(s => s.symbol);
+
+    const { getStockData: getKrData } = useBatchStockPrice(krSymbols, 'KR');
+    const { getStockData: getUsData } = useBatchStockPrice(usSymbols, 'US');
+
+    const getStockData = (symbol: string) => getKrData(symbol) || getUsData(symbol);
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 h-full">
@@ -46,7 +56,7 @@ export default function SectorWatchList({ title, stocks, onAddClick }: SectorWat
                     <SectorRowItem
                         key={stock.symbol}
                         stock={stock}
-                        category={market}
+                        category={getMarket(stock)}
                         onClick={() => { }} // No-op
                         // Pass Batch Data
                         overrideData={getStockData(stock.symbol)}
