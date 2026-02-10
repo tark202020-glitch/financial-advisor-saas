@@ -196,9 +196,6 @@ export default function MarketFlowChart() {
                 <DomesticIndexCard name="KOSDAQ" symbol="1001" marketCode="1001" />
             </div>
 
-            {/* Sector Bar Chart (HTS 0218) */}
-            <SectorBarChart />
-
             {/* Bottom Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Overseas List */}
@@ -236,6 +233,9 @@ export default function MarketFlowChart() {
                     </div>
                 </div>
             </div>
+
+            {/* Sector Bar Chart (HTS 0218) */}
+            <SectorBarChart />
         </div>
     );
 }
