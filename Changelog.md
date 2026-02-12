@@ -7,6 +7,16 @@
   - "UI meets AI Investment" -> "AI 투자의 새로운 기준" 등 핵심 슬로건 현지화.
 - **Build Time**: 2026-02-12 16:35:00
 
+## [Alpha V1.168] - 2026-02-12 16:35:00
+
+### 🔄 Design Update: Expanded Vibrant Dark Mode
+- **Summary**: Condition Search, Portfolio, Memo 페이지까지 Vibrant Dark Mode 확대 적용 및 전체 빌드 안정화.
+- **Detail**:
+  - **Condition Search**: 필터 입력창, 결과 테이블, 프리셋 영역 Dark Theme(#1E1E1E) 적용.
+  - **Portfolio**: 포트폴리오 카드 및 리스트 스타일 개선, 가독성 향상.
+  - **Memo**: 메모 오버레이 및 전체 페이지 디자인 일관성 확보.
+- **Build Time**: 2026-02-12 16:35:00
+
 ## [Alpha V1.166] - 2026-02-12 16:00:00
 
 ### 🔄 Design Update: Vibrant Dark Mode (Dashboard & Insights)

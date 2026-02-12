@@ -225,30 +225,30 @@ export default function ConditionSearchPage() {
         <SidebarLayout>
             <div className="p-8 pb-32 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
                 <header className="mb-8">
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2">조건검색</h1>
-                    <p className="text-slate-500">원하는 조건으로 KOSPI 전체 종목을 분석합니다.</p>
+                    <h1 className="text-3xl font-bold text-white mb-2">조건검색</h1>
+                    <p className="text-gray-400">원하는 조건으로 KOSPI 전체 종목을 분석합니다.</p>
                 </header>
 
                 {/* === 조건검색 === */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+                <div className="bg-[#1E1E1E] rounded-2xl border border-[#333] p-6 shadow-lg shadow-black/20 space-y-6">
                     {/* Header */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-[#333] pb-4">
                         <div className="flex items-center gap-2">
-                            <div className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">HTS 0330</div>
-                            <h2 className="text-xl font-bold text-slate-800">사용자 조건검색</h2>
+                            <div className="bg-[#F7D047]/20 text-[#F7D047] text-xs font-bold px-2 py-1 rounded border border-[#F7D047]/50">HTS 0330</div>
+                            <h2 className="text-xl font-bold text-white">사용자 조건검색</h2>
                         </div>
                         <div className="flex gap-2">
                             <button
                                 onClick={handleResetConditions}
                                 disabled={isSearching}
-                                className="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200 transition disabled:opacity-50"
+                                className="px-4 py-2.5 bg-[#252525] text-gray-400 rounded-lg text-sm font-medium hover:bg-[#333] transition disabled:opacity-50 border border-[#333]"
                             >
                                 초기화
                             </button>
                             <button
                                 onClick={handleSearch}
                                 disabled={isSearching}
-                                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 shadow-md shadow-blue-100"
+                                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 shadow-lg shadow-blue-900/30"
                             >
                                 {isSearching ? '검색 중...' : '🔍 조건검색 실행'}
                             </button>
@@ -256,8 +256,8 @@ export default function ConditionSearchPage() {
                     </div>
 
                     {/* === Preset Section === */}
-                    <div className="bg-slate-50 rounded-xl p-4 space-y-3">
-                        <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                    <div className="bg-[#252525] rounded-xl p-4 space-y-3 border border-[#333]">
+                        <h3 className="text-sm font-bold text-gray-300 flex items-center gap-2">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
                             조건 프리셋
                         </h3>
@@ -269,12 +269,12 @@ export default function ConditionSearchPage() {
                                             onClick={() => handleLoadPreset(preset.id)}
                                             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${selectedPresetId === preset.id
                                                 ? 'bg-blue-600 text-white shadow-sm'
-                                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-blue-50 hover:border-blue-300'
+                                                : 'bg-[#1E1E1E] text-gray-400 border border-[#333] hover:bg-[#333] hover:text-white'
                                                 }`}
                                         >
                                             {preset.name}
                                         </button>
-                                        <button onClick={() => handleDeletePreset(preset.id)} className="text-slate-400 hover:text-red-500 transition p-1" title="삭제">
+                                        <button onClick={() => handleDeletePreset(preset.id)} className="text-gray-500 hover:text-red-400 transition p-1" title="삭제">
                                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                         </button>
                                     </div>
@@ -284,7 +284,7 @@ export default function ConditionSearchPage() {
                         <div className="flex gap-2">
                             <input type="text" value={presetName} onChange={(e) => setPresetName(e.target.value)}
                                 placeholder="프리셋 이름 (예: 저평가가치주)"
-                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-blue-500 bg-white"
+                                className="flex-1 px-3 py-2 border border-[#333] rounded-lg text-sm outline-none focus:border-blue-500 bg-[#1E1E1E] text-white placeholder-gray-600"
                                 onKeyDown={(e) => e.key === 'Enter' && handleSavePreset()} />
                             <button onClick={handleSavePreset} disabled={isSaving || !presetName.trim()}
                                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition disabled:opacity-50">
@@ -298,18 +298,18 @@ export default function ConditionSearchPage() {
                         {CONDITION_FIELDS.map(field => (
                             <div key={field.key} className="space-y-1.5">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-sm font-medium text-slate-700">{field.label}</label>
-                                    <span className="text-xs text-slate-400">{field.unit}</span>
+                                    <label className="text-sm font-medium text-gray-300">{field.label}</label>
+                                    <span className="text-xs text-gray-500">{field.unit}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <input type="number" value={conditions[field.key].min}
                                         onChange={(e) => updateCondition(field.key, 'min', e.target.value)}
-                                        className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-sm text-right outline-none focus:border-blue-500 bg-white"
+                                        className="w-full px-2.5 py-2 border border-[#333] rounded-lg text-sm text-right outline-none focus:border-blue-500 bg-[#121212] text-white placeholder-gray-700"
                                         placeholder="최소" disabled={isSearching} />
-                                    <span className="text-slate-300 text-xs flex-shrink-0">~</span>
+                                    <span className="text-gray-600 text-xs flex-shrink-0">~</span>
                                     <input type="number" value={conditions[field.key].max}
                                         onChange={(e) => updateCondition(field.key, 'max', e.target.value)}
-                                        className="w-full px-2.5 py-2 border border-slate-200 rounded-lg text-sm text-right outline-none focus:border-blue-500 bg-white"
+                                        className="w-full px-2.5 py-2 border border-[#333] rounded-lg text-sm text-right outline-none focus:border-blue-500 bg-[#121212] text-white placeholder-gray-700"
                                         placeholder="최대" disabled={isSearching} />
                                 </div>
                             </div>
@@ -318,35 +318,35 @@ export default function ConditionSearchPage() {
 
                     {/* === Loading / Progress Section === */}
                     {isSearching && (
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100 space-y-4">
+                        <div className="bg-[#1e293b] rounded-xl p-6 border border-blue-900/50 space-y-4">
                             {/* Animated Header */}
                             <div className="flex items-center gap-3">
                                 <div className="relative">
-                                    <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                                    <div className="w-10 h-10 border-4 border-blue-900 border-t-blue-500 rounded-full animate-spin"></div>
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-bold text-blue-900">종목 분석 진행 중</h3>
-                                    <p className="text-xs text-blue-600">KOSPI 전체 종목의 재무 데이터를 분석하고 있습니다</p>
+                                    <h3 className="text-sm font-bold text-blue-100">종목 분석 진행 중</h3>
+                                    <p className="text-xs text-blue-300">KOSPI 전체 종목의 재무 데이터를 분석하고 있습니다</p>
                                 </div>
                             </div>
 
                             {/* Progress Bar */}
                             {progress && (
                                 <div className="space-y-2">
-                                    <div className="w-full bg-blue-100 rounded-full h-3 overflow-hidden">
+                                    <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden">
                                         <div
-                                            className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-500 ease-out"
+                                            className="bg-gradient-to-r from-blue-600 to-indigo-500 h-3 rounded-full transition-all duration-500 ease-out"
                                             style={{ width: `${progressPercent}%` }}
                                         />
                                     </div>
-                                    <div className="flex justify-between text-xs text-blue-700">
+                                    <div className="flex justify-between text-xs text-blue-200">
                                         <span>{progress.current} / {progress.total} 종목 분석</span>
                                         <span className="font-bold">{progressPercent}%</span>
                                     </div>
                                     {progress.matched !== undefined && progress.matched > 0 && (
-                                        <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mt-2">
-                                            <span className="text-sm text-emerald-700 font-medium">
-                                                🎯 현재까지 <span className="font-bold text-emerald-900">{progress.matched}건</span> 조건 만족
+                                        <div className="bg-emerald-900/30 border border-emerald-800 rounded-lg px-3 py-2 mt-2">
+                                            <span className="text-sm text-emerald-400 font-medium">
+                                                🎯 현재까지 <span className="font-bold">{progress.matched}건</span> 조건 만족
                                             </span>
                                         </div>
                                     )}
@@ -354,24 +354,24 @@ export default function ConditionSearchPage() {
                             )}
 
                             {/* Status Message */}
-                            <p className="text-sm text-blue-800">{statusMsg}</p>
+                            <p className="text-sm text-blue-200">{statusMsg}</p>
                         </div>
                     )}
 
                     {/* Status (non-searching) */}
                     {!isSearching && statusMsg && (
-                        <div className="text-sm text-slate-600 bg-slate-50 px-4 py-3 rounded-lg border border-slate-100">
+                        <div className="text-sm text-gray-300 bg-[#252525] px-4 py-3 rounded-lg border border-[#333]">
                             {statusMsg}
                         </div>
                     )}
 
                     {/* === Results Table === */}
                     {!isSearching && results.length > 0 && (
-                        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                        <div className="overflow-x-auto border border-[#333] rounded-xl">
                             <table className="w-full text-sm text-left whitespace-nowrap">
-                                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-200">
+                                <thead className="bg-[#252525] text-gray-400 font-medium border-b border-[#333]">
                                     <tr>
-                                        <th className="px-3 py-3 sticky left-0 bg-slate-50 z-10">종목명</th>
+                                        <th className="px-3 py-3 sticky left-0 bg-[#252525] z-10">종목명</th>
                                         <th className="px-3 py-3 text-right">현재가</th>
                                         <th className="px-3 py-3 text-right">매출증가율</th>
                                         <th className="px-3 py-3 text-right">영업이익증가율</th>
@@ -385,30 +385,30 @@ export default function ConditionSearchPage() {
                                         <th className="px-3 py-3 text-right">거래량</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 bg-white">
+                                <tbody className="divide-y divide-[#333] bg-[#1E1E1E]">
                                     {results.map((item, idx) => (
-                                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
-                                            <td className="px-3 py-3 font-medium text-slate-900 sticky left-0 bg-white z-10">
+                                        <tr key={idx} className="hover:bg-[#252525] transition-colors">
+                                            <td className="px-3 py-3 font-medium text-white sticky left-0 bg-[#1E1E1E] z-10">
                                                 {item.name}
-                                                <span className="text-slate-400 text-xs ml-1">{item.symbol}</span>
+                                                <span className="text-gray-500 text-xs ml-1">{item.symbol}</span>
                                             </td>
-                                            <td className="px-3 py-3 text-right font-bold text-slate-900">{item.price?.toLocaleString()}</td>
-                                            <td className={`px-3 py-3 text-right font-medium ${item.revenue_growth > 0 ? 'text-red-500' : item.revenue_growth < 0 ? 'text-blue-500' : 'text-slate-500'}`}>
+                                            <td className="px-3 py-3 text-right font-bold text-white">{item.price?.toLocaleString()}</td>
+                                            <td className={`px-3 py-3 text-right font-medium ${item.revenue_growth > 0 ? 'text-red-400' : item.revenue_growth < 0 ? 'text-blue-400' : 'text-gray-500'}`}>
                                                 {item.revenue_growth?.toFixed(1)}%
                                             </td>
-                                            <td className={`px-3 py-3 text-right font-medium ${item.operating_profit_growth > 0 ? 'text-red-500' : item.operating_profit_growth < 0 ? 'text-blue-500' : 'text-slate-500'}`}>
+                                            <td className={`px-3 py-3 text-right font-medium ${item.operating_profit_growth > 0 ? 'text-red-400' : item.operating_profit_growth < 0 ? 'text-blue-400' : 'text-gray-500'}`}>
                                                 {item.operating_profit_growth?.toFixed(1)}%
                                             </td>
-                                            <td className="px-3 py-3 text-right text-emerald-600 font-medium">{item.roe?.toFixed(1)}%</td>
-                                            <td className="px-3 py-3 text-right text-slate-600">{item.peg > 0 ? item.peg?.toFixed(2) : '-'}</td>
-                                            <td className="px-3 py-3 text-right text-slate-600">{item.per?.toFixed(1)}</td>
-                                            <td className="px-3 py-3 text-right text-slate-600">{item.pbr?.toFixed(2)}</td>
-                                            <td className={`px-3 py-3 text-right font-medium ${item.dividend_yield > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
+                                            <td className="px-3 py-3 text-right text-emerald-400 font-medium">{item.roe?.toFixed(1)}%</td>
+                                            <td className="px-3 py-3 text-right text-gray-400">{item.peg > 0 ? item.peg?.toFixed(2) : '-'}</td>
+                                            <td className="px-3 py-3 text-right text-gray-400">{item.per?.toFixed(1)}</td>
+                                            <td className="px-3 py-3 text-right text-gray-400">{item.pbr?.toFixed(2)}</td>
+                                            <td className={`px-3 py-3 text-right font-medium ${item.dividend_yield > 0 ? 'text-amber-400' : 'text-gray-500'}`}>
                                                 {item.dividend_yield > 0 ? `${item.dividend_yield?.toFixed(2)}%` : '-'}
                                             </td>
-                                            <td className="px-3 py-3 text-right text-slate-600">{item.debt_ratio?.toFixed(1)}%</td>
-                                            <td className="px-3 py-3 text-right text-slate-600">{(item.market_cap || 0).toLocaleString()}억</td>
-                                            <td className="px-3 py-3 text-right text-slate-600">{(item.volume || 0).toLocaleString()}</td>
+                                            <td className="px-3 py-3 text-right text-gray-400">{item.debt_ratio?.toFixed(1)}%</td>
+                                            <td className="px-3 py-3 text-right text-gray-400">{(item.market_cap || 0).toLocaleString()}억</td>
+                                            <td className="px-3 py-3 text-right text-gray-400">{(item.volume || 0).toLocaleString()}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -418,12 +418,12 @@ export default function ConditionSearchPage() {
                     )}
 
                     {!isSearching && results.length === 0 && !statusMsg.includes('검색 완료') && (
-                        <div className="text-center py-12 text-slate-400">
+                        <div className="text-center py-12 text-gray-500">
                             조건을 설정하고 검색을 실행해주세요.
                         </div>
                     )}
 
-                    <p className="text-xs text-slate-400 text-right">
+                    <p className="text-xs text-gray-600 text-right">
                         * KOSPI 상장 종목 전체 대상 분석 (장중: 랭킹 API + 추가 종목 보충, 장외: 주요 200개 종목). 1차 필터 통과 종목 전체에 대해 재무 분석을 수행합니다.
                     </p>
                 </div>

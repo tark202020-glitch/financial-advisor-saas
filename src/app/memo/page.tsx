@@ -104,22 +104,22 @@ export default function MemoPage() {
             <div className="p-8 pb-32 max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500">
                 {/* Header */}
                 <header className="mb-8">
-                    <h1 className="text-3xl font-bold text-slate-900 mb-2">📝 주식일지 메모</h1>
-                    <p className="text-slate-500">투자 관련 메모를 날짜별로 관리합니다.</p>
+                    <h1 className="text-3xl font-bold text-white mb-2">📝 주식일지 메모</h1>
+                    <p className="text-gray-400">투자 관련 메모를 날짜별로 관리합니다.</p>
                 </header>
 
                 {/* Search */}
                 <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                     <input
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder="메모 검색 (제목, 내용, 페이지명)..."
-                        className="w-full pl-9 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
+                        className="w-full pl-9 pr-4 py-3 bg-[#1E1E1E] border border-[#333] rounded-xl text-sm text-white outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-900/50 transition placeholder-gray-600"
                     />
                     {searchQuery && (
-                        <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                        <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
                             <X size={14} />
                         </button>
                     )}
@@ -127,26 +127,26 @@ export default function MemoPage() {
 
                 {/* Stats */}
                 <div className="flex gap-4">
-                    <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 flex-1 shadow-sm">
-                        <p className="text-xs text-slate-400">전체 메모</p>
-                        <p className="text-2xl font-bold text-slate-800">{memos.length}</p>
+                    <div className="bg-[#1E1E1E] rounded-xl border border-[#333] px-4 py-3 flex-1 shadow-lg shadow-black/20">
+                        <p className="text-xs text-gray-500">전체 메모</p>
+                        <p className="text-2xl font-bold text-white">{memos.length}</p>
                     </div>
-                    <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 flex-1 shadow-sm">
-                        <p className="text-xs text-slate-400">검색 결과</p>
-                        <p className="text-2xl font-bold text-indigo-600">{filteredMemos.length}</p>
+                    <div className="bg-[#1E1E1E] rounded-xl border border-[#333] px-4 py-3 flex-1 shadow-lg shadow-black/20">
+                        <p className="text-xs text-gray-500">검색 결과</p>
+                        <p className="text-2xl font-bold text-indigo-400">{filteredMemos.length}</p>
                     </div>
                 </div>
 
                 {/* Loading */}
                 {isLoading ? (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-                        <p className="text-slate-500 text-sm">메모를 불러오는 중...</p>
+                    <div className="bg-[#1E1E1E] rounded-2xl border border-[#333] p-12 text-center shadow-sm">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                        <p className="text-gray-500 text-sm">메모를 불러오는 중...</p>
                     </div>
                 ) : filteredMemos.length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-sm">
+                    <div className="bg-[#1E1E1E] rounded-2xl border border-[#333] p-12 text-center shadow-sm">
                         <p className="text-4xl mb-3">📋</p>
-                        <p className="text-slate-500 text-sm">
+                        <p className="text-gray-500 text-sm">
                             {searchQuery ? '검색 결과가 없습니다.' : '저장된 메모가 없습니다. 우측 하단의 메모 버튼으로 새 메모를 작성해보세요!'}
                         </p>
                     </div>
@@ -156,33 +156,33 @@ export default function MemoPage() {
                         <div key={dateKey} className="space-y-3">
                             {/* Date Header */}
                             <div className="flex items-center gap-3">
-                                <div className="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1.5 rounded-lg">
+                                <div className="bg-indigo-900/30 text-indigo-400 text-xs font-bold px-3 py-1.5 rounded-lg border border-indigo-500/20">
                                     {dateKey}
                                 </div>
-                                <div className="flex-1 h-px bg-slate-200"></div>
-                                <span className="text-xs text-slate-400">{dateMemos.length}건</span>
+                                <div className="flex-1 h-px bg-[#333]"></div>
+                                <span className="text-xs text-gray-500">{dateMemos.length}건</span>
                             </div>
 
                             {/* Memo Cards */}
                             {dateMemos.map(memo => (
-                                <div key={memo.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                                <div key={memo.id} className="bg-[#1E1E1E] rounded-xl border border-[#333] shadow-sm hover:shadow-lg hover:border-gray-600 transition overflow-hidden">
                                     {editingId === memo.id ? (
                                         /* Edit Mode */
-                                        <div className="p-4 space-y-3">
+                                        <div className="p-4 space-y-3 bg-[#252525]">
                                             <input
                                                 type="text"
                                                 value={editTitle}
                                                 onChange={(e) => setEditTitle(e.target.value)}
                                                 placeholder="제목"
-                                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-400"
+                                                className="w-full px-3 py-2 bg-[#121212] border border-[#333] rounded-lg text-sm outline-none focus:border-indigo-500 text-white"
                                             />
                                             <textarea
                                                 value={editContent}
                                                 onChange={(e) => setEditContent(e.target.value)}
-                                                className="w-full h-32 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-400 resize-none"
+                                                className="w-full h-32 px-3 py-2 bg-[#121212] border border-[#333] rounded-lg text-sm outline-none focus:border-indigo-500 resize-none text-white"
                                             />
                                             <div className="flex justify-end gap-2">
-                                                <button onClick={cancelEdit} className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition">취소</button>
+                                                <button onClick={cancelEdit} className="px-3 py-1.5 text-xs text-gray-400 hover:text-white rounded-lg hover:bg-[#333] transition">취소</button>
                                                 <button onClick={saveEdit} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
                                                     <Save size={12} /> 저장
                                                 </button>
@@ -194,21 +194,21 @@ export default function MemoPage() {
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="flex-1 min-w-0">
                                                     {memo.title && (
-                                                        <h4 className="text-sm font-bold text-slate-800 mb-1">{memo.title}</h4>
+                                                        <h4 className="text-sm font-bold text-gray-200 mb-1">{memo.title}</h4>
                                                     )}
-                                                    <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{memo.content}</p>
+                                                    <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap">{memo.content}</p>
                                                 </div>
                                                 <div className="flex items-center gap-1 flex-shrink-0">
                                                     <button
                                                         onClick={() => startEdit(memo)}
-                                                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                                                        className="p-1.5 text-gray-500 hover:text-indigo-400 hover:bg-indigo-900/30 rounded-lg transition"
                                                         title="수정"
                                                     >
                                                         <Edit3 size={14} />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(memo.id)}
-                                                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+                                                        className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-900/30 rounded-lg transition"
                                                         title="삭제"
                                                     >
                                                         <Trash2 size={14} />
@@ -216,15 +216,15 @@ export default function MemoPage() {
                                                 </div>
                                             </div>
                                             {/* Meta */}
-                                            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-50">
-                                                <span className="text-[10px] text-slate-400">
+                                            <div className="flex items-center gap-2 mt-3 pt-2 border-t border-[#333]">
+                                                <span className="text-[10px] text-gray-500">
                                                     {new Date(memo.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                                 {memo.page_name && (
-                                                    <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{memo.page_name}</span>
+                                                    <span className="text-[10px] bg-[#333] text-gray-400 px-1.5 py-0.5 rounded">{memo.page_name}</span>
                                                 )}
                                                 {memo.updated_at !== memo.created_at && (
-                                                    <span className="text-[10px] text-slate-300">수정됨</span>
+                                                    <span className="text-[10px] text-gray-600">수정됨</span>
                                                 )}
                                             </div>
                                         </div>

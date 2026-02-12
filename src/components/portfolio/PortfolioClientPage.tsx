@@ -20,10 +20,10 @@ export default function PortfolioClientPage() {
                 {/* Asset List Section */}
                 <section className="space-y-4">
                     <div className="flex justify-between items-end">
-                        <h2 className="text-xl font-bold text-slate-800">내 주식에 메모하기</h2>
+                        <h2 className="text-xl font-bold text-white">내 주식에 메모하기</h2>
                         <button
                             onClick={recalculateAllPortfolios}
-                            className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-slate-100"
+                            className="text-xs text-gray-400 hover:text-indigo-400 flex items-center gap-1 transition-colors px-2 py-1 rounded hover:bg-[#252525]"
                             title="모든 종목의 매입단가를 거래내역 기준으로 다시 계산합니다."
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -135,51 +135,51 @@ export default function MemoOverlay({ isOpen, onClose, onMinimize }: MemoOverlay
     if (!isOpen) return null;
 
     return (
-        <div className="fixed bottom-4 right-4 w-[400px] max-h-[600px] bg-white rounded-2xl shadow-2xl border border-slate-200 z-[9999] flex flex-col animate-in slide-in-from-bottom-4 fade-in duration-300">
+        <div className="fixed bottom-4 right-4 w-[400px] max-h-[600px] bg-[#1E1E1E] rounded-2xl shadow-2xl shadow-black/50 border border-[#333] z-[9999] flex flex-col animate-in slide-in-from-bottom-4 fade-in duration-300">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50 rounded-t-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#333] bg-[#252525] rounded-t-2xl">
                 <div className="flex items-center gap-2">
                     <span className="text-lg">📝</span>
                     <div>
-                        <h3 className="text-sm font-bold text-slate-800">주식일지 메모</h3>
-                        <p className="text-[10px] text-slate-400">{dateStr}</p>
+                        <h3 className="text-sm font-bold text-white">주식일지 메모</h3>
+                        <p className="text-[10px] text-gray-400">{dateStr}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
-                    <button onClick={onMinimize} className="p-1.5 rounded-lg hover:bg-white/60 text-slate-400 hover:text-slate-600 transition">
+                    <button onClick={onMinimize} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition">
                         <Minus size={14} />
                     </button>
-                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/60 text-slate-400 hover:text-slate-600 transition">
+                    <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition">
                         <X size={14} />
                     </button>
                 </div>
             </div>
 
             {/* Page Info Bar */}
-            <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <span className="bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-md font-medium">{pageName}</span>
+            <div className="px-4 py-2 bg-[#121212] border-b border-[#333] flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <span className="bg-indigo-900/30 text-indigo-400 px-2 py-0.5 rounded-md font-medium border border-indigo-500/20">{pageName}</span>
                     {editingMemoId && (
-                        <span className="bg-amber-100 text-amber-600 px-2 py-0.5 rounded-md font-medium">수정 중</span>
+                        <span className="bg-amber-900/30 text-amber-400 px-2 py-0.5 rounded-md font-medium border border-amber-500/20">수정 중</span>
                     )}
                 </div>
                 <button
                     onClick={handleNewMemo}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+                    className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition"
                 >
                     + 새 메모
                 </button>
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 flex flex-col px-4 py-3 space-y-3 overflow-y-auto">
+            <div className="flex-1 flex flex-col px-4 py-3 space-y-3 overflow-y-auto bg-[#1E1E1E]">
                 {/* Title Input */}
                 <input
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="제목 (선택사항)"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition"
+                    className="w-full px-3 py-2 bg-[#121212] border border-[#333] rounded-lg text-sm outline-none focus:border-indigo-500 text-white placeholder-gray-600 transition"
                 />
 
                 {/* Content Textarea */}
@@ -188,20 +188,20 @@ export default function MemoOverlay({ isOpen, onClose, onMinimize }: MemoOverlay
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder="메모를 입력하세요..."
-                    className="w-full h-40 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100 transition resize-none leading-relaxed"
+                    className="w-full h-40 px-3 py-2 bg-[#121212] border border-[#333] rounded-lg text-sm outline-none focus:border-indigo-500 text-white placeholder-gray-600 transition resize-none leading-relaxed"
                 />
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-between">
-                    <div className="text-xs text-slate-400">
-                        {saveStatus === 'saved' && <span className="text-emerald-500 font-medium">✅ 저장 완료!</span>}
-                        {saveStatus === 'error' && <span className="text-red-500 font-medium">❌ 저장 실패</span>}
+                    <div className="text-xs text-gray-500">
+                        {saveStatus === 'saved' && <span className="text-emerald-400 font-medium">✅ 저장 완료!</span>}
+                        {saveStatus === 'error' && <span className="text-red-400 font-medium">❌ 저장 실패</span>}
                         {saveStatus === 'idle' && content.length > 0 && <span>{content.length}자</span>}
                     </div>
                     <button
                         onClick={handleSave}
                         disabled={isSaving || !content.trim()}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 shadow-sm"
+                        className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-500 transition disabled:opacity-50 shadow-lg shadow-indigo-900/20"
                     >
                         <Save size={14} />
                         {isSaving ? '저장 중...' : editingMemoId ? '수정 저장' : '저장'}
@@ -210,47 +210,47 @@ export default function MemoOverlay({ isOpen, onClose, onMinimize }: MemoOverlay
             </div>
 
             {/* Recent Memos Toggle */}
-            <div className="border-t border-slate-100">
+            <div className="border-t border-[#333] bg-[#1E1E1E]">
                 <button
                     onClick={() => setShowRecent(!showRecent)}
-                    className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-slate-500 hover:bg-slate-50 transition"
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium text-gray-400 hover:bg-[#252525] transition"
                 >
                     <span>최근 메모 ({recentMemos.length})</span>
                     <ChevronDown size={14} className={`transition-transform ${showRecent ? 'rotate-180' : ''}`} />
                 </button>
 
                 {showRecent && (
-                    <div className="max-h-48 overflow-y-auto px-3 pb-3 space-y-2">
+                    <div className="max-h-48 overflow-y-auto px-3 pb-3 space-y-2 bg-[#1E1E1E]">
                         {recentMemos.length === 0 ? (
-                            <p className="text-xs text-slate-400 text-center py-4">저장된 메모가 없습니다.</p>
+                            <p className="text-xs text-gray-500 text-center py-4">저장된 메모가 없습니다.</p>
                         ) : (
                             recentMemos.map((memo) => (
                                 <div
                                     key={memo.id}
                                     className={`group p-2.5 rounded-lg border transition cursor-pointer ${editingMemoId === memo.id
-                                            ? 'border-indigo-300 bg-indigo-50'
-                                            : 'border-slate-100 hover:border-slate-200 bg-slate-50/50 hover:bg-slate-50'
+                                        ? 'border-indigo-500/50 bg-indigo-900/20'
+                                        : 'border-[#333] hover:border-gray-600 bg-[#252525] hover:bg-[#2a2a2a]'
                                         }`}
                                     onClick={() => handleEdit(memo)}
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex-1 min-w-0">
                                             {memo.title && (
-                                                <p className="text-xs font-semibold text-slate-700 truncate">{memo.title}</p>
+                                                <p className="text-xs font-semibold text-gray-200 truncate">{memo.title}</p>
                                             )}
-                                            <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{memo.content}</p>
+                                            <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{memo.content}</p>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-[10px] text-slate-400">
+                                                <span className="text-[10px] text-gray-500">
                                                     {new Date(memo.created_at).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                 </span>
                                                 {memo.page_name && (
-                                                    <span className="text-[10px] bg-slate-200 text-slate-500 px-1.5 py-0.5 rounded">{memo.page_name}</span>
+                                                    <span className="text-[10px] bg-[#333] text-gray-300 px-1.5 py-0.5 rounded">{memo.page_name}</span>
                                                 )}
                                             </div>
                                         </div>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleDelete(memo.id); }}
-                                            className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition"
+                                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition"
                                         >
                                             <Trash2 size={12} />
                                         </button>
