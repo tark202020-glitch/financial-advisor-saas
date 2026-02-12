@@ -31,6 +31,7 @@ interface StockDetailModalProps {
     isOpen: boolean;
     onClose: () => void;
     asset: Asset;
+    viewOnly?: boolean;
 }
 
 interface CandleData {
@@ -53,7 +54,7 @@ interface InvestorData {
     orgn_ntby_qty: string;
 }
 
-export default function StockDetailModal({ isOpen, onClose, asset }: StockDetailModalProps) {
+export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = false }: StockDetailModalProps) {
     const { updateAsset, removeAsset, addTradeLog, updateTradeLog, removeTradeLog } = usePortfolio();
     const stockLive = useStockPrice(asset.symbol, 0, asset.category);
 
@@ -386,7 +387,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button onClick={handleSaveGoals} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition">저장</button>
+                        {!viewOnly && <button onClick={handleSaveGoals} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition">저장</button>}
                         <button onClick={onClose} className="p-2 text-gray-500 hover:text-white hover:bg-[#333] rounded-lg transition">
                             <X size={20} />
                         </button>
@@ -564,7 +565,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                     </div>
 
                     {/* ---- ROW 2: Holdings Info (left) + Goals (right) ---- */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {!viewOnly && <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
                         {/* Holdings Summary */}
                         <div className="bg-[#252525] rounded-2xl p-6 border border-[#333]">
@@ -654,10 +655,10 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div>}
 
                     {/* ---- ROW 3: Trade Log ---- */}
-                    <div className="bg-[#252525] rounded-2xl p-6 border border-[#333] pb-8">
+                    {!viewOnly && <div className="bg-[#252525] rounded-2xl p-6 border border-[#333] pb-8">
                         <div className="flex justify-between items-center mb-4 border-b border-[#333] pb-3">
                             <h3 className="text-sm font-bold text-white">📋 거래 내역</h3>
                             <button
@@ -765,7 +766,7 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                 <Trash2 size={14} /> 종목 삭제
                             </button>
                         </div>
-                    </div>
+                    </div>}
                 </div>
             </div>
 

@@ -2,9 +2,10 @@
 
 import { Stock } from '@/lib/mockData';
 import { useState } from 'react';
-import StockDetailModal from './modals/StockDetailModal';
+import StockDetailModal from './modals/StockDetailChartModal';
 import SectorRowItem from './SectorRowItem';
 import { Plus } from 'lucide-react';
+import { Asset } from '@/context/PortfolioContext';
 
 interface SectorWatchListProps {
     title: string;
@@ -17,6 +18,7 @@ import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 
 export default function SectorWatchList({ title, stocks, onAddClick, onRemoveItem }: SectorWatchListProps) {
     const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+    const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
 
     // Helper to determine market
     const getMarket = (stock: Stock): 'KR' | 'US' => {
@@ -32,6 +34,18 @@ export default function SectorWatchList({ title, stocks, onAddClick, onRemoveIte
     const { getStockData: getUsData } = useBatchStockPrice(usSymbols, 'US');
 
     const getStockData = (symbol: string) => getKrData(symbol) || getUsData(symbol);
+
+    // Build a dummy Asset for view-only modal
+    const buildDummyAsset = (stock: Stock): Asset => ({
+        id: 0,
+        symbol: stock.symbol,
+        name: stock.name,
+        category: getMarket(stock),
+        pricePerShare: 0,
+        quantity: 0,
+        sector: stock.sector || '',
+        trades: [],
+    });
 
     return (
         <div className="bg-[#1E1E1E] rounded-xl shadow-lg shadow-black/20 border border-[#333] p-4 h-full flex flex-col">
@@ -59,17 +73,25 @@ export default function SectorWatchList({ title, stocks, onAddClick, onRemoveIte
                         key={stock.symbol}
                         stock={stock}
                         category={getMarket(stock)}
-                        onClick={() => { }} // No-op
+                        onClick={() => setSelectedStock(stock)}
                         // Pass Batch Data
                         overrideData={getStockData(stock.symbol)}
                         disableSelfFetch={true}
-                        // We don't really need onTimeUpdate for batch usually, 
-                        // but we can keep it if SectorRowItem emits it.
                         onTimeUpdate={setLastUpdated}
                         onRemove={onRemoveItem && stock.id ? () => onRemoveItem(stock.id!) : undefined}
                     />
                 ))}
             </div>
+
+            {/* View-Only StockDetailChartModal */}
+            {selectedStock && (
+                <StockDetailModal
+                    isOpen={true}
+                    onClose={() => setSelectedStock(null)}
+                    asset={buildDummyAsset(selectedStock)}
+                    viewOnly={true}
+                />
+            )}
         </div>
     );
 }
