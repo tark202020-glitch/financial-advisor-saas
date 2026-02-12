@@ -7,6 +7,15 @@
   - "UI meets AI Investment" -> "AI 투자의 새로운 기준" 등 핵심 슬로건 현지화.
 - **Build Time**: 2026-02-12 16:35:00
 
+## [Alpha V1.169] - 2026-02-12 16:50:00
+
+### 🔄 UI Polish based on User Feedback
+- **Summary**: 사용자 피드백을 반영하여 Portfolio 및 Modal 관련 UI의 Dark Mode 완성도 향상.
+- **Detail**:
+  - **Portfolio**: 필터/정렬 컨트롤 바, "내 주식 기록하기" 버튼 가독성 개선 및 스타일 통일.
+  - **Modals**: 종목 검색, 매매 기록 추가 모달 전체 Dark Theme 적용.
+- **Build Time**: 2026-02-12 16:50:00
+
 ## [Alpha V1.168] - 2026-02-12 16:35:00
 
 ### 🔄 Design Update: Expanded Vibrant Dark Mode

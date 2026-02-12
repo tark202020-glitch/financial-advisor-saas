@@ -144,7 +144,7 @@ export default function AddAssetForm() {
             {/* Trigger Button */}
             <button
                 onClick={() => setIsOpen(true)}
-                className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-sm hover:shadow"
+                className="flex items-center space-x-2 bg-[#1E1E1E] text-gray-200 border border-[#333] px-4 py-2 rounded-lg hover:bg-[#333] hover:text-white transition shadow-lg shadow-black/20"
             >
                 <Edit3 size={18} />
                 <span>내 주식 기록하기</span>
@@ -152,21 +152,21 @@ export default function AddAssetForm() {
 
             {/* Modal Overlay */}
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                    <div className="bg-[#1E1E1E] rounded-2xl w-full max-w-2xl shadow-2xl shadow-black/50 border border-[#333] flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
                         {/* Header */}
-                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <div className="p-4 border-b border-[#333] flex justify-between items-center bg-[#252525]">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
                                 {view === 'SEARCH' ? (
                                     <>
-                                        <Search size={20} className="text-indigo-600" />
+                                        <Search size={20} className="text-indigo-400" />
                                         <span>종목 검색</span>
                                     </>
                                 ) : (
                                     <>
                                         <button
                                             onClick={() => setView('SEARCH')}
-                                            className="mr-2 text-slate-400 hover:text-slate-600 transition"
+                                            className="mr-2 text-gray-400 hover:text-white transition"
                                         >
                                             <ArrowLeft size={20} />
                                         </button>
@@ -174,13 +174,13 @@ export default function AddAssetForm() {
                                     </>
                                 )}
                             </h3>
-                            <button onClick={handleClose} className="p-2 hover:bg-slate-200 rounded-full transition text-slate-500">
+                            <button onClick={handleClose} className="p-2 hover:bg-[#333] rounded-full transition text-gray-500 hover:text-white">
                                 <X size={20} />
                             </button>
                         </div>
 
                         {/* Body - Scrollable */}
-                        <div className="flex-1 overflow-y-auto p-6">
+                        <div className="flex-1 overflow-y-auto p-6 bg-[#1E1E1E]">
                             {view === 'SEARCH' ? (
                                 // SEARCH VIEW
                                 <div>
@@ -188,12 +188,12 @@ export default function AddAssetForm() {
                                         <input
                                             type="text"
                                             placeholder="종목명 또는 코드 (예: 삼성전자)"
-                                            className="w-full p-4 pl-12 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-lg shadow-sm"
+                                            className="w-full p-4 pl-12 bg-[#121212] border border-[#333] rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-lg shadow-sm text-white placeholder-gray-600"
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
                                             autoFocus
                                         />
-                                        <Search className="absolute left-4 top-4.5 text-slate-400" size={24} />
+                                        <Search className="absolute left-4 top-4.5 text-gray-500" size={24} />
                                     </div>
 
                                     {/* Results List */}
@@ -203,26 +203,26 @@ export default function AddAssetForm() {
                                                 <button
                                                     key={stock.symbol}
                                                     onClick={() => handleSelectStock(stock)}
-                                                    className="w-full text-left p-4 hover:bg-slate-50 border border-transparent hover:border-indigo-100 rounded-xl flex justify-between items-center group transition"
+                                                    className="w-full text-left p-4 hover:bg-[#252525] border border-transparent hover:border-[#333] rounded-xl flex justify-between items-center group transition"
                                                 >
                                                     <div>
-                                                        <div className="font-bold text-slate-800 text-lg">{stock.name}</div>
-                                                        <div className="text-sm text-slate-400 font-mono">{stock.symbol}</div>
+                                                        <div className="font-bold text-gray-200 text-lg">{stock.name}</div>
+                                                        <div className="text-sm text-gray-500 font-mono">{stock.symbol}</div>
                                                     </div>
-                                                    <div className="text-indigo-600 opacity-0 group-hover:opacity-100 transition flex items-center gap-1 font-medium bg-indigo-50 px-3 py-1 rounded-full text-sm">
+                                                    <div className="text-indigo-400 opacity-0 group-hover:opacity-100 transition flex items-center gap-1 font-medium bg-indigo-900/30 px-3 py-1 rounded-full text-sm border border-indigo-500/20">
                                                         선택 <ArrowLeft className="rotate-180" size={14} />
                                                     </div>
                                                 </button>
                                             ))
                                         ) : (
                                             searchTerm ? (
-                                                <div className="text-center text-slate-400 py-12 flex flex-col items-center">
-                                                    <Search size={48} className="mb-4 text-slate-200" />
+                                                <div className="text-center text-gray-500 py-12 flex flex-col items-center">
+                                                    <Search size={48} className="mb-4 text-[#252525]" />
                                                     <span>검색 결과가 없습니다.</span>
                                                 </div>
                                             ) : (
-                                                <div className="text-center text-slate-400 py-12 flex flex-col items-center">
-                                                    <div className="w-16 h-1 bg-slate-100 rounded-full mb-4"></div>
+                                                <div className="text-center text-gray-500 py-12 flex flex-col items-center">
+                                                    <div className="w-16 h-1 bg-[#252525] rounded-full mb-4"></div>
                                                     <span>종목을 검색하여 선택하세요.</span>
                                                 </div>
                                             )
@@ -233,49 +233,49 @@ export default function AddAssetForm() {
                                 // FORM VIEW
                                 <form onSubmit={handleSubmit} className="space-y-8">
                                     {/* Selected Stock Banner */}
-                                    <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <div className="flex items-center justify-between bg-[#252525] p-4 rounded-xl border border-[#333]">
                                         <div>
-                                            <div className="text-2xl font-bold text-slate-900">{selectedStock?.name}</div>
-                                            <div className="text-sm text-slate-500 font-mono mt-0.5">{selectedStock?.symbol}</div>
+                                            <div className="text-2xl font-bold text-white">{selectedStock?.name}</div>
+                                            <div className="text-sm text-gray-500 font-mono mt-0.5">{selectedStock?.symbol}</div>
                                         </div>
-                                        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">New Entry</span>
+                                        <span className="text-xs font-bold text-indigo-400 bg-indigo-900/30 px-3 py-1 rounded-full border border-indigo-500/20">New Entry</span>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         {/* Left: Targets */}
                                         <div className="space-y-5">
-                                            <div className="flex items-center gap-2 text-slate-800 font-bold border-b border-slate-100 pb-2">
+                                            <div className="flex items-center gap-2 text-gray-300 font-bold border-b border-[#333] pb-2">
                                                 <div className="w-1 h-5 bg-red-500 rounded-full"></div>
                                                 목표 설정 (Target)
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-600 mb-1.5">목표 메모</label>
+                                                <label className="block text-sm font-medium text-gray-400 mb-1.5">목표 메모</label>
                                                 <input
                                                     type="text"
                                                     placeholder="예: 배당 및 장기 보유"
-                                                    className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                                    className="w-full p-3 bg-[#121212] border border-[#333] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-white placeholder-gray-600"
                                                     value={formData.targetMemo}
                                                     onChange={(e) => setFormData({ ...formData, targetMemo: e.target.value })}
                                                 />
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-600 mb-1.5">매도 하한</label>
+                                                    <label className="block text-sm font-medium text-gray-400 mb-1.5">매도 하한</label>
                                                     <input
                                                         type="number"
                                                         placeholder="0"
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-right font-mono"
+                                                        className="w-full p-3 bg-[#121212] border border-[#333] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-right font-mono text-white placeholder-gray-600"
                                                         value={formData.targetLower}
                                                         onChange={(e) => setFormData({ ...formData, targetLower: e.target.value })}
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-600 mb-1.5">매도 상한</label>
+                                                    <label className="block text-sm font-medium text-gray-400 mb-1.5">매도 상한</label>
                                                     <input
                                                         type="number"
                                                         placeholder="0"
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-right font-mono"
+                                                        className="w-full p-3 bg-[#121212] border border-[#333] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-right font-mono text-white placeholder-gray-600"
                                                         value={formData.targetUpper}
                                                         onChange={(e) => setFormData({ ...formData, targetUpper: e.target.value })}
                                                     />
@@ -285,39 +285,39 @@ export default function AddAssetForm() {
 
                                         {/* Right: Trade Log */}
                                         <div className="space-y-5">
-                                            <div className="flex items-center gap-2 text-slate-800 font-bold border-b border-slate-100 pb-2">
+                                            <div className="flex items-center gap-2 text-gray-300 font-bold border-b border-[#333] pb-2">
                                                 <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
                                                 첫 매매 기록 (Log)
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-600 mb-1.5">일자</label>
+                                                    <label className="block text-sm font-medium text-gray-400 mb-1.5">일자</label>
                                                     <div className="relative">
                                                         <input
                                                             required
                                                             type="date"
-                                                            className="w-full p-3 pl-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm"
+                                                            className="w-full p-3 pl-10 bg-[#121212] border border-[#333] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm text-white"
                                                             value={formData.date}
                                                             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                                                         />
-                                                        <Calendar className="absolute left-3 top-3.5 text-slate-400" size={16} />
+                                                        <Calendar className="absolute left-3 top-3.5 text-gray-500" size={16} />
                                                     </div>
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-600 mb-1.5">구분</label>
-                                                    <div className="flex bg-slate-100 rounded-lg p-1 h-[46px]">
+                                                    <label className="block text-sm font-medium text-gray-400 mb-1.5">구분</label>
+                                                    <div className="flex bg-[#252525] rounded-lg p-1 h-[46px]">
                                                         <button
                                                             type="button"
                                                             onClick={() => setFormData({ ...formData, type: 'BUY' })}
-                                                            className={`flex-1 text-sm rounded-md transition font-medium ${formData.type === 'BUY' ? 'bg-white text-red-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                                                            className={`flex-1 text-sm rounded-md transition font-medium ${formData.type === 'BUY' ? 'bg-[#1E1E1E] text-red-400 shadow-sm border border-[#333]' : 'text-gray-500 hover:text-gray-300'}`}
                                                         >
                                                             매수
                                                         </button>
                                                         <button
                                                             type="button"
                                                             onClick={() => setFormData({ ...formData, type: 'SELL' })}
-                                                            className={`flex-1 text-sm rounded-md transition font-medium ${formData.type === 'SELL' ? 'bg-white text-blue-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-700'}`}
+                                                            className={`flex-1 text-sm rounded-md transition font-medium ${formData.type === 'SELL' ? 'bg-[#1E1E1E] text-blue-400 shadow-sm border border-[#333]' : 'text-gray-500 hover:text-gray-300'}`}
                                                         >
                                                             매도
                                                         </button>
@@ -327,22 +327,22 @@ export default function AddAssetForm() {
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-600 mb-1.5">가격 (단가)</label>
+                                                    <label className="block text-sm font-medium text-gray-400 mb-1.5">가격 (단가)</label>
                                                     <input
                                                         required
                                                         type="number"
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-right font-mono"
+                                                        className="w-full p-3 bg-[#121212] border border-[#333] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-right font-mono text-white placeholder-gray-600"
                                                         placeholder="0"
                                                         value={formData.price}
                                                         onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-600 mb-1.5">수량</label>
+                                                    <label className="block text-sm font-medium text-gray-400 mb-1.5">수량</label>
                                                     <input
                                                         required
                                                         type="number"
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-right font-mono"
+                                                        className="w-full p-3 bg-[#121212] border border-[#333] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-right font-mono text-white placeholder-gray-600"
                                                         placeholder="0"
                                                         value={formData.quantity}
                                                         onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
@@ -352,20 +352,20 @@ export default function AddAssetForm() {
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-600 mb-1.5">KOSPI 지수</label>
+                                                    <label className="block text-sm font-medium text-gray-400 mb-1.5">KOSPI 지수</label>
                                                     <input
                                                         type="number"
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-right font-mono"
+                                                        className="w-full p-3 bg-[#121212] border border-[#333] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-right font-mono text-white placeholder-gray-600"
                                                         placeholder="예: 2500"
                                                         value={formData.kospiIndex}
                                                         onChange={(e) => setFormData({ ...formData, kospiIndex: e.target.value })}
                                                     />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-sm font-medium text-slate-600 mb-1.5">매매 메모</label>
+                                                    <label className="block text-sm font-medium text-gray-400 mb-1.5">매매 메모</label>
                                                     <input
                                                         type="text"
-                                                        className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                                        className="w-full p-3 bg-[#121212] border border-[#333] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-white placeholder-gray-600"
                                                         placeholder="특이사항..."
                                                         value={formData.logMemo}
                                                         onChange={(e) => setFormData({ ...formData, logMemo: e.target.value })}
@@ -376,17 +376,17 @@ export default function AddAssetForm() {
                                     </div>
 
                                     {/* Action Buttons */}
-                                    <div className="pt-6 border-t border-slate-100 flex justify-end gap-3 sticky bottom-0 bg-white pb-2">
+                                    <div className="pt-6 border-t border-[#333] flex justify-end gap-3 sticky bottom-0 bg-[#1E1E1E] pb-2">
                                         <button
                                             type="button"
                                             onClick={handleClose}
-                                            className="px-6 py-3 text-slate-500 font-medium hover:bg-slate-50 rounded-xl transition"
+                                            className="px-6 py-3 text-gray-500 font-medium hover:bg-[#252525] rounded-xl transition"
                                         >
                                             취소
                                         </button>
                                         <button
                                             type="submit"
-                                            className="bg-slate-900 text-white px-8 py-3 rounded-xl hover:bg-slate-800 transition font-bold shadow-lg hover:shadow-xl transform active:scale-95 duration-200"
+                                            className="bg-indigo-600 text-white px-8 py-3 rounded-xl hover:bg-indigo-500 transition font-bold shadow-lg shadow-indigo-900/20 transform active:scale-95 duration-200"
                                         >
                                             저장하기
                                         </button>

@@ -16,9 +16,9 @@ export default function PortfolioTable() {
 
     if (error) {
         return (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-center">
+            <div className="p-4 bg-red-900/20 border border-red-800 rounded-xl text-red-400 text-center">
                 <p className="font-medium">데이터를 불러오지 못했습니다.</p>
-                <p className="text-sm mt-1">{error}</p>
+                <p className="text-sm mt-1 text-red-300">{error}</p>
             </div>
         );
     }
@@ -111,18 +111,18 @@ export default function PortfolioTable() {
             <div className="space-y-6">
                 {/* Skeleton Filter Bar */}
                 <div className="flex gap-4 mb-4 animate-pulse">
-                    <div className="h-8 w-24 bg-slate-100 rounded-lg"></div>
-                    <div className="h-8 w-24 bg-slate-100 rounded-lg"></div>
-                    <div className="h-8 w-24 bg-slate-100 rounded-lg"></div>
+                    <div className="h-8 w-24 bg-[#252525] rounded-lg"></div>
+                    <div className="h-8 w-24 bg-[#252525] rounded-lg"></div>
+                    <div className="h-8 w-24 bg-[#252525] rounded-lg"></div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm h-64 animate-pulse">
-                            <div className="h-6 bg-slate-100 rounded mb-4 w-1/3"></div>
-                            <div className="h-8 bg-slate-100 rounded mb-6 w-1/2"></div>
+                        <div key={i} className="bg-[#1E1E1E] rounded-3xl border border-[#333] p-6 shadow-sm h-64 animate-pulse">
+                            <div className="h-6 bg-[#252525] rounded mb-4 w-1/3"></div>
+                            <div className="h-8 bg-[#252525] rounded mb-6 w-1/2"></div>
                             <div className="space-y-3">
-                                <div className="h-4 bg-slate-100 rounded"></div>
-                                <div className="h-4 bg-slate-100 rounded w-5/6"></div>
+                                <div className="h-4 bg-[#252525] rounded"></div>
+                                <div className="h-4 bg-[#252525] rounded w-5/6"></div>
                             </div>
                         </div>
                     ))}
@@ -133,8 +133,8 @@ export default function PortfolioTable() {
 
     if (assets.length === 0) {
         return (
-            <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
-                <p className="text-slate-500">보유한 자산이 없습니다. 자산을 추가해 보세요.</p>
+            <div className="text-center py-12 bg-[#1E1E1E] rounded-xl border border-[#333]">
+                <p className="text-gray-500">보유한 자산이 없습니다. 자산을 추가해 보세요.</p>
             </div>
         );
     }
@@ -142,24 +142,24 @@ export default function PortfolioTable() {
     return (
         <div className="space-y-6">
             {/* Control Bar */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#1E1E1E] p-4 rounded-2xl border border-[#333] shadow-lg shadow-black/20">
 
                 {/* Filters */}
                 <div className="flex flex-wrap gap-2">
                     <label className={`cursor-pointer px-4 py-2 rounded-xl border text-sm font-medium transition flex items-center gap-2 select-none
-                        ${filter.kr ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                        ${filter.kr ? 'bg-indigo-900/30 border-indigo-500/30 text-indigo-400' : 'bg-[#121212] border-[#333] text-gray-500 hover:bg-[#252525] hover:text-gray-300'}`}>
                         <input type="checkbox" className="hidden" checked={filter.kr} onChange={() => setFilter(p => ({ ...p, kr: !p.kr }))} />
                         {filter.kr && <Check size={14} strokeWidth={3} />}
                         국내주식 ({counts.kr})
                     </label>
                     <label className={`cursor-pointer px-4 py-2 rounded-xl border text-sm font-medium transition flex items-center gap-2 select-none
-                        ${filter.us ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                        ${filter.us ? 'bg-indigo-900/30 border-indigo-500/30 text-indigo-400' : 'bg-[#121212] border-[#333] text-gray-500 hover:bg-[#252525] hover:text-gray-300'}`}>
                         <input type="checkbox" className="hidden" checked={filter.us} onChange={() => setFilter(p => ({ ...p, us: !p.us }))} />
                         {filter.us && <Check size={14} strokeWidth={3} />}
                         해외주식 ({counts.us})
                     </label>
                     <label className={`cursor-pointer px-4 py-2 rounded-xl border text-sm font-medium transition flex items-center gap-2 select-none
-                        ${filter.closed ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}>
+                        ${filter.closed ? 'bg-[#333] border-gray-600 text-gray-200' : 'bg-[#121212] border-[#333] text-gray-500 hover:bg-[#252525] hover:text-gray-300'}`}>
                         <input type="checkbox" className="hidden" checked={filter.closed} onChange={() => setFilter(p => ({ ...p, closed: !p.closed }))} />
                         {filter.closed && <Check size={14} strokeWidth={3} />}
                         거래완료 ({counts.closed})
@@ -168,26 +168,26 @@ export default function PortfolioTable() {
 
                 {/* Sort */}
                 <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400 font-medium">정렬</span>
+                    <span className="text-xs text-gray-500 font-medium">정렬</span>
                     <div className="relative">
                         <select
                             value={sort}
                             onChange={(e) => setSort(e.target.value as SortOption)}
-                            className="appearance-none bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-medium"
+                            className="appearance-none bg-[#121212] border border-[#333] text-gray-300 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-medium hover:border-gray-600 transition"
                         >
                             <option value="newest">최신등록순</option>
                             <option value="value">평가금액순</option>
                             <option value="name">가나다순</option>
                         </select>
-                        <ArrowUpDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        <ArrowUpDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                     </div>
                 </div>
             </div>
 
             {/* List */}
             {filteredAndSortedAssets.length === 0 ? (
-                <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                    <p className="text-slate-500">조건에 맞는 자산이 없습니다.</p>
+                <div className="text-center py-12 bg-[#1E1E1E] rounded-xl border border-dashed border-[#333]">
+                    <p className="text-gray-500">조건에 맞는 자산이 없습니다.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
