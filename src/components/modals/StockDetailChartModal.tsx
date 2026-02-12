@@ -590,6 +590,8 @@ export default function StockDetailModal({ isOpen, onClose, asset }: StockDetail
                                         {profitLoss.toLocaleString()}
                                         <span className="text-sm ml-2 font-medium">{isPositive ? '▲' : '▼'} {Math.abs(returnRate).toFixed(2)}%</span>
                                     </div>
+                                    <div className="text-[10px] text-gray-500 mt-2 mb-0.5">평가총액</div>
+                                    <div className="text-lg font-bold text-white">{currentValuation.toLocaleString()}</div>
                                 </div>
                                 <button
                                     onClick={() => setShowIndexComparison(true)}
