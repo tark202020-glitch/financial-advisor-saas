@@ -1,3 +1,13 @@
+## [Alpha V1.164] - 2026-02-12 14:35:00
+
+### 35. 랜딩 페이지 리브랜딩 (Note Concept)
+- **Summary**: 사용자 피드백을 반영하여 심플한 노트 필기 컨셉으로 랜딩 페이지 디자인 전면 수정.
+- **Detail**:
+  - **Design System**: 주황색 제거 → Indigo/Slate 기반의 Clean & Minimalist 스타일
+  - **Visual**: CSS Grid 패턴 배경 + Line Art 스타일 아이콘 (Lucide React 활용)
+  - **Concept**: "투자는 기록이다" — 노트에 직접 쓰는 듯한 아날로그 감성 구현
+- **Build Time**: 2026-02-12 14:35:00
+
 ## [Alpha V1.163] - 2026-02-12 14:20:00
 
 ### 34. 랜딩 페이지 리브랜딩 (JUBOT)
