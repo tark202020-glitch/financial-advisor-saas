@@ -1,3 +1,16 @@
+## [Alpha V1.170] - 2026-02-12 23:28:00
+
+### 🔄 StockDetailChartModal 재설계
+- **Summary**: StockDetailChartModal의 레이아웃을 전면 재설계하여 사용성 및 정보 밀도 개선
+- **Detail**:
+  - 모달 폭 확대 (`max-w-5xl` → `max-w-7xl`)
+  - 차트 기간 확대 (30일 → 45일, 약 2개월치 일봉)
+  - **투자자동향 블록 신규 추가**: 차트 우측에 개인/외국인/기관 순매수 바 차트 및 일별 테이블
+  - 매입정보(좌) + 목표설정(우) 2컬럼 배치로 레이아웃 변경
+  - 전체 모달 Dark Mode 적용 (#1E1E1E, #252525, #333)
+  - 지수대비 수익률 비교 오버레이도 Dark Mode 적용
+- **Build Time**: 2026-02-12 23:28:00
+
 ## [Alpha V1.167] - 2026-02-12 16:35:00
 
 ### 🌏 Localization: Landing Page (Korean)
