@@ -12,7 +12,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
     const toggle = () => setIsCollapsed(!isCollapsed);
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans">
+        <div className="min-h-screen bg-[#121212] font-sans text-gray-200">
             <Sidebar isCollapsed={isCollapsed} toggle={toggle} />
             <main
                 className={`transition-all duration-300 ease-in-out ${isCollapsed ? "pl-20" : "pl-64"}`}
@@ -31,10 +31,10 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             {!isMemoOpen && (
                 <button
                     onClick={() => setIsMemoOpen(true)}
-                    className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-500 text-white rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center z-[9998] group"
+                    className="fixed bottom-6 right-6 w-14 h-14 bg-[#F7D047] text-black rounded-full shadow-lg shadow-yellow-900/20 hover:shadow-xl hover:shadow-yellow-500/30 hover:scale-105 transition-all duration-200 flex items-center justify-center z-[9998] group"
                     title="메모 열기"
                 >
-                    <StickyNote size={22} className="group-hover:rotate-12 transition-transform" />
+                    <StickyNote size={24} className="group-hover:rotate-12 transition-transform" strokeWidth={2.5} />
                 </button>
             )}
         </div>

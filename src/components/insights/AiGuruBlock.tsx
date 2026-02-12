@@ -130,21 +130,21 @@ export default function AiGuruBlock() {
 
     if (isPortfolioLoading || isLoading) {
         return (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 mb-6 shadow-sm">
+            <div className="rounded-2xl border border-[#333] bg-[#1E1E1E] p-6 mb-6 shadow-lg shadow-black/20">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white text-lg">
+                    <div className="w-10 h-10 rounded-xl bg-[#252525] border border-[#333] flex items-center justify-center text-xl">
                         🔍
                     </div>
                     <div>
-                        <h3 className="text-base font-bold text-slate-800">AI 투자 분석</h3>
-                        <p className="text-xs text-slate-400">포트폴리오 분석 중...</p>
+                        <h3 className="text-base font-bold text-white">AI 투자 분석</h3>
+                        <p className="text-xs text-gray-500">포트폴리오 분석 중...</p>
                     </div>
                 </div>
                 <div className="space-y-3">
                     {[1, 2, 3].map(i => (
                         <div key={i} className="animate-pulse flex gap-3">
-                            <div className="w-16 h-5 bg-slate-100 rounded-md"></div>
-                            <div className="flex-1 h-5 bg-slate-50 rounded-md"></div>
+                            <div className="w-16 h-5 bg-[#333] rounded-md"></div>
+                            <div className="flex-1 h-5 bg-[#252525] rounded-md"></div>
                         </div>
                     ))}
                 </div>
@@ -155,38 +155,38 @@ export default function AiGuruBlock() {
     if (!assets || assets.length === 0) return null;
 
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 mb-6 shadow-sm relative overflow-hidden">
+        <div className="rounded-2xl border border-[#333] bg-[#1E1E1E] p-6 mb-6 shadow-lg shadow-black/20 relative overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white text-lg shadow-sm">
-                    📊
+                <div className="w-10 h-10 rounded-xl bg-[#F7D047] text-black flex items-center justify-center text-xl shadow-lg shadow-yellow-500/20">
+                    🪄
                 </div>
                 <div>
-                    <h3 className="text-base font-bold text-slate-800">AI 투자 분석 리포트</h3>
-                    <p className="text-xs text-slate-400">포트폴리오 비중 3% 이상 종목 대상</p>
+                    <h3 className="text-base font-bold text-white">AI 투자 분석 리포트</h3>
+                    <p className="text-xs text-gray-400">포트폴리오 비중 3% 이상 종목 대상</p>
                 </div>
             </div>
 
             {/* Advice Content */}
             {hasError ? (
-                <div className="text-slate-400 text-sm py-4 text-center">
+                <div className="text-gray-500 text-sm py-4 text-center">
                     AI 분석 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.
                 </div>
             ) : (
                 <div className="space-y-3">
                     {adviceList.map((item, idx) => (
-                        <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50/80 hover:bg-slate-50 transition-colors">
-                            <span className="inline-flex items-center justify-center flex-shrink-0 bg-indigo-100 text-indigo-600 text-[11px] font-semibold px-2.5 py-1 rounded-lg mt-0.5 whitespace-nowrap">
+                        <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-[#252525] border border-[#333] hover:bg-[#2A2A2A] transition-colors">
+                            <span className="inline-flex items-center justify-center flex-shrink-0 bg-[#F7D047]/10 text-[#F7D047] text-[11px] font-bold px-2.5 py-1 rounded-lg mt-0.5 whitespace-nowrap">
                                 {item.category}
                             </span>
-                            <span className="text-sm text-slate-700 leading-relaxed">{item.text}</span>
+                            <span className="text-sm text-gray-300 leading-relaxed font-medium">{item.text}</span>
                         </div>
                     ))}
                 </div>
             )}
 
             {/* Subtle accent */}
-            <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl"></div>
+            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-[#F7D047]/5 rounded-full blur-3xl pointer-events-none"></div>
         </div>
     );
 }

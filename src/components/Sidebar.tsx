@@ -13,6 +13,7 @@ import {
     Search,
     LineChart,
     StickyNote,
+    Bot,
 } from "lucide-react";
 import { usePortfolio } from "@/context/PortfolioContext";
 
@@ -41,18 +42,21 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
     return (
         <aside
             className={`
-                h-screen bg-white border-r border-slate-200 fixed left-0 top-0 z-50 transition-all duration-300 ease-in-out flex flex-col
+                h-screen bg-[#1E1E1E] border-r border-[#333] fixed left-0 top-0 z-50 transition-all duration-300 ease-in-out flex flex-col
                 ${isCollapsed ? "w-20" : "w-64"}
             `}
         >
             {/* Header / Toggle */}
-            <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100">
+            <div className="h-16 flex items-center justify-between px-4 border-b border-[#333]">
                 {!isCollapsed && (
-                    <span className="font-bold text-xl text-slate-800 tracking-tight">FinAdvisor</span>
+                    <div className="flex items-center gap-2 font-black text-xl text-[#F7D047] tracking-tight">
+                        <Bot size={24} strokeWidth={2.5} />
+                        <span>JUBOT</span>
+                    </div>
                 )}
                 <button
                     onClick={toggle}
-                    className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors ml-auto"
+                    className="p-2 rounded-lg hover:bg-[#333] text-gray-400 hover:text-white transition-colors ml-auto"
                 >
                     {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
                 </button>
@@ -67,37 +71,40 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                             key={item.name}
                             href={item.href}
                             className={`
-                                flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
+                                flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group font-bold
                                 ${isActive
-                                    ? "bg-indigo-50 text-indigo-700 font-semibold shadow-sm"
-                                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}
-                                ${item.disabled ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}
+                                    ? "bg-[#F7D047] text-black shadow-lg shadow-yellow-900/20"
+                                    : "text-gray-400 hover:bg-[#333] hover:text-white"}
+                                ${item.disabled ? "opacity-30 cursor-not-allowed pointer-events-none" : ""}
                                 ${isCollapsed ? "justify-center" : ""}
                             `}
                         >
-                            <item.icon size={20} className={isActive ? "text-indigo-600" : "group-hover:text-slate-700"} />
+                            <item.icon size={20} className={isActive ? "text-black" : "group-hover:text-white transition-colors"} />
                             {!isCollapsed && <span>{item.name}</span>}
                         </Link>
                     );
                 })}
 
                 {/* Divider */}
-                <div className="my-4 border-t border-slate-100 mx-2"></div>
+                <div className="my-4 border-t border-[#333] mx-2"></div>
 
                 {/* My Info & Logout */}
                 <div
                     className={`
                         w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
-                        ${isCollapsed ? "justify-center" : "bg-slate-50"}
+                        ${isCollapsed ? "justify-center" : "bg-[#252525]"}
                     `}
                 >
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center text-[#F7D047] shrink-0 border border-[#444]">
                         <User size={16} />
                     </div>
                     {!isCollapsed && (
                         <div className="flex flex-col text-left overflow-hidden w-full">
-                            <span className="text-sm font-medium text-slate-700 truncate w-full" title={`${user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"} / ${user?.email || "No Email"}`}>
-                                {user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Guest"} / {user?.email || "No Email"}
+                            <span className="text-sm font-bold text-gray-300 truncate w-full" title={`${user?.user_metadata?.full_name || "Guest"} / ${user?.email || "No Email"}`}>
+                                {user?.user_metadata?.full_name || "Guest"}
+                            </span>
+                            <span className="text-xs text-gray-500 truncate w-full">
+                                {user?.email || ""}
                             </span>
                         </div>
                     )}
@@ -106,12 +113,12 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                 <button
                     onClick={handleLogout}
                     className={`
-                        w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all duration-200 group mt-auto
+                        w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-all duration-200 group mt-auto
                         ${isCollapsed ? "justify-center" : ""}
                     `}
                 >
                     <LogOut size={20} />
-                    {!isCollapsed && <span className="font-medium">로그아웃</span>}
+                    {!isCollapsed && <span className="font-bold">로그아웃</span>}
                 </button>
             </nav>
         </aside>

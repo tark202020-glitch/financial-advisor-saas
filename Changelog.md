@@ -1,3 +1,22 @@
+## [Alpha V1.167] - 2026-02-12 16:35:00
+
+### 🌏 Localization: Landing Page (Korean)
+- **Summary**: 랜딩 페이지(`src/app/page.tsx`)의 모든 영문 텍스트를 자연스러운 한국어로 번역.
+- **Detail**:
+  - Hero, Features, Social Proof 섹션의 마케팅 문구를 국내 사용자 친화적인 톤앤매너로 수정.
+  - "UI meets AI Investment" -> "AI 투자의 새로운 기준" 등 핵심 슬로건 현지화.
+- **Build Time**: 2026-02-12 16:35:00
+
+## [Alpha V1.166] - 2026-02-12 16:00:00
+
+### 🔄 Design Update: Vibrant Dark Mode (Dashboard & Insights)
+- **Summary**: Dashboard 및 Insights 페이지의 주요 컴포넌트에 Vibrant Dark Mode 적용.
+- **Detail**:
+  - **Dashboard**: MarketFlowChart, DashboardWatchlists, SectorBarChart 스타일 생생한 다크 테마로 변경.
+  - **Insights**: AiGuruBlock, TargetProximityBlock, PortfolioCompositionBlock 등 핵심 분석 도구의 시인성 및 심미성 강화.
+  - **Components**: 공통 차트, 리스트, 툴팁 등 세부 요소까지 일관된 디자인 언어(#1E1E1E 배경, #F7D047 포인트) 적용.
+- **Build Time**: 2026-02-12 16:00:00
+
 ## [Alpha V1.165] - 2026-02-12 15:10:00
 
 ### 36. 랜딩 페이지 리브랜딩 (Vibrant Dark Mode)

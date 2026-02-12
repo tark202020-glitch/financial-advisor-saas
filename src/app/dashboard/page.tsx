@@ -27,8 +27,8 @@ export default function DashboardPage() {
             <div className="max-w-[1600px] mx-auto p-6 animate-in fade-in duration-500">
                 <header className="mb-6 flex justify-between items-end">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-800">일일 체크</h1>
-                        <p className="text-slate-500 text-sm">매일 확인해야할 주식 정보를 보여줍니다.</p>
+                        <h1 className="text-2xl font-bold text-white">일일 체크</h1>
+                        <p className="text-gray-400 text-sm">매일 확인해야할 주식 정보를 보여줍니다.</p>
                     </div>
                 </header>
 

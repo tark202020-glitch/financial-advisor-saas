@@ -185,6 +185,7 @@ export default function TargetProximityBlock() {
         }
     };
 
+    // Custom Tooltip
     const CustomTooltip = ({ active, payload, type }: any) => {
         if (active && payload && payload.length) {
             const data = payload[0].payload;
@@ -192,18 +193,18 @@ export default function TargetProximityBlock() {
             const isUrgent5 = Math.abs(data.distance) <= 5;
 
             return (
-                <div className={`bg-white p-3 border shadow-lg rounded-lg text-xs z-50 ${isUrgent5 ? 'border-red-500 ring-2 ring-red-100' : 'border-slate-200'}`}>
-                    <p className="font-bold mb-1 text-slate-800 flex items-center gap-1">
+                <div className={`bg-[#252525] p-3 border shadow-lg shadow-black/30 rounded-lg text-xs z-50 ${isUrgent5 ? 'border-red-500 ring-2 ring-red-500/20' : 'border-[#333]'}`}>
+                    <p className="font-bold mb-1 text-white flex items-center gap-1">
                         {data.name}
                         {isUrgent5 && <span className="text-red-500 text-[10px] animate-pulse">🔥 Limit 5%</span>}
                     </p>
-                    <p className="text-slate-600">현재가: <span className="font-mono">{data.currentPrice.toLocaleString()}</span></p>
-                    <p className={isLower ? "text-blue-600" : "text-red-500"}>
+                    <p className="text-gray-400">현재가: <span className="font-mono text-white">{data.currentPrice.toLocaleString()}</span></p>
+                    <p className={isLower ? "text-blue-400" : "text-red-400"}>
                         {isLower ? "하한목표" : "상한목표"}: {data.target.toLocaleString()}
                     </p>
-                    <p className="text-slate-500 mt-1">
+                    <p className="text-gray-500 mt-1">
                         남은 거리:
-                        <span className={`font-bold ml-1 ${isUrgent5 ? 'text-red-600 text-sm' : ''}`}>
+                        <span className={`font-bold ml-1 ${isUrgent5 ? 'text-red-500 text-sm' : 'text-gray-300'}`}>
                             {Math.abs(data.distance).toFixed(2)}%
                         </span>
                     </p>
@@ -223,7 +224,7 @@ export default function TargetProximityBlock() {
             <g transform={`translate(${x},${y})`}>
                 <foreignObject x={-100} y={-15} width={90} height={40}>
                     <div className="h-full flex items-center justify-end">
-                        <p className={`text-[11px] font-bold leading-tight text-right line-clamp-2 overflow-hidden text-ellipsis break-keep ${isUrgent5 ? 'text-red-600 scale-105 origin-right' : 'text-slate-700'}`}>
+                        <p className={`text-[11px] font-bold leading-tight text-right line-clamp-2 overflow-hidden text-ellipsis break-keep ${isUrgent5 ? 'text-red-600 scale-105 origin-right' : 'text-gray-400'}`}>
                             {isUrgent5 && <span className="mr-1 inline-block animate-bounce">🔥</span>}
                             {payload.value}
                         </p>
@@ -236,18 +237,18 @@ export default function TargetProximityBlock() {
     // Render Loading State
     if (isLoading) {
         return (
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 h-[500px] flex flex-col items-center justify-center space-y-6">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="bg-[#1E1E1E] rounded-2xl p-8 shadow-sm border border-[#333] h-[500px] flex flex-col items-center justify-center space-y-6">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F7D047]"></div>
                 <div className="w-full max-w-xs space-y-2 text-center">
-                    <p className="text-slate-800 font-medium text-lg">포트폴리오 분석 중...</p>
-                    <p className="text-slate-500 text-sm animate-pulse">{loadingStatus}</p>
-                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mt-4">
+                    <p className="text-white font-medium text-lg">포트폴리오 분석 중...</p>
+                    <p className="text-gray-500 text-sm animate-pulse">{loadingStatus}</p>
+                    <div className="w-full bg-[#252525] rounded-full h-2 overflow-hidden mt-4">
                         <div
-                            className="bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out"
+                            className="bg-[#F7D047] h-2 rounded-full transition-all duration-300 ease-out"
                             style={{ width: `${loadingProgress}%` }}
                         ></div>
                     </div>
-                    <p className="text-xs text-slate-400 text-right mt-1">{loadingProgress}%</p>
+                    <p className="text-xs text-gray-600 text-right mt-1">{loadingProgress}%</p>
                 </div>
             </div>
         )
@@ -255,7 +256,7 @@ export default function TargetProximityBlock() {
 
     if (!assets || assets.length === 0) {
         return (
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200 text-center text-slate-400">
+            <div className="bg-[#1E1E1E] rounded-2xl p-8 shadow-sm border border-[#333] text-center text-gray-500">
                 보유한 주식이 없습니다.
             </div>
         )
@@ -266,12 +267,12 @@ export default function TargetProximityBlock() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 {/* Block 1: Upper Target (Red) */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative animate-in fade-in zoom-in duration-500">
-                    <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <div className="bg-[#1E1E1E] rounded-2xl p-6 shadow-lg shadow-black/20 border border-[#333] relative animate-in fade-in zoom-in duration-500">
+                    <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                         <span className="text-red-500">⬆️</span> 상한 목표 (30% 이내)
                     </h2>
                     {upperData.length === 0 ? (
-                        <div className="h-[400px] flex items-center justify-center text-slate-400 text-sm">
+                        <div className="h-[400px] flex items-center justify-center text-gray-500 text-sm">
                             설정된 범위(30%) 내 종목이 없습니다.
                         </div>
                     ) : (
@@ -291,7 +292,7 @@ export default function TargetProximityBlock() {
                                         interval={0}
                                         onClick={handleBarClick}
                                     />
-                                    <Tooltip content={<CustomTooltip type='upper' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
+                                    <Tooltip content={<CustomTooltip type='upper' />} cursor={{ fill: '#333', opacity: 0.3 }} />
                                     <Bar dataKey="distance" barSize={16} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
                                         {upperData.map((entry: any, index: number) => {
                                             const isUrgent5 = Math.abs(entry.distance) <= 5;
@@ -315,12 +316,12 @@ export default function TargetProximityBlock() {
                 </div>
 
                 {/* Block 2: Lower Target (Blue) */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 relative animate-in fade-in zoom-in duration-500">
-                    <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <div className="bg-[#1E1E1E] rounded-2xl p-6 shadow-lg shadow-black/20 border border-[#333] relative animate-in fade-in zoom-in duration-500">
+                    <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                         <span className="text-blue-500">⬇️</span> 하한 목표 (30% 이내)
                     </h2>
                     {lowerData.length === 0 ? (
-                        <div className="h-[400px] flex items-center justify-center text-slate-400 text-sm">
+                        <div className="h-[400px] flex items-center justify-center text-gray-500 text-sm">
                             설정된 범위(30%) 내 종목이 없습니다.
                         </div>
                     ) : (
@@ -340,7 +341,7 @@ export default function TargetProximityBlock() {
                                         interval={0}
                                         onClick={handleBarClick}
                                     />
-                                    <Tooltip content={<CustomTooltip type='lower' />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
+                                    <Tooltip content={<CustomTooltip type='lower' />} cursor={{ fill: '#333', opacity: 0.3 }} />
                                     <Bar dataKey="distance" barSize={16} radius={[0, 4, 4, 0]} onClick={handleBarClick}>
                                         {lowerData.map((entry: any, index: number) => {
                                             const isUrgent5 = Math.abs(entry.distance) <= 5;
@@ -366,12 +367,12 @@ export default function TargetProximityBlock() {
 
             {/* Debug Info Condensed */}
             {(processingLogs.length > 0) && (
-                <div className="bg-white rounded-xl p-4 border border-slate-200">
-                    <details className="text-xs text-slate-400 cursor-pointer">
+                <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#333]">
+                    <details className="text-xs text-gray-500 cursor-pointer">
                         <summary>📋 데이터 리포트 (제외된 종목 포함)</summary>
-                        <div className="mt-2 text-slate-500 max-h-32 overflow-y-auto bg-slate-50 p-2 rounded border border-slate-100">
+                        <div className="mt-2 text-gray-400 max-h-32 overflow-y-auto bg-[#252525] p-2 rounded border border-[#333]">
                             {fetchErrors.length > 0 && (
-                                <div className="mb-2 pb-2 border-b border-red-100 text-red-500">
+                                <div className="mb-2 pb-2 border-b border-red-900/30 text-red-500">
                                     <strong>⚠ API 오류:</strong>
                                     <ul className="list-disc list-inside">
                                         {fetchErrors.map((e, i) => <li key={i}>{e}</li>)}

@@ -51,17 +51,17 @@ function DomesticIndexCard({ name, symbol, marketCode }: { name: string, symbol:
     const fmt = (n: number) => Math.abs(n / 100).toLocaleString(undefined, { maximumFractionDigits: 0 }); // 억 unit, No decimal
 
     return (
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 flex-1">
-            <div className="flex items-center gap-2 mb-2 border-l-4 border-blue-600 pl-3">
-                <h3 className="text-lg font-bold text-slate-800">{name}</h3>
+        <div className="bg-[#1E1E1E] rounded-xl p-6 shadow-lg shadow-black/20 border border-[#333] flex-1">
+            <div className="flex items-center gap-2 mb-2 border-l-4 border-[#F7D047] pl-3">
+                <h3 className="text-lg font-bold text-white">{name}</h3>
             </div>
 
             <div className="flex items-baseline gap-3 mb-6">
-                <span className="text-4xl font-bold text-slate-900 tracking-tight">
+                <span className="text-4xl font-bold text-white tracking-tight">
                     {indexData.value > 0 ? indexData.value.toLocaleString() : 'Loading...'}
                 </span>
                 {indexData.value > 0 && (
-                    <div className={`flex items-center text-lg font-medium ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
+                    <div className={`flex items-center text-lg font-bold ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
                         {isUp ? <ArrowUp size={20} /> : <ArrowDown size={20} />}
                         <span className="ml-1">{Math.round(Math.abs(indexData.change)).toLocaleString()}</span>
                         <span className="ml-2 text-base opacity-90">{Math.abs(indexData.changePercent).toFixed(2)}%</span>
@@ -69,23 +69,23 @@ function DomesticIndexCard({ name, symbol, marketCode }: { name: string, symbol:
                 )}
             </div>
 
-            <div className="flex items-center text-sm text-slate-600 gap-4 pt-4 border-t border-slate-100">
+            <div className="flex items-center text-sm text-gray-400 gap-4 pt-4 border-t border-[#333]">
                 <div className="flex gap-1">
-                    <span className="text-slate-500">개인</span>
+                    <span className="text-gray-500">개인</span>
                     <span className={`font-semibold ${investor.individual > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                         {fmt(investor.individual)}억
                     </span>
                 </div>
-                <div className="w-px h-3 bg-slate-300"></div>
+                <div className="w-px h-3 bg-[#444]"></div>
                 <div className="flex gap-1">
-                    <span className="text-slate-500">외국인</span>
+                    <span className="text-gray-500">외국인</span>
                     <span className={`font-semibold ${investor.foreign > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                         {fmt(investor.foreign)}억
                     </span>
                 </div>
-                <div className="w-px h-3 bg-slate-300"></div>
+                <div className="w-px h-3 bg-[#444]"></div>
                 <div className="flex gap-1">
-                    <span className="text-slate-500">기관</span>
+                    <span className="text-gray-500">기관</span>
                     <span className={`font-semibold ${investor.institution > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                         {fmt(investor.institution)}억
                     </span>
@@ -115,11 +115,11 @@ function OverseasRow({ name, symbol }: { name: string, symbol: string }) {
     }
 
     return (
-        <div className="grid grid-cols-3 items-center py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50 px-2 transition-colors">
+        <div className="grid grid-cols-3 items-center py-4 border-b border-[#333] last:border-0 hover:bg-[#252525] px-2 transition-colors">
             {/* Col 1: Name & Time */}
             <div className="flex flex-col">
-                <div className="font-bold text-slate-700">{name}</div>
-                {timeStr && <div className="text-[10px] text-slate-400">{timeStr}</div>}
+                <div className="font-bold text-white">{name}</div>
+                {timeStr && <div className="text-[10px] text-gray-500">{timeStr}</div>}
             </div>
 
             {/* Col 2: Change & Rate */}
@@ -134,7 +134,7 @@ function OverseasRow({ name, symbol }: { name: string, symbol: string }) {
 
             {/* Col 3: Index Value (Right Aligned) */}
             <div className="text-right">
-                <div className="font-bold text-slate-900 text-lg">
+                <div className="font-bold text-white text-lg">
                     {hasData ? indexData.value.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '-'}
                 </div>
             </div>
@@ -169,8 +169,8 @@ function MarketTrendRow({ name, marketCode }: { name: string, marketCode: string
     const col = (n: number) => n > 0 ? 'text-red-500' : 'text-blue-500';
 
     return (
-        <div className="grid grid-cols-4 py-4 border-b border-slate-50 last:border-0 items-center hover:bg-slate-50 px-2">
-            <div className="font-bold text-lg text-slate-800">{name}</div>
+        <div className="grid grid-cols-4 py-4 border-b border-[#333] last:border-0 items-center hover:bg-[#252525] px-2">
+            <div className="font-bold text-lg text-white">{name}</div>
             <div className={`text-right font-medium ${col(investor.foreign)}`}>{fmt(investor.foreign)}</div>
             <div className={`text-right font-medium ${col(investor.individual)}`}>{fmt(investor.individual)}</div>
             <div className={`text-right font-medium ${col(investor.institution)}`}>{fmt(investor.institution)}</div>
@@ -186,8 +186,8 @@ export default function MarketFlowChart() {
         <div className="space-y-8">
             {/* Header */}
             <div>
-                <h2 className="text-xl font-bold text-slate-800">지수종합</h2>
-                <p className="text-xs text-slate-400 mt-1">{dateStr}</p>
+                <h2 className="text-xl font-bold text-white">지수종합</h2>
+                <p className="text-xs text-gray-500 mt-1">{dateStr}</p>
             </div>
 
             {/* Top Row: Domestic Indices */}
@@ -199,8 +199,8 @@ export default function MarketFlowChart() {
             {/* Bottom Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Overseas List */}
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                    <h3 className="font-bold text-slate-700 mb-4 border-b border-slate-100 pb-2">해외</h3>
+                <div className="bg-[#1E1E1E] rounded-xl p-6 shadow-lg shadow-black/20 border border-[#333]">
+                    <h3 className="font-bold text-white mb-4 border-b border-[#333] pb-2">해외</h3>
                     <div>
                         <OverseasRow name="DOW" symbol=".DJI" />
                         <OverseasRow name="NASDAQ" symbol="COMP" />
@@ -211,14 +211,14 @@ export default function MarketFlowChart() {
                 </div>
 
                 {/* Market Trend Table */}
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-                    <div className="flex justify-between items-end mb-4 border-b border-slate-100 pb-2">
-                        <h3 className="font-bold text-lg text-slate-800">마켓트렌드</h3>
-                        <span className="text-xs text-slate-400">단위/억원</span>
+                <div className="bg-[#1E1E1E] rounded-xl p-6 shadow-lg shadow-black/20 border border-[#333]">
+                    <div className="flex justify-between items-end mb-4 border-b border-[#333] pb-2">
+                        <h3 className="font-bold text-lg text-white">마켓트렌드</h3>
+                        <span className="text-xs text-gray-500">단위/억원</span>
                     </div>
 
                     {/* Table Header */}
-                    <div className="grid grid-cols-4 text-xs text-slate-500 pb-2 border-b border-slate-100 px-2">
+                    <div className="grid grid-cols-4 text-xs text-gray-500 pb-2 border-b border-[#333] px-2">
                         <div>종목명</div>
                         <div className="text-right">외국인</div>
                         <div className="text-right">개인</div>

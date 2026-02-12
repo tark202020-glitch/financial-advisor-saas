@@ -4,6 +4,7 @@ import { Stock } from '@/lib/mockData';
 import { useState } from 'react';
 import StockDetailModal from './modals/StockDetailModal';
 import SectorRowItem from './SectorRowItem';
+import { Plus } from 'lucide-react';
 
 interface SectorWatchListProps {
     title: string;
@@ -33,26 +34,26 @@ export default function SectorWatchList({ title, stocks, onAddClick, onRemoveIte
     const getStockData = (symbol: string) => getKrData(symbol) || getUsData(symbol);
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 h-full">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+        <div className="bg-[#1E1E1E] rounded-xl shadow-lg shadow-black/20 border border-[#333] p-4 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-4 border-b border-[#333] pb-2">
+                <div className="flex items-center gap-2 w-full justify-between">
+                    <h3 className="text-lg font-bold text-white truncate pr-2" title={title}>{title}</h3>
                     {onAddClick && (
                         <button
                             onClick={onAddClick}
-                            className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                            className="text-xs bg-[#F7D047]/10 text-[#F7D047] px-2 py-1 rounded hover:bg-[#F7D047]/20 transition-colors flex items-center gap-1 shrink-0"
                         >
-                            + 종목 추가
+                            <Plus size={12} /> 종목 추가
                         </button>
                     )}
                 </div>
             </div>
             {lastUpdated && (
-                <div className="text-xs text-slate-400 font-medium mb-4 text-right">
-                    Last Update: {lastUpdated}
+                <div className="text-[10px] text-gray-600 font-medium mb-2 text-right">
+                    Update: {lastUpdated}
                 </div>
             )}
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
                 {stocks.map((stock) => (
                     <SectorRowItem
                         key={stock.symbol}

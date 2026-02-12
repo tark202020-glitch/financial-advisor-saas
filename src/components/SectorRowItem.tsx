@@ -57,23 +57,23 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
     return (
         <div
             onClick={() => onClick(currentStock)}
-            className={`grid grid-cols-12 items-center p-3 rounded-lg cursor-pointer transition-all hover:shadow-md border gap-2 relative group ${isVolatile ? 'bg-amber-50 border-amber-200' : 'bg-white border-transparent hover:border-slate-100'
+            className={`grid grid-cols-12 items-center p-3 rounded-lg cursor-pointer transition-all hover:shadow-md border gap-2 relative group ${isVolatile ? 'bg-amber-900/20 border-amber-700/50' : 'bg-[#252525] border-transparent hover:border-[#444]'
                 }`}
         >
             {/* 1. Name & Sector (Col 1-6) */}
             <div className="col-span-6 flex items-center gap-3 overflow-hidden">
                 <div className="min-w-0">
-                    <div className="font-bold text-slate-800 flex items-center gap-2 truncate">
+                    <div className="font-bold text-white flex items-center gap-2 truncate">
                         <span className="truncate">{stock.name}</span>
-                        {marketType === 'US' && <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded shrink-0">US</span>}
+                        {marketType === 'US' && <span className="text-[10px] px-1.5 py-0.5 bg-[#333] text-gray-400 rounded shrink-0">US</span>}
                     </div>
-                    <div className="text-xs text-slate-500 flex items-center gap-1 truncate mt-0.5">
+                    <div className="text-xs text-gray-400 flex items-center gap-1 truncate mt-0.5">
                         <span className="truncate">{stock.symbol}</span>
-                        <span className="text-slate-300">|</span>
+                        <span className="text-gray-600">|</span>
                         <span className="truncate">{marketType}</span>
                         {sectorDisplay && (
                             <>
-                                <span className="text-slate-300">|</span>
+                                <span className="text-gray-600">|</span>
                                 <span className="truncate">{sectorDisplay}</span>
                             </>
                         )}
@@ -83,8 +83,8 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
 
             {/* 2. Price (Col 7-9, Right Aligned) */}
             <div className="col-span-3 text-right">
-                <div className="font-bold text-slate-900 text-lg tracking-tight">
-                    {(price && price > 0) ? price.toLocaleString() : <span className="text-slate-300">---</span>}
+                <div className="font-bold text-white text-lg tracking-tight">
+                    {(price && price > 0) ? price.toLocaleString() : <span className="text-gray-600">---</span>}
                 </div>
             </div>
 
@@ -104,14 +104,11 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
-                        // if (confirm(`'${stock.name}' 종목을 삭제하시겠습니까?`)) { // Confirm logic handled by parent or here? 
-                        // User request: "추가한 종목을 삭제 할 수 있는 기능이 필요합니다."
-                        // Usually better to confirm.
                         if (confirm(`'${stock.name}' 종목을 삭제하시겠습니까?`)) {
                             onRemove();
                         }
                     }}
-                    className="absolute -top-2 -right-2 bg-white rounded-full shadow-sm border border-slate-200 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 p-1 transition-all z-10"
+                    className="absolute -top-2 -right-2 bg-[#333] rounded-full shadow-lg border border-[#444] text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 p-1 transition-all z-10"
                     title="종목 삭제"
                 >
                     <X size={12} />
