@@ -1,3 +1,13 @@
+## [Alpha V1.165] - 2026-02-12 15:10:00
+
+### 36. 랜딩 페이지 리브랜딩 (Vibrant Dark Mode)
+- **Summary**: 고대비(High Contrast)와 생생한 컬러(Vibrant Colors)를 활용한 'Vibrant Dark Mode' 컨셉으로 디자인 전면 수정.
+- **Detail**:
+  - **Color Palette**: Bright Yellow(#F7D047) Hero + Deep Charcoal(#121212) Features + Vivid Accents (Blue, Purple, Orange, Teal)
+  - **Layout**: Bento Grid 스타일의 모듈형 카드 레이아웃 적용
+  - **Visual**: Bold Typography & Abstract CSS Graphics (Image Gen 대체)
+- **Build Time**: 2026-02-12 15:10:00
+
 ## [Alpha V1.164] - 2026-02-12 14:35:00
 
 ### 35. 랜딩 페이지 리브랜딩 (Note Concept)
