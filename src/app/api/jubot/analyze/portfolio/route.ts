@@ -100,6 +100,18 @@ export async function POST(request: NextRequest) {
 
         ${marketData ? `**시장 데이터:** ${JSON.stringify(marketData)}` : ''}
 
+        **⚠️ 중요: 주요 이슈가 있는 종목만 선별하세요**
+        아래 기준 중 하나 이상 해당하는 종목만 stock_insights에 포함하세요:
+        1. 현재가가 0원 (거래 불가/상폐 의심) → signal: "sell", priority: "high"
+        2. 손실률 -15% 초과 (심각한 손실) → priority: "high"
+        3. 목표 상한가의 90% 이상 도달 (매도 타이밍) → signal: "sell" 또는 "watch"
+        4. 목표 하한가 이하 하락 (손절 검토) → priority: "high"
+        5. 수익률 +30% 초과 (차익실현 검토)
+        6. 재무 데이터 급격 변동 (영업이익 적자 전환, 매출 -20% 이상 감소 등)
+        7. 최근 뉴스 이슈 (newsCount > 0인 종목 중 시장 영향력 큰 이슈)
+        
+        해당 사항이 없는 종목은 제외하세요. 특별한 이슈가 없는 안정 보유 종목은 포함하지 마세요.
+
         **출력 형식 (JSON):**
         {
             "portfolio_summary": "전체 포트폴리오에 대한 종합 평가 (2-3문장, 재무 데이터 기반 분석 포함)",
@@ -120,12 +132,11 @@ export async function POST(request: NextRequest) {
         }
 
         규칙:
-        - stock_insights는 보유 종목 전체를 포함하되 중요도 순으로 정렬
+        - stock_insights는 이슈가 있는 종목만 포함 (없으면 빈 배열)
         - financials 데이터가 있는 종목은 반드시 재무 분석을 reason에 반영
         - financial_highlight는 핵심 재무 수치 1개를 요약 (없으면 null)
         - signal은 재무 건전성 + 현재가 대비 목표가 + 시장 상황 종합 판단
         - priority가 high인 종목은 반드시 3개 이하
-        - 목표가 근접 종목은 priority: "high"
         - 모든 텍스트는 한국어, 전문가답게 간결하게
         - JSON만 출력 (마크다운 코드블록 없이)
         `;

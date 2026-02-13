@@ -45,11 +45,19 @@ export default function JubotPortfolioInsight() {
     const [debugPriceMap, setDebugPriceMap] = useState<Record<string, number>>({});
     const [debugNewsMap, setDebugNewsMap] = useState<Record<string, number>>({});
 
+    // Progress state
+    const [progressStep, setProgressStep] = useState('');
+    const [progressPercent, setProgressPercent] = useState(0);
+    const [progressDetail, setProgressDetail] = useState('');
+
     const fetchAnalysis = useCallback(async () => {
         if (!assets || assets.length === 0) return;
 
         setLoading(true);
         setError(false);
+        setProgressStep('시세 조회 준비');
+        setProgressPercent(0);
+        setProgressDetail('');
 
         try {
             const activeList = assets.filter(a => (a.quantity || 0) > 0 && a.symbol);
@@ -60,14 +68,19 @@ export default function JubotPortfolioInsight() {
                 return;
             }
 
-            // 1. 현재가 조회 (KIS API)
+            const totalSteps = activeList.length + 3; // prices + news + DART + AI
+            let completedSteps = 0;
+
+            // ── STEP 1: 현재가 조회 ──
             const priceMap: Record<string, number> = {};
 
             for (const a of activeList) {
-                try {
-                    let cleanSymbol = a.symbol;
-                    if (a.symbol.includes('.')) cleanSymbol = a.symbol.split('.')[0];
+                const cleanSymbol = a.symbol.includes('.') ? a.symbol.split('.')[0] : a.symbol;
+                setProgressStep('시세 조회 중...');
+                setProgressDetail(`${a.name} (${cleanSymbol})`);
+                setProgressPercent(Math.round((completedSteps / totalSteps) * 100));
 
+                try {
                     const endpoint = a.category === 'US'
                         ? `/api/kis/price/overseas/${cleanSymbol}`
                         : `/api/kis/price/domestic/${cleanSymbol}`;
@@ -84,48 +97,44 @@ export default function JubotPortfolioInsight() {
                 } catch (e) {
                     console.warn(`[Jubot] Price fetch failed for ${a.symbol}:`, e);
                 }
+                completedSteps++;
             }
 
-            // 디버그: priceMap 저장
             setDebugPriceMap({ ...priceMap });
 
-            // 2-1. 뉴스 참조 수 수집 (RSS 직접 파싱)
+            // ── STEP 2: 뉴스 수집 (서버 API 경유 — CORS 우회) ──
+            setProgressStep('뉴스 수집 중...');
+            setProgressDetail('RSS 뉴스 분석');
+            setProgressPercent(Math.round((completedSteps / totalSteps) * 100));
+
             const newsCountMap: Record<string, number> = {};
             try {
-                const rssSources = [
-                    'https://rss.news.naver.com/money.xml',
-                    'https://www.hankyung.com/feed/stock',
-                ];
-                const allTitles: string[] = [];
-                for (const rssUrl of rssSources) {
-                    try {
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 5000);
-                        const res = await fetch(rssUrl, {
-                            signal: controller.signal,
-                            headers: { 'User-Agent': 'JubotNewsCollector/1.0' }
-                        });
-                        clearTimeout(timeoutId);
-                        if (res.ok) {
-                            const xml = await res.text();
-                            const itemRegex = /<item>[\s\S]*?<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>[\s\S]*?<\/item>/gi;
-                            let match;
-                            while ((match = itemRegex.exec(xml)) !== null) {
-                                allTitles.push(match[1].replace(/<[^>]+>/g, '').trim());
-                            }
+                const newsRes = await fetch('/api/jubot/collect/news');
+                if (newsRes.ok) {
+                    const newsData = await newsRes.json();
+                    if (newsData.success && newsData.articles) {
+                        // 각 종목별 뉴스 매칭
+                        for (const a of activeList) {
+                            const cleanSym = a.symbol.includes('.') ? a.symbol.split('.')[0] : a.symbol;
+                            const count = newsData.articles.filter((article: any) => {
+                                const text = `${article.title} ${article.description || ''}`;
+                                return text.includes(a.name) || text.includes(cleanSym);
+                            }).length;
+                            newsCountMap[a.symbol] = count;
                         }
-                    } catch { /* RSS 실패 무시 */ }
+                    }
                 }
-                // 각 종목별 매칭 뉴스 수 카운트
-                for (const a of activeList) {
-                    const cleanSym = a.symbol.includes('.') ? a.symbol.split('.')[0] : a.symbol;
-                    const count = allTitles.filter(t => t.includes(a.name) || t.includes(cleanSym)).length;
-                    newsCountMap[a.symbol] = count;
-                }
-            } catch { /* 뉴스 수집 실패 */ }
+            } catch {
+                console.warn('[Jubot] News fetch failed');
+            }
             setDebugNewsMap({ ...newsCountMap });
+            completedSteps++;
 
-            // 2-2. 포트폴리오 데이터 구성 (실제 현재가 사용)
+            // ── STEP 3: AI 분석 호출 ──
+            setProgressStep('AI 분석 요청 중...');
+            setProgressDetail('JUBOT이 포트폴리오를 분석합니다');
+            setProgressPercent(Math.round((completedSteps / totalSteps) * 100));
+
             const portfolioData = activeList.map(a => ({
                 name: a.name,
                 symbol: a.symbol,
@@ -137,20 +146,24 @@ export default function JubotPortfolioInsight() {
                 changeRate: 0,
                 targetPriceUpper: a.targetPriceUpper || 0,
                 targetPriceLower: a.targetPriceLower || 0,
+                newsCount: newsCountMap[a.symbol] || 0,
             }));
 
-            // 3. AI 분석 호출
             const res = await fetch('/api/jubot/analyze/portfolio', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ assets: portfolioData }),
             });
+            completedSteps++;
+
+            setProgressStep('분석 결과 처리 중...');
+            setProgressPercent(Math.round((completedSteps / totalSteps) * 100));
 
             const data = await res.json();
             if (data.success && data.analysis) {
                 setAnalysis(data.analysis);
 
-                // 4. 히스토리 자동 저장
+                // 히스토리 자동 저장
                 try {
                     await fetch('/api/jubot/history', {
                         method: 'POST',
@@ -166,6 +179,8 @@ export default function JubotPortfolioInsight() {
             } else {
                 setError(true);
             }
+
+            setProgressPercent(100);
         } catch (e) {
             console.error('[JubotPortfolio] Error:', e);
             setError(true);
@@ -203,11 +218,56 @@ export default function JubotPortfolioInsight() {
 
             {/* Content */}
             <div className="p-6">
+                {/* ── Loading with Progress Bar ── */}
                 {loading && !analysis && (
-                    <div className="flex flex-col items-center justify-center py-12 gap-4">
-                        <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#333] border-t-purple-500"></div>
-                        <p className="text-gray-400 text-base">포트폴리오를 분석 중입니다...</p>
-                        <p className="text-gray-500 text-sm">약 10~15초 소요됩니다</p>
+                    <div className="flex flex-col items-center justify-center py-16 gap-5">
+                        {/* Animated moon icon */}
+                        <div className="relative w-16 h-16">
+                            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '3s' }}>
+                                <svg width="64" height="64" viewBox="0 0 64 64">
+                                    <path
+                                        d="M32 8 A24 24 0 0 1 56 32"
+                                        fill="none"
+                                        stroke="#F7D047"
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                    />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <p className="text-white text-xl font-bold">포트폴리오 분석 중...</p>
+                        <p className="text-gray-400 text-sm">{progressDetail || progressStep}</p>
+
+                        {/* Progress Bar */}
+                        <div className="w-80 max-w-full">
+                            <div className="w-full h-2 bg-[#333] rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-full transition-all duration-500 ease-out"
+                                    style={{ width: `${progressPercent}%` }}
+                                />
+                            </div>
+                            <div className="flex justify-end mt-1">
+                                <span className="text-xs text-gray-500">{progressPercent}%</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Loading overlay when re-analyzing */}
+                {loading && analysis && (
+                    <div className="mb-4 p-3 rounded-xl bg-purple-900/20 border border-purple-900/30">
+                        <div className="flex items-center gap-3 mb-2">
+                            <RefreshCw size={14} className="animate-spin text-purple-400" />
+                            <span className="text-sm text-purple-300 font-medium">{progressStep}</span>
+                            <span className="text-xs text-gray-500">{progressDetail}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-[#333] rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-purple-500 rounded-full transition-all duration-500 ease-out"
+                                style={{ width: `${progressPercent}%` }}
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -254,18 +314,22 @@ export default function JubotPortfolioInsight() {
                             <p className="text-gray-300 text-base leading-relaxed">{analysis.portfolio_summary}</p>
                         </div>
 
-                        {/* Stock Insights */}
+                        {/* Stock Insights — 중요 이슈 종목만 */}
                         {analysis.stock_insights && analysis.stock_insights.length > 0 && (
                             <div>
-                                <h4 className="text-base font-bold text-gray-400 mb-3">📊 종목별 AI 시그널</h4>
+                                <h4 className="text-base font-bold text-gray-400 mb-3">📊 종목별 AI 시그널 (주요 이슈)</h4>
                                 <div className="space-y-2">
                                     {analysis.stock_insights.map((insight, i) => {
                                         const config = SIGNAL_CONFIG[insight.signal] || SIGNAL_CONFIG.hold;
                                         const Icon = config.icon;
+                                        const price = debugPriceMap[insight.symbol] || 0;
+                                        const newsCount = debugNewsMap[insight.symbol] || 0;
+                                        const asset = activeAssets.find(a => a.symbol === insight.symbol);
+                                        const isUS = asset?.category === 'US';
+
                                         return (
                                             <div key={i} className={`p-4 rounded-xl border ${config.bg} cursor-pointer hover:brightness-110 transition-all`}
                                                 onClick={() => {
-                                                    const asset = activeAssets.find(a => a.symbol === insight.symbol);
                                                     if (asset) {
                                                         setSelectedStock({
                                                             symbol: asset.symbol,
@@ -281,16 +345,17 @@ export default function JubotPortfolioInsight() {
                                                 }}
                                             >
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 flex-wrap">
                                                         <Icon size={18} className={config.color} />
                                                         <span className="font-bold text-white text-base">{insight.name}</span>
                                                         <span className="text-sm text-gray-500">({insight.symbol})</span>
-                                                        {/* 디버그: 현재가 + 뉴스 참조 수 */}
-                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${debugPriceMap[insight.symbol] ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
-                                                            ₩{(debugPriceMap[insight.symbol] || 0).toLocaleString()}
+                                                        {/* 디버그: 현재가 */}
+                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${price > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                                                            {isUS ? '$' : '₩'}{price.toLocaleString()}
                                                         </span>
-                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${(debugNewsMap[insight.symbol] || 0) > 0 ? 'bg-blue-900/30 text-blue-400' : 'bg-gray-800 text-gray-500'}`}>
-                                                            뉴스 {debugNewsMap[insight.symbol] || 0}건
+                                                        {/* 디버그: 뉴스 수 */}
+                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${newsCount > 0 ? 'bg-blue-900/30 text-blue-400' : 'bg-gray-800 text-gray-500'}`}>
+                                                            뉴스 {newsCount}건
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
