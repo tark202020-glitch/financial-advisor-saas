@@ -24,25 +24,24 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: '종목 정보가 필요합니다' });
         }
 
-        // 0. 현재가 서버 측 직접 조회 (클라이언트 값이 없거나 0인 경우 보완)
+        // 0. 현재가 서버 측 직접 조회 (KIS 클라이언트 직접 호출)
         let currentPrice = clientPrice || 0;
         if (!currentPrice || currentPrice === 0) {
             try {
-                const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
                 let cleanSymbol = symbol;
                 if (symbol.includes('.')) cleanSymbol = symbol.split('.')[0];
 
-                const endpoint = category === 'US'
-                    ? `${siteUrl}/api/kis/price/overseas/${cleanSymbol}`
-                    : `${siteUrl}/api/kis/price/domestic/${cleanSymbol}`;
-
-                const priceRes = await fetch(endpoint);
-                if (priceRes.ok) {
-                    const priceData = await priceRes.json();
-                    if (category === 'US') {
-                        currentPrice = parseFloat(priceData.last || priceData.base || priceData.clos || 0);
-                    } else {
-                        currentPrice = parseInt(priceData.stck_prpr || priceData.stck_sdpr || 0);
+                if (category === 'US') {
+                    const { getOverseasPrice } = await import('@/lib/kis/client');
+                    const priceData = await getOverseasPrice(cleanSymbol);
+                    if (priceData) {
+                        currentPrice = parseFloat(priceData.last || '0');
+                    }
+                } else {
+                    const { getDomesticPrice } = await import('@/lib/kis/client');
+                    const priceData = await getDomesticPrice(cleanSymbol);
+                    if (priceData) {
+                        currentPrice = parseInt(priceData.stck_prpr || '0');
                     }
                 }
             } catch (e) {

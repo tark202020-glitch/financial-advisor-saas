@@ -1,4 +1,11 @@
-## [Alpha V1.186] - 2026-02-13 21:00:00
+## [Alpha V1.187] - 2026-02-13 21:15:00
+
+### 🐛 Bug Fix: 심층 분석 현재가 0원 표시 수정
+- **Summary**: 서버 self-call(localhost) 실패 → KIS 클라이언트 직접 import로 전환
+- **Detail**: `getDomesticPrice`/`getOverseasPrice`를 직접 호출하여 Vercel에서도 현재가 정상 조회
+- **Build Time**: 2026-02-13 21:15:00
+
+
 
 ### 🚀 OpenDART API 직접 호출 적용
 - **Summary**: DART 재무 데이터를 Supabase 테이블 대신 OpenDART API 직접 호출로 전환
