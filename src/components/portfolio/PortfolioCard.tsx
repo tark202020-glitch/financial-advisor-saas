@@ -3,6 +3,7 @@
 // import { useStockPrice } from '@/hooks/useStockPrice';
 import { Asset, usePortfolio } from '@/context/PortfolioContext';
 import { useState, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
 import StockDetailChartModal from '../modals/StockDetailChartModal';
 
 interface PortfolioCardProps {
@@ -12,11 +13,12 @@ interface PortfolioCardProps {
         change: number;
         changePercent: number;
         time?: string;
-        sector?: string; // Add sector
+        sector?: string;
     } | null;
+    onRefresh?: () => void;
 }
 
-export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) {
+export default function PortfolioCard({ asset, stockData, onRefresh }: PortfolioCardProps) {
     const { updateAsset } = usePortfolio();
     // const stockData = useStockPrice(asset.symbol, asset.pricePerShare, asset.category);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,14 +121,29 @@ export default function PortfolioCard({ asset, stockData }: PortfolioCardProps) 
                         </div>
                     </div>
                     <div className="text-right shrink-0">
-                        <div className={`text-2xl font-bold ${changeAmount > 0 ? 'text-red-400' : changeAmount < 0 ? 'text-blue-400' : 'text-gray-300'}`}>
-                            {formatCurrency(currentPrice)}
-                        </div>
-                        <div className={`text-xs font-medium flex items-center justify-end gap-1 ${changeAmount > 0 ? 'text-red-400' : changeAmount < 0 ? 'text-blue-400' : 'text-gray-500'}`}>
-                            <span>{changeAmount > 0 ? '▲' : changeAmount < 0 ? '▼' : '-'}</span>
-                            <span>{Math.abs(changePercent).toFixed(2)}%</span>
-                            <span>{isUS ? '$' : ''}{Math.abs(changeAmount).toLocaleString()}</span>
-                        </div>
+                        {!stockData && onRefresh ? (
+                            <div className="flex flex-col items-end gap-1">
+                                <span className="text-sm text-gray-500">가격 미조회</span>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onRefresh(); }}
+                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 text-xs font-medium hover:bg-indigo-600/30 transition"
+                                >
+                                    <RefreshCw size={12} />
+                                    새로고침
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className={`text-2xl font-bold ${changeAmount > 0 ? 'text-red-400' : changeAmount < 0 ? 'text-blue-400' : 'text-gray-300'}`}>
+                                    {formatCurrency(currentPrice)}
+                                </div>
+                                <div className={`text-xs font-medium flex items-center justify-end gap-1 ${changeAmount > 0 ? 'text-red-400' : changeAmount < 0 ? 'text-blue-400' : 'text-gray-500'}`}>
+                                    <span>{changeAmount > 0 ? '▲' : changeAmount < 0 ? '▼' : '-'}</span>
+                                    <span>{Math.abs(changePercent).toFixed(2)}%</span>
+                                    <span>{isUS ? '$' : ''}{Math.abs(changeAmount).toLocaleString()}</span>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 

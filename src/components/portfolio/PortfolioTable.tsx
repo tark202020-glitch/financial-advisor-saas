@@ -217,6 +217,7 @@ export default function PortfolioTable() {
                                 key={asset.id}
                                 asset={asset}
                                 stockData={stockData}
+                                onRefresh={asset.category === 'KR' ? refetchKr : refetchUs}
                             />
                         );
                     })}
