@@ -90,7 +90,7 @@ export default function RegisterPage() {
                                 <input
                                     type="text"
                                     required
-                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition text-slate-900 bg-white placeholder:text-slate-400"
                                     placeholder="Enter your nickname"
                                     value={nickname}
                                     onChange={(e) => setNickname(e.target.value)}
@@ -105,7 +105,7 @@ export default function RegisterPage() {
                                 <input
                                     type="email"
                                     required
-                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition text-slate-900 bg-white placeholder:text-slate-400"
                                     placeholder="Enter your email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -121,7 +121,7 @@ export default function RegisterPage() {
                                     type="password"
                                     required
                                     minLength={6}
-                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition"
+                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition text-slate-900 bg-white placeholder:text-slate-400"
                                     placeholder="Create a password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}

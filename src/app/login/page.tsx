@@ -38,7 +38,7 @@ export default function LoginPage() {
                                     name="email"
                                     type="email"
                                     required
-                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-slate-900 bg-white placeholder:text-slate-400"
                                     placeholder="Enter your email"
                                 />
                                 <Mail className="absolute left-3 top-3.5 text-slate-400" size={20} />
@@ -52,7 +52,7 @@ export default function LoginPage() {
                                     name="password"
                                     type="password"
                                     required
-                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                                    className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition text-slate-900 bg-white placeholder:text-slate-400"
                                     placeholder="Enter your password"
                                 />
                                 <Lock className="absolute left-3 top-3.5 text-slate-400" size={20} />
