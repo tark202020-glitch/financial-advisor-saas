@@ -1,0 +1,8 @@
+{
+    "crons": [
+        {
+            "path": "/api/jubot/analyze/daily?save=true",
+            "schedule": "0 22 * * *"
+        }
+    ]
+}

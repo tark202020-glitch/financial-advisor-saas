@@ -4,12 +4,9 @@ import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 import { useMemo, useState } from 'react';
 import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2 } from 'lucide-react';
+import { formatCurrency } from '@/utils/format';
 
 type ViewMode = 'all' | 'kr' | 'us';
-
-function fmt(n: number): string {
-    return Math.round(n).toLocaleString();
-}
 
 function fmtRate(n: number): string {
     if (isNaN(n) || !isFinite(n)) return '0.00';
@@ -120,10 +117,15 @@ export default function PortfolioSummaryBlock() {
 
     const [isRealizedExpanded, setIsRealizedExpanded] = useState(false);
 
-    const activeCurrency = view === 'us' ? '$' : '원';
     const fmtValue = (n: number, type: ViewMode | 'kr' | 'us') => {
-        if (type === 'us') return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        return `${Math.round(n).toLocaleString()}원`;
+        const currency = type === 'us' ? 'USD' : 'KRW';
+        const formatted = formatCurrency(n, currency);
+        // Only append '원' if currency is KRW, as formatCurrency returns comma formatted number for KRW
+        // and "$ ..." for USD. The existing code appended '원' manually.
+        // User said: "한화 원, 표기는 소수점은 없어야 합니다." (doesn't explicitly say "원" char, but existing UI had it).
+        // Let's keep existing style: append '원' for KRW if formatCurrency doesn't include it (it doesn't).
+        if (currency === 'KRW') return `${formatted}원`;
+        return formatted;
     };
 
     const current = summary[view];

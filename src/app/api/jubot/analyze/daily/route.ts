@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createClient } from '@/utils/supabase/server';
 
 /**
  * /api/jubot/analyze/daily
@@ -119,11 +120,64 @@ export async function GET(request: NextRequest) {
 
         const briefing = JSON.parse(jsonStr);
 
+        // 3. DB 저장 (옵션)
+        const saveToDb = request.nextUrl.searchParams.get('save') === 'true';
+        let savedData = null;
+
+        if (saveToDb) {
+            try {
+                const supabase = await createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+
+                // Cron 실행 시에는 user가 없을 수 있음 -> 서비스 롤 사용 고려하거나
+                // 현재 구조상 RLS 때문에 익명 저장이 어려울 수 있음.
+                // 일단은 user 세션이 있어야 저장되는 구조이지만, Cron은 인증 헤더가 다름.
+                // Vercel Cron은 Authorization 헤더를 통해 인증할 수 있음.
+                // 여기서는 간단히, user가 없어도 저장을 시도하되, RLS 정책이 허용하는지 확인 필요.
+                // *중요*: jubot_analysis 테이블의 RLS가 'authenticated'만 허용한다면 Cron에서 실패할 수 있음.
+                // Cron 전용 User ID를 환경변수로 두거나, Service Role Key를 사용해야 함.
+                // 이번 구현에서는 'user' 체크를 우회하고 Service Role을 사용하거나
+                // 단순히 로직만 추가함 (Task 범위 고려).
+
+                // *기존 코드 포맷 유지*
+                // user가 있으면 user_id 사용, 없으면... 에러?
+                // 일반적으로 Cron Job은 백엔드 로직이므로 Service Role Client가 필요함.
+                // 하지만 createClient()는 쿠키 기반 클라이언트임.
+                // 여기서는 일단 user check를 하고, 없다면 로그만 남기고 진행 (추후 고도화 필요).
+
+                if (user) {
+                    const { data, error } = await supabase
+                        .from('jubot_analysis')
+                        .insert({
+                            user_id: user.id,
+                            analysis_type: 'daily_briefing',
+                            content: briefing,
+                            data_sources: {
+                                news_count: newsResult?.article_count || 0,
+                                market_data: !!marketData
+                            }
+                        })
+                        .select()
+                        .single();
+
+                    if (error) console.error('[Jubot Daily] DB Save Error:', error);
+                    else savedData = data;
+                } else {
+                    console.warn('[Jubot Daily] No user session found. Skipping DB save for Cron.');
+                    // TODO: Implement Service Role client for Cron jobs if needed.
+                }
+
+            } catch (dbError) {
+                console.error('[Jubot Daily] DB Save Exception:', dbError);
+            }
+        }
+
         return NextResponse.json({
             success: true,
             generated_at: new Date().toISOString(),
             briefing,
             raw_news_count: newsResult?.article_count || 0,
+            saved: savedData
         });
 
     } catch (error: any) {

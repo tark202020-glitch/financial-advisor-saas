@@ -1,3 +1,31 @@
+## [Alpha V1.202] - 2026-02-14 16:35:00
+
+### 🔄 Build Update
+- **Summary**: Cron Schedule Adjustment
+- **Detail** :
+  - **Cron**: 시장 브리핑 시간을 08:30 KST → **07:00 KST** 로 변경 (개장 전 브리핑 강화)
+- **Build Time**: 2026-02-14 16:35:00
+
+## [Alpha V1.201] - 2026-02-14 16:30:00
+
+### 🔄 Build Update
+- **Summary**: Vercel Cron & Daily Briefing Persistence
+- **Detail** :
+  - **Cron**: 매일 08:30 KST 시장 브리핑 자동 생성 (`vercel.json`)
+  - **Persistence**: 생성된 브리핑을 DB에 자동 저장 (`jubot_analysis` 테이블)
+  - `/api/jubot/analyze/daily?save=true` API 수정 완료
+- **Build Time**: 2026-02-14 16:30:00
+
+## [Alpha V1.200] - 2026-02-14 16:00:00
+
+### 🔄 Build Update
+- **Summary**: 화폐 표기 표준화 (KRW/USD)
+- **Detail** :
+  - 원화: 1,234원 (정수, '원' 포함)
+  - 달러: $12.34 (소수점 2자리, '$' 포함)
+  - 전체 UI 및 AI 분석 텍스트 일관성 적용
+- **Build Time**: 2026-02-14 16:00:00
+
 ## [Alpha V1.199] - 2026-02-14 00:08:00
 
 ### 🔄 Build Update

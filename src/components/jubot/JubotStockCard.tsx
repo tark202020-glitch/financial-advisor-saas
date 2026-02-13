@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { X, Brain, TrendingUp, TrendingDown, Shield, AlertTriangle, Lightbulb, Target, BarChart3, Newspaper, RefreshCw } from 'lucide-react';
+import { formatCurrency } from '@/utils/format';
 
 interface StockAnalysis {
     overall_signal: 'buy' | 'hold' | 'sell' | 'watch';
@@ -179,7 +180,7 @@ export default function JubotStockCard({ isOpen, onClose, stock }: JubotStockCar
                                 {realPrice > 0 && (
                                     <div className="text-right">
                                         <div className="text-lg font-bold text-white">
-                                            {stock.category === 'US' ? '$' : ''}{realPrice.toLocaleString()}{stock.category !== 'US' ? '원' : ''}
+                                            {stock.category === 'US' ? formatCurrency(realPrice, 'USD') : `${formatCurrency(realPrice, 'KRW')}원`}
                                         </div>
                                         {stock.avgPrice && stock.avgPrice > 0 && (
                                             <div className={`text-sm font-bold ${realPrice >= stock.avgPrice ? 'text-red-400' : 'text-blue-400'

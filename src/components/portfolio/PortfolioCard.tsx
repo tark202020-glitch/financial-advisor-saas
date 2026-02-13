@@ -5,6 +5,7 @@ import { Asset, usePortfolio } from '@/context/PortfolioContext';
 import { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import StockDetailChartModal from '../modals/StockDetailChartModal';
+import { formatCurrency } from '@/utils/format';
 
 interface PortfolioCardProps {
     asset: Asset;
@@ -59,22 +60,16 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
 
     // Formatting Logic
     const isUS = asset.category !== 'KR';
-    const currencyPrefix = isUS ? '$' : '';
+    const currencyCode = isUS ? 'USD' : 'KRW';
     const marketLabel = asset.category === 'KR' ? 'KR' : 'US'; // Keep simple or match Watchlist
     const sectorDisplay = stockData?.sector || asset.sector; // Priority to live data, fallback to DB
 
-    // Helper for currency formatting
-    const formatCurrency = (value: number, isInteger: boolean = false) => {
-        const formatted = isInteger || (isUS && value % 1 === 0) ? Math.round(value).toLocaleString() : value.toLocaleString();
-        return `${currencyPrefix}${formatted}`;
-    };
-
-    // Specific format for Purchase Price (Average Price) - Integer for US
-    const formatPurchasePrice = (price: number) => {
-        if (isUS) {
-            return `${currencyPrefix}${Math.round(price).toLocaleString()}`;
-        }
-        return price.toLocaleString();
+    // Specific format for Purchase Price (Average Price)
+    // US: $ 123.45 (use standard formatCurrency)
+    // KR: 1,234 (use standard formatCurrency)
+    const formatPrice = (price: number) => {
+        const formatted = formatCurrency(price, currencyCode);
+        return currencyCode === 'KRW' ? `${formatted}원` : formatted;
     };
 
     const handleSave = () => {
@@ -135,12 +130,12 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                         ) : (
                             <>
                                 <div className={`text-2xl font-bold ${changeAmount > 0 ? 'text-red-400' : changeAmount < 0 ? 'text-blue-400' : 'text-gray-300'}`}>
-                                    {formatCurrency(currentPrice)}
+                                    {formatPrice(currentPrice)}
                                 </div>
                                 <div className={`text-xs font-medium flex items-center justify-end gap-1 ${changeAmount > 0 ? 'text-red-400' : changeAmount < 0 ? 'text-blue-400' : 'text-gray-500'}`}>
                                     <span>{changeAmount > 0 ? '▲' : changeAmount < 0 ? '▼' : '-'}</span>
                                     <span>{Math.abs(changePercent).toFixed(2)}%</span>
-                                    <span>{isUS ? '$' : ''}{Math.abs(changeAmount).toLocaleString()}</span>
+                                    <span>{isUS ? '$' : ''}{Math.abs(changeAmount).toLocaleString(undefined, { minimumFractionDigits: isUS ? 2 : 0, maximumFractionDigits: isUS ? 2 : 0 })}</span>
                                 </div>
                             </>
                         )}
@@ -154,20 +149,20 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                         <div>
                             <div className="text-gray-500 text-xs mb-1">매입금액</div>
                             <div className="font-medium text-gray-200 text-lg">
-                                {formatCurrency(totalPurchase)}
+                                {formatPrice(totalPurchase)}
                             </div>
                         </div>
                         <div className="text-right">
                             <div className="text-gray-500 text-xs mb-1">매입단가 | 수량</div>
                             <div className="font-medium text-gray-200">
-                                {formatPurchasePrice(asset.pricePerShare)} <span className="text-gray-600 mx-1">|</span> {asset.quantity.toLocaleString()}
+                                {formatPrice(asset.pricePerShare)} <span className="text-gray-600 mx-1">|</span> {asset.quantity.toLocaleString()}
                             </div>
                         </div>
 
                         <div>
                             <div className="text-gray-500 text-xs mb-1">평가손익</div>
                             <div className={`font-bold text-xl ${colorClass}`}>
-                                {formatCurrency(profitLoss)}
+                                {formatPrice(profitLoss)}
                             </div>
                         </div>
                         <div className="text-right">

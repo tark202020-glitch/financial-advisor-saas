@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, Calendar, Edit3, Trash2, Save, Plus } from 'lucide-react';
+import { formatCurrency } from '@/utils/format';
 import {
     ComposedChart,
     Bar,
@@ -60,6 +61,11 @@ interface InvestorData {
 export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = false }: StockDetailModalProps) {
     const { updateAsset, removeAsset, addTradeLog, updateTradeLog, removeTradeLog } = usePortfolio();
     const stockLive = useStockPrice(asset.symbol, 0, asset.category);
+
+    const formatPrice = (val: number) => {
+        const formatted = formatCurrency(val, asset.category === 'KR' ? 'KRW' : 'USD');
+        return asset.category === 'KR' ? `${formatted}원` : formatted;
+    };
 
     // Local State for Chart
     const [history, setHistory] = useState<CandleData[]>([]);
@@ -372,16 +378,16 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     const domainMin = chartMin * 0.95;
 
     let purchaseLineY = asset.pricePerShare;
-    let purchaseLineLabel = `매입 ${asset.pricePerShare.toLocaleString()}`;
+    let purchaseLineLabel = `매입 ${formatPrice(asset.pricePerShare)}`;
     let isOutOfBounds = false;
 
     if (asset.pricePerShare > domainMax) {
         purchaseLineY = chartMax;
-        purchaseLineLabel = `매입 ${asset.pricePerShare.toLocaleString()} (▲)`;
+        purchaseLineLabel = `매입 ${formatPrice(asset.pricePerShare)} (▲)`;
         isOutOfBounds = true;
     } else if (asset.pricePerShare < domainMin) {
         purchaseLineY = chartMin;
-        purchaseLineLabel = `매입 ${asset.pricePerShare.toLocaleString()} (▼)`;
+        purchaseLineLabel = `매입 ${formatPrice(asset.pricePerShare)} (▼)`;
         isOutOfBounds = true;
     }
 
@@ -436,7 +442,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                         </div>
                         <div className="border-l border-[#333] pl-6">
                             <div className={`text-3xl font-bold ${changePercent >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
-                                {currentPrice.toLocaleString()}
+                                {formatPrice(currentPrice)}
                             </div>
                             <div className={`text-sm font-bold flex items-center gap-1 ${changePercent >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                                 {changePercent >= 0 ? '▲' : '▼'} {Math.abs(changePercent).toFixed(2)}%
@@ -651,11 +657,11 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                             <div className="grid grid-cols-3 gap-4 mb-4">
                                 <div>
                                     <div className="text-[10px] text-gray-500 mb-1">매입금액</div>
-                                    <div className="text-lg font-bold text-white">{totalPurchase.toLocaleString()}</div>
+                                    <div className="text-lg font-bold text-white">{formatPrice(totalPurchase)}</div>
                                 </div>
                                 <div>
                                     <div className="text-[10px] text-gray-500 mb-1">매입단가</div>
-                                    <div className="text-lg font-bold text-white">{asset.pricePerShare.toLocaleString()}</div>
+                                    <div className="text-lg font-bold text-white">{formatPrice(asset.pricePerShare)}</div>
                                 </div>
                                 <div>
                                     <div className="text-[10px] text-gray-500 mb-1">보유수량</div>
@@ -666,11 +672,11 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                 <div>
                                     <div className="text-[10px] text-gray-500 mb-1">평가손익</div>
                                     <div className={`text-2xl font-bold ${isPositive ? 'text-red-500' : 'text-blue-500'}`}>
-                                        {profitLoss.toLocaleString()}
+                                        {formatPrice(profitLoss)}
                                         <span className="text-sm ml-2 font-medium">{isPositive ? '▲' : '▼'} {Math.abs(returnRate).toFixed(2)}%</span>
                                     </div>
                                     <div className="text-[10px] text-gray-500 mt-2 mb-0.5">평가총액</div>
-                                    <div className="text-lg font-bold text-white">{currentValuation.toLocaleString()}</div>
+                                    <div className="text-lg font-bold text-white">{formatPrice(currentValuation)}</div>
                                 </div>
                                 <button
                                     onClick={() => setShowIndexComparison(true)}
@@ -814,7 +820,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                                     {trade.type === 'BUY' ? '매수' : '매도'}
                                                 </span>
                                             </div>
-                                            <div className="font-medium text-white">{trade.price.toLocaleString()}</div>
+                                            <div className="font-medium text-white">{formatPrice(trade.price)}</div>
                                             <div className="text-gray-500 font-mono text-[10px]">
                                                 {trade.kospiIndex ? (
                                                     <span>{Number(trade.kospiIndex).toLocaleString()}</span>
@@ -897,9 +903,9 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                                 <tr key={trade.id || idx} className="hover:bg-[#1E1E1E] transition text-gray-300">
                                                     <td className="px-3 py-2 text-left font-mono text-gray-400 whitespace-nowrap">{trade.date}</td>
                                                     <td className="px-3 py-2">{trade.quantity.toLocaleString()}</td>
-                                                    <td className="px-3 py-2 font-medium text-white">{trade.price.toLocaleString()}</td>
-                                                    <td className="px-3 py-2">{totalAmount.toLocaleString()}</td>
-                                                    <td className="px-3 py-2 text-gray-400">{currentPrice.toLocaleString()}</td>
+                                                    <td className="px-3 py-2 font-medium text-white">{formatPrice(trade.price)}</td>
+                                                    <td className="px-3 py-2">{formatPrice(totalAmount)}</td>
+                                                    <td className="px-3 py-2 text-gray-400">{formatPrice(currentPrice)}</td>
                                                     <td className="px-3 py-2 border-l border-[#333] text-gray-400">{buyIndex ? buyIndex.toLocaleString() : '-'}</td>
                                                     <td className="px-3 py-2 text-gray-500">{currentIndex ? currentIndex.toLocaleString() : '-'}</td>
                                                     <td className={`px-3 py-2 border-l border-[#333] font-bold ${stockReturn >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
