@@ -13,6 +13,8 @@ interface StockInsight {
     action: string;
     priority: 'high' | 'medium' | 'low';
     financial_highlight?: string | null;
+    upcoming_events?: string | null;
+    dividend_info?: string | null;
 }
 
 interface PortfolioAnalysis {
@@ -449,6 +451,12 @@ export default function JubotPortfolioInsight() {
                                                 <p className="text-gray-400 text-sm mt-1">{insight.reason}</p>
                                                 {insight.financial_highlight && (
                                                     <p className="text-purple-400 text-sm mt-1">📊 {insight.financial_highlight}</p>
+                                                )}
+                                                {insight.upcoming_events && (
+                                                    <p className="text-yellow-400 text-sm mt-1">📅 {insight.upcoming_events}</p>
+                                                )}
+                                                {insight.dividend_info && (
+                                                    <p className="text-emerald-400 text-sm mt-1">💰 {insight.dividend_info}</p>
                                                 )}
                                                 <p className="text-gray-300 text-sm mt-1 font-medium">💡 {insight.action}</p>
                                             </div>

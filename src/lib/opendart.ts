@@ -234,3 +234,64 @@ export async function fetchCompanySummary(stockCode: string): Promise<{
         dps: div?.dps || null,
     };
 }
+
+/**
+ * 최근 공시 목록 조회 (최근 6개월)
+ * 주가에 영향을 주는 주요 공시만 필터링
+ */
+export async function fetchDisclosures(stockCode: string): Promise<{
+    disclosures: Array<{
+        date: string;
+        title: string;
+        type: string;
+    }>;
+} | null> {
+    if (!DART_API_KEY) return null;
+
+    const corpCode = getCorpCode(stockCode);
+    if (!corpCode) return null;
+
+    try {
+        // 6개월 전 날짜
+        const now = new Date();
+        const sixMonthsAgo = new Date(now);
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const beginDate = sixMonthsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+        const endDate = now.toISOString().slice(0, 10).replace(/-/g, '');
+
+        const url = `${DART_BASE_URL}/list.json?crtfc_key=${DART_API_KEY}&corp_code=${corpCode}&bgn_de=${beginDate}&end_de=${endDate}&page_count=20&sort=date&sort_mth=desc`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.status !== '000' || !data.list) return { disclosures: [] };
+
+        // 주요 공시 필터 (주가 영향 큰 것만)
+        const importantKeywords = [
+            '배당', '유상증자', '무상증자', '자기주식', '합병', '분할',
+            '영업실적', '매출액', '주요사항', '최대주주', '소송',
+            '투자', '계약', '신규사업', '상장폐지', '관리종목',
+            '공개매수', '전환사채', '신주인수권', '감자', '해산',
+        ];
+
+        const filtered = data.list
+            .filter((d: any) => {
+                const title = d.report_nm || '';
+                return importantKeywords.some(kw => title.includes(kw)) ||
+                    d.pblntf_ty === 'A' || // 정기공시
+                    d.pblntf_ty === 'B' || // 주요사항보고
+                    d.pblntf_ty === 'C';   // 발행공시
+            })
+            .slice(0, 10) // 최대 10건
+            .map((d: any) => ({
+                date: d.rcept_dt ? `${d.rcept_dt.slice(0, 4)}-${d.rcept_dt.slice(4, 6)}-${d.rcept_dt.slice(6, 8)}` : '',
+                title: d.report_nm || '',
+                type: d.pblntf_ty || '',
+            }));
+
+        return { disclosures: filtered };
+    } catch (e) {
+        console.warn(`[DART] Disclosures fetch failed for ${stockCode}:`, e);
+        return null;
+    }
+}
+
