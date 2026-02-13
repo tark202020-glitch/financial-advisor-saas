@@ -38,12 +38,20 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { assets, marketData } = body;
+        const { assets, marketData, allAssetsSummary } = body;
 
+        // 이슈 종목이 0건이면 빈 결과 반환 (AI 호출 불필요)
         if (!assets || assets.length === 0) {
             return NextResponse.json({
-                success: false,
-                error: '포트폴리오 데이터가 없습니다'
+                success: true,
+                analysis: {
+                    portfolio_summary: `보유 ${allAssetsSummary?.totalCount || 0}개 종목에 특별한 이슈가 발견되지 않았습니다. 현재 포트폴리오는 안정적으로 유지되고 있습니다.`,
+                    risk_level: 'low',
+                    stock_insights: [],
+                    sector_analysis: '현재 포트폴리오에 긴급한 업종 리스크는 없습니다.',
+                    overall_recommendation: '특별한 이슈가 없으므로 기존 투자 전략을 유지하세요.',
+                },
+                financial_data_loaded: 0,
             });
         }
 
@@ -91,11 +99,15 @@ export async function POST(request: NextRequest) {
 
         const prompt = `
         당신은 '주봇'이라는 AI 주식 전문가입니다.
-        아래 사용자의 포트폴리오를 **재무 데이터를 포함하여** 분석하세요.
+        아래는 사용자 포트폴리오에서 **주요 이슈가 감지된 종목만** 추출한 목록입니다.
+        이 종목들만 집중 분석하세요.
 
         **분석 날짜:** ${dateStr}
 
-        **포트폴리오 (재무 데이터 포함):**
+        **전체 포트폴리오 현황:** 총 ${allAssetsSummary?.totalCount || '?'}종목 보유, 이슈 감지 ${allAssetsSummary?.issueCount || assets.length}종목
+        ${allAssetsSummary?.zeroPrice?.length > 0 ? `**현재가 0원 종목:** ${allAssetsSummary.zeroPrice.join(', ')}` : ''}
+
+        **이슈 종목 (재무 데이터 포함):**
         ${portfolioText}
 
         ${marketData ? `**시장 데이터:** ${JSON.stringify(marketData)}` : ''}
