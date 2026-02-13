@@ -34,6 +34,7 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
         { name: "일일체크", href: "/dashboard", icon: LayoutDashboard },
         { name: "내 주식일지", href: "/portfolio", icon: BookOpen },
         { name: "내 주식 인사이트", href: "/insights", icon: LineChart },
+        { name: "주봇 AI", href: "/jubot", icon: Bot },
         { name: "조건검색", href: "/condition-search", icon: Search },
         { name: "주식일지메모", href: "/memo", icon: StickyNote },
         { name: "설정", href: "#", icon: Settings, disabled: true },
