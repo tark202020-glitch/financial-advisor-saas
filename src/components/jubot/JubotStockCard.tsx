@@ -60,6 +60,7 @@ export default function JubotStockCard({ isOpen, onClose, stock }: JubotStockCar
     const [financials, setFinancials] = useState<FinancialRow[] | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
+    const [realPrice, setRealPrice] = useState<number>(0);
 
     const fetchAnalysis = useCallback(async () => {
         setLoading(true);
@@ -73,7 +74,7 @@ export default function JubotStockCard({ isOpen, onClose, stock }: JubotStockCar
                     symbol: stock.symbol,
                     name: stock.name,
                     category: stock.category,
-                    currentPrice: stock.currentPrice,
+                    currentPrice: 0, // force API to fetch real price from KIS
                     avgPrice: stock.avgPrice,
                     quantity: stock.quantity,
                     targetPriceUpper: stock.targetPriceUpper,
@@ -85,6 +86,7 @@ export default function JubotStockCard({ isOpen, onClose, stock }: JubotStockCar
             if (data.success && data.analysis) {
                 setAnalysis(data.analysis);
                 setFinancials(data.raw_financials || null);
+                if (data.current_price) setRealPrice(data.current_price);
             } else {
                 setError(true);
             }
@@ -174,15 +176,15 @@ export default function JubotStockCard({ isOpen, onClose, stock }: JubotStockCar
                                         </span>
                                     </div>
                                 </div>
-                                {stock.currentPrice && (
+                                {realPrice > 0 && (
                                     <div className="text-right">
                                         <div className="text-lg font-bold text-white">
-                                            {stock.category === 'US' ? '$' : ''}{stock.currentPrice.toLocaleString()}{stock.category !== 'US' ? '원' : ''}
+                                            {stock.category === 'US' ? '$' : ''}{realPrice.toLocaleString()}{stock.category !== 'US' ? '원' : ''}
                                         </div>
                                         {stock.avgPrice && stock.avgPrice > 0 && (
-                                            <div className={`text-sm font-bold ${stock.currentPrice >= stock.avgPrice ? 'text-red-400' : 'text-blue-400'
+                                            <div className={`text-sm font-bold ${realPrice >= stock.avgPrice ? 'text-red-400' : 'text-blue-400'
                                                 }`}>
-                                                {((stock.currentPrice - stock.avgPrice) / stock.avgPrice * 100).toFixed(1)}%
+                                                {((realPrice - stock.avgPrice) / stock.avgPrice * 100).toFixed(1)}%
                                             </div>
                                         )}
                                     </div>

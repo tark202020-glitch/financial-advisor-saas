@@ -213,6 +213,7 @@ export async function POST(request: NextRequest) {
             success: true,
             symbol,
             name,
+            current_price: currentPrice, // KIS API에서 조회한 실제 현재가
             generated_at: new Date().toISOString(),
             has_financial_data: !!financialData,
             has_news: relatedNews.length > 0,

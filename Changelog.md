@@ -1,4 +1,11 @@
-## [Alpha V1.184] - 2026-02-13 20:35:00
+## [Alpha V1.185] - 2026-02-13 20:52:00
+
+### 🐛 Bug Fix: 주봇 종목 분석 현재가 완전 수정
+- **Summary**: 종목 클릭 시 매입단가 대신 KIS API 실시간 현재가를 표시
+- **Detail**: JubotStockCard가 서버에 currentPrice=0 전송 → 서버가 KIS API로 실가격 조회 → 응답의 current_price를 UI에 표시
+- **Build Time**: 2026-02-13 20:52:00
+
+
 
 ### 🐛 Bug Fix: 주봇 종목 분석 현재가 미전달 수정
 - **Summary**: 포트폴리오/종목 분석 시 매입단가를 현재가로 잘못 전달하던 문제 해결
