@@ -5,14 +5,12 @@ import PortfolioCard from './PortfolioCard';
 import { useState, useMemo } from 'react';
 import { ArrowUpDown, Check } from 'lucide-react';
 import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
+import StockLoadError from '@/components/ui/StockLoadError';
 
 type SortOption = 'newest' | 'value' | 'name';
 
 export default function PortfolioTable() {
     const { assets, isLoading, error } = usePortfolio();
-
-    // Debugging Log
-    // console.log("[PortfolioTable] assets:", assets.length, "isLoading:", isLoading, "error:", error);
 
     if (error) {
         return (
@@ -30,7 +28,6 @@ export default function PortfolioTable() {
 
         assets.forEach(a => {
             if (a.category === 'KR') {
-                // Strip .KS suffix for API compatibility
                 const cleanSymbol = a.symbol.replace('.KS', '');
                 kr.add(cleanSymbol);
             } else if (a.category === 'US') {
@@ -38,7 +35,6 @@ export default function PortfolioTable() {
             }
         });
 
-        // Reverse to fetch Newest (Top of list) first
         return {
             krSymbols: Array.from(kr).reverse(),
             usSymbols: Array.from(us).reverse()
@@ -46,8 +42,16 @@ export default function PortfolioTable() {
     }, [assets]);
 
     // 2. Batch Fetch Data
-    const { getStockData: getKrData } = useBatchStockPrice(krSymbols, 'KR');
-    const { getStockData: getUsData } = useBatchStockPrice(usSymbols, 'US');
+    const { getStockData: getKrData, hasError: krHasError, refetch: refetchKr, isLoading: krLoading } = useBatchStockPrice(krSymbols, 'KR');
+    const { getStockData: getUsData, hasError: usHasError, refetch: refetchUs, isLoading: usLoading } = useBatchStockPrice(usSymbols, 'US');
+
+    const hasAnyError = krHasError || usHasError;
+    const isRefreshing = krLoading || usLoading;
+
+    const handleRefreshAll = () => {
+        refetchKr();
+        refetchUs();
+    };
 
     // State
     const [filter, setFilter] = useState({
@@ -141,6 +145,16 @@ export default function PortfolioTable() {
 
     return (
         <div className="space-y-6">
+            {/* Error Refresh Banner */}
+            {hasAnyError && !isRefreshing && (
+                <StockLoadError
+                    message="일부 종목 가격을 불러오지 못했습니다"
+                    onRetry={handleRefreshAll}
+                    variant="block"
+                    retrying={isRefreshing}
+                />
+            )}
+
             {/* Control Bar */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#1E1E1E] p-4 rounded-2xl border border-[#333] shadow-lg shadow-black/20">
 

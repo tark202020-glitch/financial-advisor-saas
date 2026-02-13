@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, Calendar, Edit3, Trash2, Save, Plus } from 'lucide-react';
 import {
     ComposedChart,
@@ -16,6 +16,7 @@ import {
 import { useStockPrice } from '@/hooks/useStockPrice';
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import FinancialGrid from '@/components/FinancialGrid';
+import StockLoadError from '@/components/ui/StockLoadError';
 
 // Color Constants for Consistency
 const COLORS = {
@@ -63,10 +64,14 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     // Local State for Chart
     const [history, setHistory] = useState<CandleData[]>([]);
     const [chartLoading, setChartLoading] = useState(true);
+    const [chartError, setChartError] = useState(false);
+    const [chartRetryTrigger, setChartRetryTrigger] = useState(0);
 
     // Local State for Investor Trend
     const [investorData, setInvestorData] = useState<InvestorData[]>([]);
     const [investorLoading, setInvestorLoading] = useState(true);
+    const [investorError, setInvestorError] = useState(false);
+    const [investorRetryTrigger, setInvestorRetryTrigger] = useState(0);
 
     // Local State for KOSPI Index Map
     const [kospiMap, setKospiMap] = useState<Record<string, string>>({});
@@ -101,70 +106,120 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
 
     // --- Effects ---
 
-    // 1. Fetch Chart Data
+    // 1. Fetch Chart Data (with auto-retry)
+    const fetchChartData = useCallback(async () => {
+        if (!isOpen || !asset.symbol) return;
+
+        setChartLoading(true);
+        setChartError(false);
+
+        const maxRetries = 3;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            if (attempt > 0) {
+                await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+            }
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+                const res = await fetch(`/api/kis/chart/daily/${asset.symbol}?market=${asset.category}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                const data = await res.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    const sorted = [...data].reverse().map(d => ({
+                        date: d.stck_bsop_date,
+                        open: parseFloat(d.stck_oprc),
+                        high: parseFloat(d.stck_hgpr),
+                        low: parseFloat(d.stck_lwpr),
+                        close: parseFloat(d.stck_clpr),
+                        volume: parseInt(d.acml_vol),
+                    }));
+
+                    const withMA = sorted.map((d, i) => {
+                        const getSlice = (w: number) => i >= w - 1 ? sorted.slice(i - w + 1, i + 1) : [];
+                        const avg = (arr: any[]) => arr.length ? arr.reduce((a, b) => a + b.close, 0) / arr.length : undefined;
+                        return {
+                            ...d,
+                            ma5: avg(getSlice(5)),
+                            ma20: avg(getSlice(20)),
+                            ma60: avg(getSlice(60)),
+                            ma120: avg(getSlice(120)),
+                        };
+                    });
+                    setHistory(withMA);
+                    setChartLoading(false);
+                    return; // Success
+                }
+            } catch (e) {
+                console.warn(`[Chart] Attempt ${attempt + 1} failed:`, e);
+            }
+        }
+        // All retries failed
+        setChartLoading(false);
+        setChartError(true);
+    }, [isOpen, asset.symbol, asset.category]);
+
     useEffect(() => {
+        fetchChartData();
+
+        // Sync local state
         if (isOpen && asset.symbol) {
-            setChartLoading(true);
-            fetch(`/api/kis/chart/daily/${asset.symbol}?market=${asset.category}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (Array.isArray(data)) {
-                        const sorted = [...data].reverse().map(d => ({
-                            date: d.stck_bsop_date,
-                            open: parseFloat(d.stck_oprc),
-                            high: parseFloat(d.stck_hgpr),
-                            low: parseFloat(d.stck_lwpr),
-                            close: parseFloat(d.stck_clpr),
-                            volume: parseInt(d.acml_vol),
-                        }));
-
-                        // Calculate MAs
-                        const withMA = sorted.map((d, i) => {
-                            const getSlice = (w: number) => i >= w - 1 ? sorted.slice(i - w + 1, i + 1) : [];
-                            const avg = (arr: any[]) => arr.length ? arr.reduce((a, b) => a + b.close, 0) / arr.length : undefined;
-                            return {
-                                ...d,
-                                ma5: avg(getSlice(5)),
-                                ma20: avg(getSlice(20)),
-                                ma60: avg(getSlice(60)),
-                                ma120: avg(getSlice(120)),
-                            };
-                        });
-                        setHistory(withMA);
-                    }
-                })
-                .catch(err => console.error(err))
-                .finally(() => setChartLoading(false));
-
-            // Sync local state
             setMemo(asset.memo || '');
             setTargetLower(asset.targetPriceLower?.toString() || '');
             setTargetUpper(asset.targetPriceUpper?.toString() || '');
-
             const benchmark = getBenchmarkInfo(asset.category);
             setBenchmarkName(benchmark.name);
         }
-    }, [isOpen, asset.symbol, asset.category]);
+    }, [isOpen, asset.symbol, asset.category, chartRetryTrigger]);
 
-    // 1.5 Fetch Investor Trend Data
-    useEffect(() => {
-        if (isOpen && asset.symbol && asset.category === 'KR') {
-            setInvestorLoading(true);
-            const cleanSymbol = asset.symbol.replace('.KS', '');
-            fetch(`/api/kis/market/investor?symbol=${cleanSymbol}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.daily && Array.isArray(data.daily)) {
-                        setInvestorData(data.daily.slice(0, 7));
-                    }
-                })
-                .catch(err => console.error('Failed to fetch investor data:', err))
-                .finally(() => setInvestorLoading(false));
-        } else {
+    // 1.5 Fetch Investor Trend Data (with auto-retry)
+    const fetchInvestorData = useCallback(async () => {
+        if (!isOpen || !asset.symbol || asset.category !== 'KR') {
             setInvestorData([]);
             setInvestorLoading(false);
+            return;
         }
+
+        setInvestorLoading(true);
+        setInvestorError(false);
+
+        const cleanSymbol = asset.symbol.replace('.KS', '');
+        const maxRetries = 3;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            if (attempt > 0) {
+                await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+            }
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+                const res = await fetch(`/api/kis/market/investor?symbol=${cleanSymbol}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                const data = await res.json();
+                if (data.daily && Array.isArray(data.daily) && data.daily.length > 0) {
+                    setInvestorData(data.daily.slice(0, 7));
+                    setInvestorLoading(false);
+                    return; // Success
+                }
+            } catch (e) {
+                console.warn(`[Investor] Attempt ${attempt + 1} failed:`, e);
+            }
+        }
+        // All retries failed
+        setInvestorLoading(false);
+        setInvestorError(true);
     }, [isOpen, asset.symbol, asset.category]);
+
+    useEffect(() => {
+        fetchInvestorData();
+    }, [isOpen, asset.symbol, asset.category, investorRetryTrigger]);
 
     // 2. Fetch Benchmark History
     useEffect(() => {
@@ -424,10 +479,13 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                     <div className="h-full flex items-center justify-center text-gray-600">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
                                     </div>
-                                ) : history.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-gray-500 gap-2">
-                                        <span className="text-sm">차트 데이터를 불러올 수 없습니다</span>
-                                    </div>
+                                ) : chartError || history.length === 0 ? (
+                                    <StockLoadError
+                                        message="차트 데이터를 불러올 수 없습니다"
+                                        onRetry={() => setChartRetryTrigger(prev => prev + 1)}
+                                        variant="section"
+                                        retrying={chartLoading}
+                                    />
                                 ) : (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={displayData} margin={{ top: 10, right: 5, left: -15, bottom: 0 }} syncId="stockDetail">
@@ -497,8 +555,13 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                 <div className="flex-1 flex items-center justify-center">
                                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
                                 </div>
-                            ) : !todayInvestor ? (
-                                <div className="flex-1 flex items-center justify-center text-gray-600 text-sm">데이터 없음</div>
+                            ) : investorError || !todayInvestor ? (
+                                <StockLoadError
+                                    message="투자자 동향을 불러올 수 없습니다"
+                                    onRetry={() => setInvestorRetryTrigger(prev => prev + 1)}
+                                    variant="section"
+                                    retrying={investorLoading}
+                                />
                             ) : (
                                 <>
                                     {/* Today Summary Bars */}

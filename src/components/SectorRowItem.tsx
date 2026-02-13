@@ -1,24 +1,23 @@
 "use client";
 
 import { Stock } from '@/lib/mockData';
-import { ArrowDown, ArrowUp, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, X, RefreshCw } from 'lucide-react';
 import { useStockPrice } from '@/hooks/useStockPrice';
 
 import { useEffect } from 'react';
 
 interface SectorRowItemProps {
     stock: Stock;
-    // We infer category from parent or stock data if needed, but for simplicity taking stock
-    // In a real app we might pass category explicitly if stock doesn't have it
     category?: string;
     onClick: (stock: Stock) => void;
     onTimeUpdate?: (time: string) => void;
     overrideData?: any; // Accepting injected data from Batch
     disableSelfFetch?: boolean;
     onRemove?: () => void;
+    onRefreshItem?: () => void; // Individual item refresh
 }
 
-export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, overrideData, disableSelfFetch = false, onRemove }: SectorRowItemProps) {
+export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, overrideData, disableSelfFetch = false, onRemove, onRefreshItem }: SectorRowItemProps) {
     // Use custom hook to get real-time price ONLY if overrideData is NOT provided AND self-fetch is enabled
     const shouldSkip = !!overrideData || disableSelfFetch;
     const hookData = useStockPrice(stock.symbol, stock.price, category, { skip: shouldSkip });
@@ -54,6 +53,9 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
     const marketType = category === 'US' ? 'US' : 'KR';
     const sectorDisplay = (stockData as any)?.sector || (stockData as any)?.bstp_kor_isnm || stock.sector;
 
+    // Data missing check
+    const isDataMissing = !stockData || price <= 0;
+
     return (
         <div
             onClick={() => onClick(currentStock)}
@@ -83,20 +85,42 @@ export default function SectorRowItem({ stock, onClick, category, onTimeUpdate, 
 
             {/* 2. Price (Col 7-9, Right Aligned) */}
             <div className="col-span-3 text-right">
-                <div className="font-bold text-white text-lg tracking-tight">
-                    {(price && price > 0) ? price.toLocaleString() : <span className="text-gray-600">---</span>}
-                </div>
+                {isDataMissing ? (
+                    <div className="flex items-center justify-end gap-1">
+                        <span className="text-gray-600 text-sm">---</span>
+                        {onRefreshItem && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRefreshItem();
+                                }}
+                                className="text-gray-500 hover:text-[#F7D047] transition-colors p-0.5"
+                                title="새로고침"
+                            >
+                                <RefreshCw size={12} />
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="font-bold text-white text-lg tracking-tight">
+                        {price.toLocaleString()}
+                    </div>
+                )}
             </div>
 
             {/* 3. Change (Col 10-12, Right Aligned) */}
             <div className={`col-span-3 flex flex-col items-end justify-center ${priceColor}`}>
-                <div className="flex items-center space-x-1 font-bold">
-                    {change > 0 ? <ArrowUp size={16} /> : change < 0 ? <ArrowDown size={16} /> : null}
-                    <span className="text-base">{Math.abs(changePercent).toFixed(2)}%</span>
-                </div>
-                <div className="text-xs opacity-80 font-medium">
-                    {change > 0 ? '+' : ''}{change.toLocaleString()}
-                </div>
+                {!isDataMissing && (
+                    <>
+                        <div className="flex items-center space-x-1 font-bold">
+                            {change > 0 ? <ArrowUp size={16} /> : change < 0 ? <ArrowDown size={16} /> : null}
+                            <span className="text-base">{Math.abs(changePercent).toFixed(2)}%</span>
+                        </div>
+                        <div className="text-xs opacity-80 font-medium">
+                            {change > 0 ? '+' : ''}{change.toLocaleString()}
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Remove Button */}

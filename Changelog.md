@@ -1,3 +1,16 @@
+## [Alpha V1.178] - 2026-02-13 17:24:00
+
+### 🔧 Infra: 주식 데이터 로딩 안정성 개선 (공통 모듈화)
+- **Summary**: 주식 데이터 fetch 자동 Retry, Timeout, 수동 새로고침 기능을 공통 모듈로 구현
+- **Detail**:
+  - **공통 훅**: `useStockFetch.ts` - 자동 Retry(3회, 지수 백오프), AbortController Timeout(10초), 수동 refetch
+  - **공통 UI**: `StockLoadError.tsx` - 에러 시 새로고침 버튼 (inline/block/section 모드)
+  - **useBatchStockPrice 개선**: retry 1회→3회, 실패 심볼 추적, refetch/refetchSymbol 함수 노출
+  - **Dashboard**: SectorWatchList에 블록 새로고침 버튼, SectorRowItem에 인라인 새로고침 아이콘
+  - **Portfolio**: PortfolioTable에 에러 배너 + 새로고침
+  - **모달**: 차트/투자자동향/재무분석 각각 독립 Retry + 새로고침 버튼
+- **Build Time**: 2026-02-13 17:24:00
+
 ## [Alpha V1.177] - 2026-02-13 17:15:00
 
 ### 📋 UI: 주식일지 편의성 및 통화 표시 개선

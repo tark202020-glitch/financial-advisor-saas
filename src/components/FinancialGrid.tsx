@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import StockLoadError from '@/components/ui/StockLoadError';
 
 interface FinancialGridProps {
     symbol: string;
@@ -21,7 +22,6 @@ interface FinancialData {
 
 function formatValue(val: string | undefined | null, suffix: string = ''): string {
     if (!val || val === '-' || val === '' || val === 'null' || val === 'undefined') return '-';
-    // Remove any existing suffixes and clean up
     const cleaned = val.replace(/[%배억]/g, '').trim();
     if (!cleaned || cleaned === '-') return '-';
     return `${cleaned}${suffix}`;
@@ -39,21 +39,36 @@ function getColorClass(val: string | undefined | null): string {
 export default function FinancialGrid({ symbol }: FinancialGridProps) {
     const [data, setData] = useState<FinancialData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+    const [retryTrigger, setRetryTrigger] = useState(0);
 
-    useEffect(() => {
+    const fetchData = useCallback(async () => {
         let isMounted = true;
-        const fetchData = async () => {
+        setLoading(true);
+        setError(false);
+
+        const maxRetries = 3;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            if (attempt > 0) {
+                await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
+            }
+
             try {
-                // Primary: KIS API (always available)
-                const kisRes = await fetch(`/api/kis/company/${symbol}`);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+                // Primary: KIS API
+                const kisRes = await fetch(`/api/kis/company/${symbol}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
                 const kisJson = await kisRes.json();
-
-                if (!isMounted) return;
-
                 const stats = kisJson.stats || {};
                 const fin = kisJson.financials || {};
 
-                // Optional: OpenDART API (may not be available)
+                // Optional: OpenDART API
                 let dartData: any = null;
                 try {
                     const dartRes = await fetch(`/api/opendart/company/${symbol}`);
@@ -65,53 +80,50 @@ export default function FinancialGrid({ symbol }: FinancialGridProps) {
                 }
 
                 const dartFin = dartData?.financials || {};
-                const dartDiv = dartData?.dividends || {};
 
-                setData({
-                    // KIS Stats
+                const result: FinancialData = {
                     market_cap: stats.market_cap ? `${Number(stats.market_cap).toLocaleString()}억` : '-',
                     per: stats.per ? `${stats.per}배` : '-',
                     pbr: stats.pbr ? `${stats.pbr}배` : '-',
-
-                    // KIS Ratio (primary) / OpenDART (fallback)
                     roe: formatValue(fin.roe, '%') !== '-'
                         ? formatValue(fin.roe, '%')
                         : (dartFin.roe ? `${dartFin.roe.toFixed(1)}%` : '-'),
-
                     gross_margin: formatValue(fin.gross_margin, '%') !== '-'
                         ? formatValue(fin.gross_margin, '%')
                         : (dartFin.gross_margin_1y ? `${dartFin.gross_margin_1y.toFixed(1)}%` : '-'),
-
                     operating_margin: formatValue(fin.operating_margin, '%'),
-
-                    // KIS Growth (primary) / OpenDART (fallback)
                     revenue_growth: formatValue(fin.growth_revenue, '%') !== '-'
                         ? formatValue(fin.growth_revenue, '%')
                         : (dartFin.revenue_cagr_3y ? `${dartFin.revenue_cagr_3y.toFixed(1)}%` : '-'),
-
                     profit_growth: formatValue(fin.growth_profit, '%') !== '-'
                         ? formatValue(fin.growth_profit, '%')
                         : (dartFin.net_income_cagr_3y ? `${dartFin.net_income_cagr_3y.toFixed(1)}%` : '-'),
-
-                    // KIS Ratio
                     debt_ratio: formatValue(fin.debt_ratio, '%'),
-
-                    // KIS Consensus
                     consensus: fin.consensus_price && fin.consensus_price !== '-'
                         ? `${Number(fin.consensus_price).toLocaleString()}원`
                         : '-'
-                });
+                };
 
-            } catch (error) {
-                console.error("Failed to fetch financial data:", error);
-            } finally {
-                if (isMounted) setLoading(false);
+                // Check if we got any meaningful data
+                const hasAnyData = Object.values(result).some(v => v !== '-');
+                if (hasAnyData) {
+                    setData(result);
+                    setLoading(false);
+                    return; // Success
+                }
+            } catch (e) {
+                console.warn(`[FinancialGrid] Attempt ${attempt + 1} failed:`, e);
             }
-        };
+        }
 
-        fetchData();
-        return () => { isMounted = false; };
+        // All retries failed
+        setLoading(false);
+        setError(true);
     }, [symbol]);
+
+    useEffect(() => {
+        fetchData();
+    }, [symbol, retryTrigger]);
 
     if (loading) {
         return (
@@ -121,7 +133,16 @@ export default function FinancialGrid({ symbol }: FinancialGridProps) {
         );
     }
 
-    if (!data) return <div className="text-center text-gray-500 py-4">데이터를 불러올 수 없습니다.</div>;
+    if (error || !data) {
+        return (
+            <StockLoadError
+                message="기업 재무 데이터를 불러올 수 없습니다"
+                onRetry={() => setRetryTrigger(prev => prev + 1)}
+                variant="section"
+                retrying={loading}
+            />
+        );
+    }
 
     const items = [
         { label: "시가총액", value: data.market_cap },
