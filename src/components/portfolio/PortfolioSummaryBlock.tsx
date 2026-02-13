@@ -118,6 +118,14 @@ export default function PortfolioSummaryBlock() {
         };
     }, [assets]);
 
+    const [isRealizedExpanded, setIsRealizedExpanded] = useState(false);
+
+    const activeCurrency = view === 'us' ? '$' : '원';
+    const fmtValue = (n: number, type: ViewMode | 'kr' | 'us') => {
+        if (type === 'us') return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `${Math.round(n).toLocaleString()}원`;
+    };
+
     const current = summary[view];
     const isPositive = current.profit >= 0;
     const isRealizedPositive = realizedGains.totalProfit >= 0;
@@ -139,8 +147,8 @@ export default function PortfolioSummaryBlock() {
                                 key={v}
                                 onClick={() => setView(v)}
                                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${view === v
-                                        ? 'bg-[#F7D047] text-black'
-                                        : 'text-gray-400 hover:text-white'
+                                    ? 'bg-[#F7D047] text-black'
+                                    : 'text-gray-400 hover:text-white'
                                     }`}
                             >
                                 {v === 'all' ? '전체' : v === 'kr' ? '국내' : '해외'}
@@ -154,13 +162,13 @@ export default function PortfolioSummaryBlock() {
                     {/* Total Purchase */}
                     <div className="bg-[#252525] rounded-xl p-4">
                         <div className="text-xs text-gray-400 mb-1">총 매입금액</div>
-                        <div className="text-xl font-bold text-white">{fmt(current.purchase)}원</div>
+                        <div className="text-xl font-bold text-white">{fmtValue(current.purchase, view)}</div>
                     </div>
 
                     {/* Total Valuation */}
                     <div className="bg-[#252525] rounded-xl p-4">
                         <div className="text-xs text-gray-400 mb-1">총 평가금액</div>
-                        <div className="text-xl font-bold text-white">{fmt(current.valuation)}원</div>
+                        <div className="text-xl font-bold text-white">{fmtValue(current.valuation, view)}</div>
                     </div>
 
                     {/* Profit / Return */}
@@ -170,7 +178,7 @@ export default function PortfolioSummaryBlock() {
                             {isPositive ? <TrendingUp size={18} className="text-red-400" /> : <TrendingDown size={18} className="text-blue-400" />}
                             <div>
                                 <span className={`text-xl font-bold ${isPositive ? 'text-red-400' : 'text-blue-400'}`}>
-                                    {isPositive ? '+' : ''}{fmt(current.profit)}원
+                                    {isPositive ? '+' : ''}{fmtValue(current.profit, view)}
                                 </span>
                                 <span className={`text-sm ml-2 ${isPositive ? 'text-red-300' : 'text-blue-300'}`}>
                                     ({isPositive ? '+' : ''}{fmtRate(current.rate)}%)
@@ -193,7 +201,7 @@ export default function PortfolioSummaryBlock() {
                                     </span>
                                 </div>
                                 <div className="text-sm text-gray-300 mt-1">
-                                    매입 {fmt(summary.kr.purchase)}원 → 평가 {fmt(summary.kr.valuation)}원
+                                    매입 {fmtValue(summary.kr.purchase, 'kr')} → 평가 {fmtValue(summary.kr.valuation, 'kr')}
                                 </div>
                             </div>
                         )}
@@ -207,7 +215,7 @@ export default function PortfolioSummaryBlock() {
                                     </span>
                                 </div>
                                 <div className="text-sm text-gray-300 mt-1">
-                                    매입 {fmt(summary.us.purchase)}원 → 평가 {fmt(summary.us.valuation)}원
+                                    매입 {fmtValue(summary.us.purchase, 'us')} → 평가 {fmtValue(summary.us.valuation, 'us')}
                                 </div>
                             </div>
                         )}
@@ -218,52 +226,75 @@ export default function PortfolioSummaryBlock() {
             {/* === Realized Gains Block === */}
             {realizedGains.count > 0 && (
                 <div className="bg-[#1E1E1E] rounded-2xl border border-[#333] p-6 shadow-lg shadow-black/20">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                             <CheckCircle2 size={18} className="text-green-400" />
                             <h3 className="text-sm font-bold text-white">거래 완료 수익 ({realizedGains.count}종목)</h3>
                         </div>
-                        {/* Total Realized */}
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${isRealizedPositive ? 'bg-red-900/20' : 'bg-blue-900/20'
-                            }`}>
-                            <BarChart3 size={14} className={isRealizedPositive ? 'text-red-400' : 'text-blue-400'} />
-                            <span className={`text-sm font-bold ${isRealizedPositive ? 'text-red-400' : 'text-blue-400'}`}>
-                                {isRealizedPositive ? '+' : ''}{fmt(realizedGains.totalProfit)}원
-                            </span>
-                            <span className={`text-xs ${isRealizedPositive ? 'text-red-300' : 'text-blue-300'}`}>
-                                ({isRealizedPositive ? '+' : ''}{fmtRate(realizedGains.totalRate)}%)
-                            </span>
+                        {isRealizedExpanded && (
+                            <button
+                                onClick={() => setIsRealizedExpanded(false)}
+                                className="text-xs text-gray-500 hover:text-white transition-colors"
+                            >
+                                접기
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Total Realized (Always Visible) */}
+                    <div
+                        className={`flex items-center justify-between px-4 py-3 rounded-lg cursor-pointer transition-colors ${isRealizedPositive ? 'bg-red-900/10 hover:bg-red-900/20' : 'bg-blue-900/10 hover:bg-blue-900/20'}`}
+                        onClick={() => setIsRealizedExpanded(!isRealizedExpanded)}
+                    >
+                        <div className="flex items-center gap-2">
+                            <BarChart3 size={16} className={isRealizedPositive ? 'text-red-400' : 'text-blue-400'} />
+                            <span className="text-sm text-gray-300">총 실현 손익</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="text-right">
+                                <span className={`text-base font-bold ${isRealizedPositive ? 'text-red-400' : 'text-blue-400'}`}>
+                                    {isRealizedPositive ? '+' : ''}{fmtValue(realizedGains.totalProfit, 'kr')}
+                                    {/* Realized gains mixed currency issue: Assuming KRW for total or need logic. Currently using 'kr' format (source had '원') */}
+                                </span>
+                                <span className={`text-xs ml-2 ${isRealizedPositive ? 'text-red-300' : 'text-blue-300'}`}>
+                                    ({isRealizedPositive ? '+' : ''}{fmtRate(realizedGains.totalRate)}%)
+                                </span>
+                            </div>
+                            {/* Chevron Icon could be added here */}
                         </div>
                     </div>
 
-                    {/* Items Table */}
-                    <div className="space-y-2">
-                        {realizedGains.items.map((item, idx) => {
-                            const isProfit = item.profit >= 0;
-                            return (
-                                <div key={idx} className="flex items-center justify-between bg-[#252525] rounded-lg px-4 py-3 border border-[#333] hover:border-[#555] transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-gray-500 w-5">{idx + 1}</span>
-                                        <div>
-                                            <div className="text-sm font-medium text-white">{item.name}</div>
-                                            <div className="text-xs text-gray-500">{item.symbol} | {item.category}</div>
+                    {/* Items Table (Collapsible) */}
+                    {isRealizedExpanded && (
+                        <div className="space-y-2 mt-3 animate-in fade-in slide-in-from-top-1">
+                            {realizedGains.items.map((item, idx) => {
+                                const isProfit = item.profit >= 0;
+                                const isUs = item.category === 'US';
+                                return (
+                                    <div key={idx} className="flex items-center justify-between bg-[#252525] rounded-lg px-4 py-3 border border-[#333] hover:border-[#555] transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-gray-500 w-5">{idx + 1}</span>
+                                            <div>
+                                                <div className="text-sm font-medium text-white">{item.name}</div>
+                                                <div className="text-xs text-gray-500">{item.symbol} | {item.category}</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="flex items-center gap-3 text-xs text-gray-400">
+                                                <span>매수 {fmtValue(item.buyAmount, isUs ? 'us' : 'kr')}</span>
+                                                <span>→</span>
+                                                <span>매도 {fmtValue(item.sellAmount, isUs ? 'us' : 'kr')}</span>
+                                            </div>
+                                            <div className={`text-sm font-bold mt-0.5 ${isProfit ? 'text-red-400' : 'text-blue-400'}`}>
+                                                {isProfit ? '▲' : '▼'} {isProfit ? '+' : ''}{fmtValue(item.profit, isUs ? 'us' : 'kr')}
+                                                <span className="text-xs ml-1">({isProfit ? '+' : ''}{fmtRate(item.rate)}%)</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="flex items-center gap-3 text-xs text-gray-400">
-                                            <span>매수 {fmt(item.buyAmount)}원</span>
-                                            <span>→</span>
-                                            <span>매도 {fmt(item.sellAmount)}원</span>
-                                        </div>
-                                        <div className={`text-sm font-bold mt-0.5 ${isProfit ? 'text-red-400' : 'text-blue-400'}`}>
-                                            {isProfit ? '▲' : '▼'} {isProfit ? '+' : ''}{fmt(item.profit)}원
-                                            <span className="text-xs ml-1">({isProfit ? '+' : ''}{fmtRate(item.rate)}%)</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
