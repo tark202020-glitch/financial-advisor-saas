@@ -215,41 +215,25 @@ export default function JubotPortfolioInsight() {
                 newsCount: newsCountMap[a.symbol] || 0,
             }));
 
-            // ── 이슈 종목 코드 레벨 필터링 ──
-            const issueStocks = portfolioData.filter(s => {
-                const profitRate = s.avgPrice > 0
-                    ? ((s.currentPrice - s.avgPrice) / s.avgPrice) * 100
-                    : 0;
-
-                // 기준 1: 현재가 0원 (거래 불가/상폐 의심)
-                if (s.currentPrice === 0) return true;
-                // 기준 2: 손실률 -15% 초과
-                if (profitRate < -15) return true;
-                // 기준 3: 목표 상한가 90% 도달
-                if (s.targetPriceUpper > 0 && s.currentPrice >= s.targetPriceUpper * 0.9) return true;
-                // 기준 4: 목표 하한가 이하 하락
-                if (s.targetPriceLower > 0 && s.currentPrice <= s.targetPriceLower) return true;
-                // 기준 5: 수익률 +30% 초과
-                if (profitRate > 30) return true;
-                // 기준 7: 뉴스 이슈 (3건 이상)
-                if (s.newsCount >= 3) return true;
-
-                return false;
+            // ── 평가금액 순 정렬 (높은 것부터) ──
+            const sortedPortfolio = [...portfolioData].sort((a, b) => {
+                const evalA = a.currentPrice * a.quantity;
+                const evalB = b.currentPrice * b.quantity;
+                return evalB - evalA;
             });
 
-            console.log(`[Jubot] 전체 ${portfolioData.length}종목 → 이슈 ${issueStocks.length}종목 선별됨`);
+            console.log(`[Jubot] 전체 ${sortedPortfolio.length}종목 → 평가금액 순 정렬 완료`);
 
-            // AI에 전달: 전체 요약 + 이슈 종목만 개별 분석
+            // AI에 전달: 전체 종목 (평가금액 순)
             const res = await fetch('/api/jubot/analyze/portfolio', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    assets: issueStocks,
+                    assets: sortedPortfolio,
                     allAssetsSummary: {
-                        totalCount: portfolioData.length,
-                        issueCount: issueStocks.length,
-                        totalCategories: [...new Set(portfolioData.map(s => s.category))],
-                        zeroPrice: portfolioData.filter(s => s.currentPrice === 0).map(s => s.name),
+                        totalCount: sortedPortfolio.length,
+                        totalCategories: [...new Set(sortedPortfolio.map(s => s.category))],
+                        zeroPrice: sortedPortfolio.filter(s => s.currentPrice === 0).map(s => s.name),
                     },
                 }),
             });

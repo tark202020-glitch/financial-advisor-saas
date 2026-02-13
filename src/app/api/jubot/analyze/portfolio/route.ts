@@ -40,16 +40,16 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { assets, marketData, allAssetsSummary } = body;
 
-        // 이슈 종목이 0건이면 빈 결과 반환 (AI 호출 불필요)
+        // 보유 종목이 없으면 빈 결과 반환
         if (!assets || assets.length === 0) {
             return NextResponse.json({
                 success: true,
                 analysis: {
-                    portfolio_summary: `보유 ${allAssetsSummary?.totalCount || 0}개 종목에 특별한 이슈가 발견되지 않았습니다. 현재 포트폴리오는 안정적으로 유지되고 있습니다.`,
+                    portfolio_summary: '보유 종목이 없습니다.',
                     risk_level: 'low',
                     stock_insights: [],
-                    sector_analysis: '현재 포트폴리오에 긴급한 업종 리스크는 없습니다.',
-                    overall_recommendation: '특별한 이슈가 없으므로 기존 투자 전략을 유지하세요.',
+                    sector_analysis: '',
+                    overall_recommendation: '내 주식일지에 종목을 추가해주세요.',
                 },
                 financial_data_loaded: 0,
             });
@@ -127,13 +127,14 @@ export async function POST(request: NextRequest) {
 
         const prompt = `
         당신은 '주봇'이라는 AI 주식 전문가입니다. 
-        아래는 사용자 포트폴리오에서 **주요 이슈가 감지된 종목** 목록입니다.
+        아래는 사용자의 **전체 보유 종목** 목록이며, 평가금액이 높은 순서로 정렬되어 있습니다.
+        모든 종목에 대해 빠짐없이 분석해주세요.
 
         **분석 날짜:** ${dateStr}
-        **포트폴리오 현황:** 총 ${allAssetsSummary?.totalCount || '?'}종목 보유, 이슈 감지 ${allAssetsSummary?.issueCount || assets.length}종목
+        **포트폴리오 현황:** 총 ${allAssetsSummary?.totalCount || '?'}종목 보유
         ${allAssetsSummary?.zeroPrice?.length > 0 ? `**현재가 0원 종목:** ${allAssetsSummary.zeroPrice.join(', ')}` : ''}
 
-        **이슈 종목 (재무+공시+배당 데이터 포함):**
+        **전체 보유 종목 (재무+공시+배당 데이터 포함, 평가금액 순):**
         ${portfolioText}
 
         ${marketData ? `**시장 데이터:** ${JSON.stringify(marketData)}` : ''}
@@ -180,11 +181,12 @@ export async function POST(request: NextRequest) {
         }
 
         규칙:
-        - stock_insights에는 전달받은 이슈 종목만 포함 (추가 금지)
+        - stock_insights에는 전달받은 **모든 종목을 빠짐없이** 포함 (평가금액 순서 유지)
         - 공시 데이터가 있으면 reason 첫 문장에 반드시 공시 내용 언급
         - action은 절대 추상적 조언 금지 ("모니터링하세요" X → "3월 실적발표에서 영업이익 확인 후 -20% 손절 판단" O)
         - 배당금 총액 1만원 이상인 종목은 dividend_info에 금액과 일정 반드시 명시
         - upcoming_events는 향후 1-3개월 내 예상 이벤트 (정기보고서/주총/배당기준일 등)
+        - 특별한 이슈가 없는 안정 종목도 반드시 포함하되, signal: "hold"로 표시
         - 모든 텍스트는 한국어, 전문가답게 간결하게
         - JSON만 출력 (마크다운 코드블록 없이)
         `;
