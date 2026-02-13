@@ -1,3 +1,13 @@
+## [Alpha V1.172] - 2026-02-13 11:17:00
+
+### 🔄 Build Update
+- **Summary**: StockDetailChartModal 기능 개선 및 OpenDART 연동
+- **Detail**:
+  - 차트 메인 색상 변경 (#F7D047)
+  - 기업 재무 분석 그리드 추가 (OpenDART + KIS 하이브리드 데이터)
+  - OpenDART API Route 구현 및 수집 스크립트 확장
+- **Build Time**: 2026-02-13 11:17:00
+
 ## [Alpha V1.170] - 2026-02-12 23:28:00
 
 ### 🔄 StockDetailChartModal 재설계
