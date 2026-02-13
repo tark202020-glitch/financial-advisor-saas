@@ -73,15 +73,15 @@ export default function JubotPortfolioInsight() {
             const totalSteps = activeList.length + 3; // prices + news + DART + AI
             let completedSteps = 0;
 
-            // ── STEP 1: 현재가 조회 ──
+            // ── STEP 1: 현재가 조회 (배치 + 딜레이 전략) ──
             const priceMap: Record<string, number> = {};
+            const BATCH_SIZE = 5;      // 한 번에 5종목씩
+            const DELAY_MS = 300;      // 개별 요청 간 300ms
+            const BATCH_DELAY_MS = 1500; // 배치 간 1.5초
 
-            for (const a of activeList) {
+            // 헬퍼: 단일 종목 시세 조회
+            const fetchSinglePrice = async (a: typeof activeList[0]) => {
                 const cleanSymbol = a.symbol.includes('.') ? a.symbol.split('.')[0] : a.symbol;
-                setProgressStep('시세 조회 중...');
-                setProgressDetail(`${a.name} (${cleanSymbol})`);
-                setProgressPercent(Math.round((completedSteps / totalSteps) * 100));
-
                 try {
                     const endpoint = a.category === 'US'
                         ? `/api/kis/price/overseas/${cleanSymbol}`
@@ -91,60 +91,79 @@ export default function JubotPortfolioInsight() {
                     if (priceRes.ok) {
                         const priceData = await priceRes.json();
                         if (a.category === 'US') {
-                            priceMap[a.symbol] = parseFloat(priceData.last || priceData.base || priceData.clos || 0);
+                            return parseFloat(priceData.last || priceData.base || priceData.clos || 0);
                         } else {
-                            priceMap[a.symbol] = parseInt(priceData.stck_prpr || priceData.stck_sdpr || 0);
+                            return parseInt(priceData.stck_prpr || priceData.stck_sdpr || 0);
                         }
                     }
                 } catch (e) {
                     console.warn(`[Jubot] Price fetch failed for ${a.symbol}:`, e);
                 }
-                completedSteps++;
+                return 0;
+            };
+
+            // 1차: 5개씩 배치 순차 처리
+            const totalBatches = Math.ceil(activeList.length / BATCH_SIZE);
+
+            for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+                const batch = activeList.slice(batchIdx * BATCH_SIZE, (batchIdx + 1) * BATCH_SIZE);
+                setProgressStep(`시세 조회 중... (${batchIdx + 1}/${totalBatches} 배치)`);
+
+                for (const a of batch) {
+                    const cleanSymbol = a.symbol.includes('.') ? a.symbol.split('.')[0] : a.symbol;
+                    setProgressDetail(`${a.name} (${cleanSymbol})`);
+                    setProgressPercent(Math.round((completedSteps / totalSteps) * 100));
+
+                    const price = await fetchSinglePrice(a);
+                    if (price > 0) priceMap[a.symbol] = price;
+                    completedSteps++;
+
+                    // 개별 요청 간 딜레이 (KIS API rate limit 대응)
+                    await new Promise(r => setTimeout(r, DELAY_MS));
+                }
+
+                // 배치 간 추가 대기 (마지막 배치 제외)
+                if (batchIdx < totalBatches - 1) {
+                    setProgressDetail(`다음 배치 준비 중... (${BATCH_DELAY_MS / 1000}초 대기)`);
+                    await new Promise(r => setTimeout(r, BATCH_DELAY_MS));
+                }
             }
 
-            // ── STEP 1-2: 현재가 0원 종목 자동 재시도 (최대 2회) ──
-            const MAX_RETRIES = 2;
+            // ── STEP 1-2: 0원 종목 자동 재시도 (최대 3회, 느리게) ──
+            const MAX_RETRIES = 3;
+            const RETRY_DELAY_MS = 3000;     // 재시도 라운드 간 3초 대기
+            const RETRY_ITEM_DELAY_MS = 500;  // 재시도 개별 요청 간 500ms
+
             for (let retry = 1; retry <= MAX_RETRIES; retry++) {
                 const zeroStocks = activeList.filter(a => !priceMap[a.symbol] || priceMap[a.symbol] === 0);
                 if (zeroStocks.length === 0) break;
 
-                setProgressStep(`시세 재조회 중... (${retry}/${MAX_RETRIES})`);
-                setProgressDetail(`${zeroStocks.length}개 종목 가격 미수신 → 재시도`);
-                console.log(`[Jubot] 재시도 ${retry}: 0원 종목 ${zeroStocks.length}개 → ${zeroStocks.map(s => s.name).join(', ')}`);
+                setProgressStep(`시세 재조회 ${retry}/${MAX_RETRIES} (${zeroStocks.length}개 미수신)`);
+                setProgressDetail(`${RETRY_DELAY_MS / 1000}초 대기 후 재시도...`);
+                console.log(`[Jubot] 재시도 ${retry}: 0원 ${zeroStocks.length}개 → ${zeroStocks.map(s => s.name).join(', ')}`);
 
-                // 2초 대기 후 재시도 (KIS API rate limit 고려)
-                await new Promise(r => setTimeout(r, 2000));
+                // 재시도 전 대기 (API 부하 해소)
+                await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
 
-                for (const a of zeroStocks) {
+                for (let i = 0; i < zeroStocks.length; i++) {
+                    const a = zeroStocks[i];
                     const cleanSymbol = a.symbol.includes('.') ? a.symbol.split('.')[0] : a.symbol;
-                    setProgressDetail(`재시도: ${a.name} (${cleanSymbol})`);
+                    setProgressDetail(`재시도 ${retry}: ${a.name} (${i + 1}/${zeroStocks.length})`);
 
-                    try {
-                        const endpoint = a.category === 'US'
-                            ? `/api/kis/price/overseas/${cleanSymbol}`
-                            : `/api/kis/price/domestic/${cleanSymbol}`;
+                    const price = await fetchSinglePrice(a);
+                    if (price > 0) priceMap[a.symbol] = price;
 
-                        const priceRes = await fetch(endpoint);
-                        if (priceRes.ok) {
-                            const priceData = await priceRes.json();
-                            if (a.category === 'US') {
-                                const val = parseFloat(priceData.last || priceData.base || priceData.clos || 0);
-                                if (val > 0) priceMap[a.symbol] = val;
-                            } else {
-                                const val = parseInt(priceData.stck_prpr || priceData.stck_sdpr || 0);
-                                if (val > 0) priceMap[a.symbol] = val;
-                            }
-                        }
-                    } catch (e) {
-                        console.warn(`[Jubot] Retry ${retry} failed for ${a.symbol}:`, e);
-                    }
+                    // 개별 요청 간 딜레이 (더 느리게)
+                    await new Promise(r => setTimeout(r, RETRY_ITEM_DELAY_MS));
                 }
             }
 
             // 최종 결과 로그
             const finalZero = activeList.filter(a => !priceMap[a.symbol] || priceMap[a.symbol] === 0);
             if (finalZero.length > 0) {
-                console.warn(`[Jubot] 최종 0원 종목 ${finalZero.length}개: ${finalZero.map(s => s.name).join(', ')}`);
+                console.warn(`[Jubot] 최종 0원 ${finalZero.length}개: ${finalZero.map(s => s.name).join(', ')}`);
+            } else {
+                console.log(`[Jubot] ✅ 모든 ${activeList.length}종목 시세 조회 완료!`);
             }
 
             setDebugPriceMap({ ...priceMap });
