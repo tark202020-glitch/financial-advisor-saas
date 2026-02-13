@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createClient } from '@/utils/supabase/server';
 
 /**
  * /api/jubot/analyze/stock
@@ -51,76 +50,23 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 1. DART 재무 데이터 조회 (국내 종목만)
+        // 1. DART 재무 데이터 조회 (국내 종목만, OpenDART API 직접 호출)
         let financialData: any = null;
         let dividendData: any = null;
 
         if (category !== 'US') {
             try {
-                const supabase = await createClient();
+                const { fetchMultiYearFinancials, fetchDividends } = await import('@/lib/opendart');
 
-                const { data: company } = await supabase
-                    .from('dart_companies')
-                    .select('corp_code, corp_name')
-                    .eq('stock_code', symbol)
-                    .single();
+                const multiYear = await fetchMultiYearFinancials(symbol, 3);
+                if (multiYear && multiYear.length > 0) {
+                    financialData = multiYear;
+                }
 
-                if (company) {
-                    // 재무 데이터
-                    const { data: financials } = await supabase
-                        .from('dart_financials')
-                        .select('*')
-                        .eq('corp_code', company.corp_code)
-                        .in('fs_div', ['CFS', 'OFS'])
-                        .order('year', { ascending: false })
-                        .limit(30);
-
-                    // 배당 데이터
-                    const { data: dividends } = await supabase
-                        .from('dart_dividends')
-                        .select('*')
-                        .eq('corp_code', company.corp_code)
-                        .order('year', { ascending: false })
-                        .limit(10);
-
-                    if (financials && financials.length > 0) {
-                        const years = [...new Set(financials.map(f => f.year))].sort((a, b) => b - a);
-
-                        const getValue = (year: number, keywords: string[]) => {
-                            let item = financials.find(f =>
-                                f.year === year && f.fs_div === 'CFS' &&
-                                keywords.some(k => f.account_nm?.includes(k))
-                            );
-                            if (!item) {
-                                item = financials.find(f =>
-                                    f.year === year && f.fs_div === 'OFS' &&
-                                    keywords.some(k => f.account_nm?.includes(k))
-                                );
-                            }
-                            return item?.amount || null;
-                        };
-
-                        const toOk = (v: number | null) => v ? Math.round(v / 100000000) : null;
-
-                        // 최근 3개년 데이터
-                        financialData = years.slice(0, 3).map(year => ({
-                            year,
-                            revenue_억: toOk(getValue(year, ['매출액', '수익'])),
-                            operating_profit_억: toOk(getValue(year, ['영업이익'])),
-                            net_income_억: toOk(getValue(year, ['당기순이익'])),
-                            equity_억: toOk(getValue(year, ['자본총계'])),
-                        }));
-                    }
-
-                    if (dividends && dividends.length > 0) {
-                        const dpsItems = dividends.filter(d =>
-                            d.stock_kind?.includes('보통주') && d.category?.includes('주당배당금')
-                        );
-                        dividendData = dpsItems.slice(0, 3).map(d => ({
-                            year: d.year,
-                            dps: d.value_current,
-                        }));
-                    }
+                // 배당 데이터
+                const div = await fetchDividends(symbol);
+                if (div && div.dps) {
+                    dividendData = [{ year: div.year, dps: div.dps }];
                 }
             } catch (e) {
                 console.warn(`[Jubot Stock] DART fetch failed for ${symbol}:`, e);

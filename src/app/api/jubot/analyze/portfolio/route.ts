@@ -1,97 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createClient } from '@/utils/supabase/server';
 
 /**
  * /api/jubot/analyze/portfolio
  * 
  * Phase 2: 포트폴리오 AI 분석 (재무 데이터 통합)
- * - DART 재무 데이터(매출, 영업이익, ROE, 배당) 조회
+ * - OpenDART API 직접 호출로 재무 데이터(매출, 영업이익, ROE, 배당) 조회
  * - 최근 뉴스와의 종목 연관성 분석
  * - 종합 AI 인사이트 생성
  */
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
 
-// DART 재무 데이터 조회 (Supabase에서)
+// OpenDART API 직접 호출로 재무 데이터 조회
 async function fetchFinancialData(symbols: string[]) {
-    const supabase = await createClient();
+    const { fetchCompanySummary } = await import('@/lib/opendart');
     const financialMap: Record<string, any> = {};
 
     for (const symbol of symbols) {
         try {
-            // 종목코드 → corp_code 매핑
-            const { data: company } = await supabase
-                .from('dart_companies')
-                .select('corp_code, corp_name')
-                .eq('stock_code', symbol)
-                .single();
-
-            if (!company) continue;
-
-            // 재무 데이터 (최근 2년)
-            const { data: financials } = await supabase
-                .from('dart_financials')
-                .select('*')
-                .eq('corp_code', company.corp_code)
-                .in('fs_div', ['CFS', 'OFS'])
-                .order('year', { ascending: false })
-                .limit(20);
-
-            // 배당 데이터
-            const { data: dividends } = await supabase
-                .from('dart_dividends')
-                .select('*')
-                .eq('corp_code', company.corp_code)
-                .order('year', { ascending: false })
-                .limit(5);
-
-            if (financials && financials.length > 0) {
-                const years = [...new Set(financials.map(f => f.year))].sort((a, b) => b - a);
-                const latestYear = years[0];
-
-                const getValue = (year: number, keywords: string[]) => {
-                    let item = financials.find(f =>
-                        f.year === year && f.fs_div === 'CFS' &&
-                        keywords.some(k => f.account_nm?.includes(k))
-                    );
-                    if (!item) {
-                        item = financials.find(f =>
-                            f.year === year && f.fs_div === 'OFS' &&
-                            keywords.some(k => f.account_nm?.includes(k))
-                        );
-                    }
-                    return item?.amount || null;
-                };
-
-                const revenue = getValue(latestYear, ['매출액', '수익']);
-                const revenuePrev = getValue(latestYear - 1, ['매출액', '수익']);
-                const profit = getValue(latestYear, ['영업이익']);
-                const profitPrev = getValue(latestYear - 1, ['영업이익']);
-                const netIncome = getValue(latestYear, ['당기순이익']);
-                const equity = getValue(latestYear, ['자본총계']);
-
-                const roe = netIncome && equity ? ((netIncome / equity) * 100).toFixed(1) : null;
-                const revenueGrowth = revenue && revenuePrev && revenuePrev !== 0
-                    ? (((revenue - revenuePrev) / Math.abs(revenuePrev)) * 100).toFixed(1) : null;
-                const profitGrowth = profit && profitPrev && profitPrev !== 0
-                    ? (((profit - profitPrev) / Math.abs(profitPrev)) * 100).toFixed(1) : null;
-
-                // 배당
-                const dpsItem = dividends?.find(d =>
-                    d.year === latestYear && d.stock_kind?.includes('보통주') && d.category?.includes('주당배당금')
-                );
-
-                financialMap[symbol] = {
-                    baseYear: latestYear,
-                    revenue: revenue ? Math.round(revenue / 100000000) : null, // 억원
-                    revenueGrowth,
-                    operatingProfit: profit ? Math.round(profit / 100000000) : null,
-                    profitGrowth,
-                    netIncome: netIncome ? Math.round(netIncome / 100000000) : null,
-                    roe,
-                    dps: dpsItem?.value_current || null,
-                };
+            const summary = await fetchCompanySummary(symbol);
+            if (summary) {
+                financialMap[symbol] = summary;
             }
         } catch (e) {
             console.warn(`[Jubot] DART fetch failed for ${symbol}:`, e);

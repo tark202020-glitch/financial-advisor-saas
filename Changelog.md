@@ -1,4 +1,16 @@
-## [Alpha V1.185] - 2026-02-13 20:52:00
+## [Alpha V1.186] - 2026-02-13 21:00:00
+
+### 🚀 OpenDART API 직접 호출 적용
+- **Summary**: DART 재무 데이터를 Supabase 테이블 대신 OpenDART API 직접 호출로 전환
+- **Detail**:
+  - `src/lib/opendart.ts` 유틸리티 생성 (corp_code 조회, 재무제표, 배당)
+  - 포트폴리오 분석 API — OpenDART 직접 호출 전환
+  - 종목 분석 API — OpenDART 직접 호출 전환
+  - opendart/company API — 전면 리팩토링
+  - .env.local에 DART_API_KEY 추가
+- **Build Time**: 2026-02-13 21:00:00
+
+
 
 ### 🐛 Bug Fix: 주봇 종목 분석 현재가 완전 수정
 - **Summary**: 종목 클릭 시 매입단가 대신 KIS API 실시간 현재가를 표시
