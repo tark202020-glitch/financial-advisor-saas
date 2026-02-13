@@ -14,16 +14,16 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
 
-// RSS 소스 정의
+// RSS 소스 정의 (2026-02 기준 실제 작동 확인된 소스)
 const DEFAULT_RSS_SOURCES = [
     {
-        name: '네이버 증권',
-        url: 'https://rss.news.naver.com/money.xml',
+        name: '매일경제 증권',
+        url: 'https://www.mk.co.kr/rss/40300001/',
         type: 'rss'
     },
     {
-        name: '한국경제',
-        url: 'https://www.hankyung.com/feed/stock',
+        name: '연합뉴스 경제',
+        url: 'https://www.yna.co.kr/rss/economy.xml',
         type: 'rss'
     },
 ];

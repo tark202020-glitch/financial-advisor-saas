@@ -76,8 +76,8 @@ export async function POST(request: NextRequest) {
         let relatedNews: string[] = [];
         try {
             const rssSources = [
-                'https://rss.news.naver.com/money.xml',
-                'https://www.hankyung.com/feed/stock',
+                'https://www.mk.co.kr/rss/40300001/',
+                'https://www.yna.co.kr/rss/economy.xml',
             ];
 
             for (const rssUrl of rssSources) {
