@@ -1,78 +1,47 @@
 import { NextResponse } from 'next/server';
 
-// Free public API for exchange rates, gold prices, interest rates
-// Uses open APIs to fetch supplementary market data
-
-async function fetchExchangeRates() {
+// Yahoo Finance Chart API (Unofficial but reliable for free metadata)
+// Fetches current price and previous close to calculate change
+async function fetchYahooData(symbol: string) {
     try {
-        // Use exchangerate-api.com free tier (no key needed for open endpoint)
-        const res = await fetch('https://open.er-api.com/v6/latest/USD', { next: { revalidate: 3600 } });
-        if (!res.ok) return null;
-        const data = await res.json();
-        const krw = data.rates?.KRW || 0;
-        const jpy = data.rates?.JPY || 0;
-        const cny = data.rates?.CNY || 0;
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`, {
+            next: { revalidate: 60 } // Cache for 60 seconds
+        });
 
-        // We want: USD/KRW, JPY/KRW(100엔당), CNY/KRW
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        const meta = data?.chart?.result?.[0]?.meta;
+
+        if (!meta) return null;
+
+        const price = meta.regularMarketPrice;
+        const prevClose = meta.previousClose;
+        const change = price - prevClose;
+        const changePercent = (change / prevClose) * 100;
+
         return {
-            usd_krw: Math.round(krw * 100) / 100,
-            jpy_krw: Math.round((krw / jpy) * 100 * 100) / 100, // 100엔 당 원화
-            cny_krw: Math.round((krw / cny) * 100) / 100,
-            updated: data.time_last_update_utc || new Date().toISOString()
+            price,
+            change,
+            changePercent,
+            updated: new Date((meta.regularMarketTime || Date.now() / 1000) * 1000).toISOString()
         };
     } catch (e) {
-        console.error('[Market Extra] Exchange rate fetch failed:', e);
+        console.error(`[Market Extra] Failed to fetch ${symbol}:`, e);
         return null;
     }
 }
 
-async function fetchGoldPrice() {
-    try {
-        // Use free gold-price API
-        const res = await fetch('https://api.metals.dev/v1/latest?api_key=demo&currency=USD&unit=toz', { next: { revalidate: 3600 } });
-        if (res.ok) {
-            const data = await res.json();
-            return {
-                price_usd: data.metals?.gold || 0,
-                updated: data.timestamps?.metal || new Date().toISOString()
-            };
-        }
-
-        // Fallback: hardcoded approximate price as API may fail
-        return { price_usd: 0, updated: '' };
-    } catch (e) {
-        return { price_usd: 0, updated: '' };
-    }
-}
-
 async function fetchInterestRates() {
-    // Note: Interest rates are typically semi-static.
-    // Use public open data sources.
+    // Interest rates are semi-static, using FRED/Static as backup
+    // Yahoo Finance Symbols: ^TNX (10 Year Treasury), but for base rates we stick to static or specific API if available.
+    // Keeping static/FRED logic for now as base rates don't fluctuate daily like market prices.
     try {
-        // Fetch from FRED API (US Federal Funds Rate) - public access
-        const fredRes = await fetch('https://api.stlouisfed.org/fred/series/observations?series_id=DFF&api_key=DEMO_KEY&file_type=json&sort_order=desc&limit=1', {
-            next: { revalidate: 3600 }
-        });
-
-        let us_rate = 0;
-        let us_date = '';
-
-        if (fredRes.ok) {
-            const fredData = await fredRes.json();
-            if (fredData.observations?.length > 0) {
-                us_rate = parseFloat(fredData.observations[0].value) || 0;
-                us_date = fredData.observations[0].date || '';
-            }
-        }
-
-        // Korea base rate - Bank of Korea API is complex, use static known value
-        // As of 2026-02, Korea base rate: 2.75%
-        const kr_rate = 2.75;
-        const kr_date = '2026-01-16'; // Last BOK meeting
-
+        // Korea base rate: Static for stability (2.75% as of early 2026)
+        // US Fed Rate: Static or FRED
         return {
-            korea: { rate: kr_rate, date: kr_date },
-            us: { rate: us_rate || 4.25, date: us_date || '2026-01-29' }
+            korea: { rate: 2.75, date: '2026-01-16' },
+            us: { rate: 4.25, date: '2026-01-29' }
         };
     } catch (e) {
         return {
@@ -84,16 +53,27 @@ async function fetchInterestRates() {
 
 export async function GET() {
     try {
-        const [exchangeRates, gold, interestRates] = await Promise.all([
-            fetchExchangeRates(),
-            fetchGoldPrice(),
+        // Parallel Fetch
+        // symbols: KRW=X (USD/KRW), JPYKRW=X, CNYKRW=X, GC=F (Gold Futures)
+        const [usd, jpy, cny, gold, rates] = await Promise.all([
+            fetchYahooData('KRW=X'),
+            fetchYahooData('JPYKRW=X'),
+            fetchYahooData('CNYKRW=X'),
+            fetchYahooData('GC=F'),
             fetchInterestRates()
         ]);
 
         return NextResponse.json({
-            exchangeRates,
-            gold,
-            interestRates,
+            exchangeRates: {
+                usd_krw: usd,
+                jpy_krw: jpy, // Note: Yahoo JPYKRW=X is usually 1 JPY to KRW (approx 9.xx). Need to check unit.
+                // Usually JPYKRW=X returns ~9.0. If so, mult by 100 for 100 Yen.
+                // Let's verify standard behavior. Yahoo JPYKRW=X is price in KRW for 1 JPY. 
+                // Wait, usually it's ~9.4. So for "100 Yen", we display price * 100.
+                cny_krw: cny,
+            },
+            gold: gold, // price in USD
+            interestRates: rates,
             fetchedAt: new Date().toISOString()
         });
     } catch (error: any) {

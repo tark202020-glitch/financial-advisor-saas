@@ -31,23 +31,175 @@ interface DailyIndexPoint {
     volume: number;
 }
 
+// --- Types ---
+interface YahooData {
+    price: number;
+    change: number;
+    changePercent: number;
+    updated: string;
+}
+
 interface MarketExtraData {
     exchangeRates: {
-        usd_krw: number;
-        jpy_krw: number;
-        cny_krw: number;
-        updated: string;
+        usd_krw: YahooData;
+        jpy_krw: YahooData;
+        cny_krw: YahooData;
     } | null;
-    gold: {
-        price_usd: number;
-        updated: string;
-    } | null;
+    gold: YahooData | null;
     interestRates: {
         korea: { rate: number; date: string };
         us: { rate: number; date: string };
     } | null;
 }
 
+function ExtraMarketBlock() {
+    const [extra, setExtra] = useState<MarketExtraData | null>(null);
+
+    useEffect(() => {
+        const fetchExtra = async () => {
+            try {
+                const res = await fetch('/api/market-extra');
+                if (!res.ok) return;
+                const data = await res.json();
+                setExtra(data);
+            } catch (e) { }
+        };
+        fetchExtra();
+    }, []);
+
+    if (!extra) {
+        return (
+            <div className="bg-[#1E1E1E] rounded-xl p-6 border border-[#333] animate-pulse">
+                <div className="h-4 bg-[#252525] rounded w-32 mb-4" />
+                <div className="space-y-3">
+                    {[1, 2, 3].map(i => <div key={i} className="h-8 bg-[#252525] rounded" />)}
+                </div>
+            </div>
+        );
+    }
+
+    const fmtIR = (date: string) => {
+        if (!date) return '';
+        const parts = date.split('-');
+        if (parts.length >= 3) return `${parts[0].slice(2)}.${parts[1]}.${parts[2]}`;
+        return date;
+    };
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Exchange Rates */}
+            <div className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
+                <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5">
+                    <DollarSign size={14} className="text-green-400" />
+                    환율
+                </h4>
+                <div className="space-y-2">
+                    {extra.exchangeRates ? (
+                        <>
+                            <ExtraRow
+                                label="달러/원"
+                                data={extra.exchangeRates.usd_krw}
+                                flag="🇺🇸"
+                                suffix="원"
+                            />
+                            <ExtraRow
+                                label="100엔/원"
+                                data={extra.exchangeRates.jpy_krw}
+                                flag="🇯🇵"
+                                suffix="원"
+                                multiplier={100} // JPY is 1 unit in data, display for 100
+                            />
+                            <ExtraRow
+                                label="위안/원"
+                                data={extra.exchangeRates.cny_krw}
+                                flag="🇨🇳"
+                                suffix="원"
+                            />
+                        </>
+                    ) : (
+                        <span className="text-gray-500 text-sm">데이터 없음</span>
+                    )}
+                </div>
+            </div>
+
+            {/* Gold & Interest Rates */}
+            <div className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
+                <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5">
+                    <Percent size={14} className="text-amber-400" />
+                    금 · 금리
+                </h4>
+                <div className="space-y-2">
+                    {extra.gold && (
+                        <ExtraRow
+                            label="금 (1oz)"
+                            data={extra.gold}
+                            flag="🪙"
+                            prefix="$"
+                        />
+                    )}
+                    {extra.interestRates && (
+                        <>
+                            <ExtraRowSimple
+                                label="한국 기준금리"
+                                value={`${extra.interestRates.korea.rate}%`}
+                                sub={fmtIR(extra.interestRates.korea.date)}
+                                flag="🇰🇷"
+                            />
+                            <ExtraRowSimple
+                                label="미국 기준금리"
+                                value={`${extra.interestRates.us.rate}%`}
+                                sub={fmtIR(extra.interestRates.us.date)}
+                                flag="🇺🇸"
+                            />
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ExtraRow({ label, data, flag, prefix = '', suffix = '', multiplier = 1 }: { label: string; data: YahooData; flag?: string; prefix?: string; suffix?: string; multiplier?: number }) {
+    if (!data) return null;
+
+    // Apply multiplier (for 100 JPY)
+    const price = data.price * multiplier;
+    const change = data.change * multiplier;
+    const isUp = change >= 0;
+
+    return (
+        <div className="flex items-center justify-between py-2 px-2 hover:bg-[#252525] rounded-lg transition-colors group">
+            <div className="flex items-center gap-2">
+                {flag && <span className="text-sm">{flag}</span>}
+                <span className="text-sm text-gray-300">{label}</span>
+            </div>
+            <div className="text-right">
+                <div className="text-lg font-bold text-white">
+                    {prefix}{price.toLocaleString(undefined, { maximumFractionDigits: 2 })}{suffix}
+                </div>
+                <div className={`text-xs flex items-center justify-end gap-1 ${isUp ? 'text-red-400' : 'text-blue-400'}`}>
+                    <span>{isUp ? '▲' : '▼'} {Math.abs(change).toFixed(2)}</span>
+                    <span className="opacity-80">({Math.abs(data.changePercent).toFixed(2)}%)</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function ExtraRowSimple({ label, value, sub, flag }: { label: string; value: string; sub?: string; flag?: string }) {
+    return (
+        <div className="flex items-center justify-between py-2 px-2 hover:bg-[#252525] rounded-lg transition-colors">
+            <div className="flex items-center gap-2">
+                {flag && <span className="text-sm">{flag}</span>}
+                <span className="text-sm text-gray-300">{label}</span>
+            </div>
+            <div className="text-right">
+                <span className="text-lg font-bold text-white">{value}</span>
+                {sub && <span className="text-xs text-gray-500 ml-2">({sub})</span>}
+            </div>
+        </div>
+    );
+}
 // --- Helper ---
 function fmtInvestor(n: number) {
     return Math.abs(n / 100).toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -331,109 +483,9 @@ function IndexCompactCard({ name, symbol, category, flag }: { name: string; symb
 }
 
 // ============================================================
-// 3. Extra Market Data (Exchange Rates, Gold, Interest Rates)
-// ============================================================
-function ExtraMarketBlock() {
-    const [extra, setExtra] = useState<MarketExtraData | null>(null);
 
-    useEffect(() => {
-        const fetchExtra = async () => {
-            try {
-                const res = await fetch('/api/market-extra');
-                if (!res.ok) return;
-                const data = await res.json();
-                setExtra(data);
-            } catch (e) { }
-        };
-        fetchExtra();
-    }, []);
 
-    if (!extra) {
-        return (
-            <div className="bg-[#1E1E1E] rounded-xl p-6 border border-[#333] animate-pulse">
-                <div className="h-4 bg-[#252525] rounded w-32 mb-4" />
-                <div className="space-y-3">
-                    {[1, 2, 3].map(i => <div key={i} className="h-8 bg-[#252525] rounded" />)}
-                </div>
-            </div>
-        );
-    }
 
-    const fmtIR = (date: string) => {
-        if (!date) return '';
-        // YYYY-MM-DD → YY.MM.DD
-        const parts = date.split('-');
-        if (parts.length >= 3) return `${parts[0].slice(2)}.${parts[1]}.${parts[2]}`;
-        return date;
-    };
-
-    return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Exchange Rates */}
-            <div className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
-                <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5">
-                    <DollarSign size={14} className="text-green-400" />
-                    환율
-                </h4>
-                <div className="space-y-2">
-                    {extra.exchangeRates ? (
-                        <>
-                            <ExtraRow label="달러/원" value={`${extra.exchangeRates.usd_krw.toLocaleString()}원`} flag="🇺🇸" />
-                            <ExtraRow label="100엔/원" value={`${extra.exchangeRates.jpy_krw.toLocaleString()}원`} flag="🇯🇵" />
-                            <ExtraRow label="위안/원" value={`${extra.exchangeRates.cny_krw.toLocaleString()}원`} flag="🇨🇳" />
-                        </>
-                    ) : (
-                        <span className="text-gray-500 text-sm">데이터 없음</span>
-                    )}
-                </div>
-            </div>
-
-            {/* Gold & Interest Rates */}
-            <div className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
-                <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5">
-                    <Percent size={14} className="text-amber-400" />
-                    금 · 금리
-                </h4>
-                <div className="space-y-2">
-                    {extra.gold && extra.gold.price_usd > 0 && (
-                        <ExtraRow label="금 (1oz)" value={`$${extra.gold.price_usd.toLocaleString()}`} flag="🪙" />
-                    )}
-                    {extra.interestRates && (
-                        <>
-                            <ExtraRow
-                                label="한국 기준금리"
-                                value={`${extra.interestRates.korea.rate}%`}
-                                sub={fmtIR(extra.interestRates.korea.date)}
-                                flag="🇰🇷"
-                            />
-                            <ExtraRow
-                                label="미국 기준금리"
-                                value={`${extra.interestRates.us.rate}%`}
-                                sub={fmtIR(extra.interestRates.us.date)}
-                                flag="🇺🇸"
-                            />
-                        </>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function ExtraRow({ label, value, sub, flag }: { label: string; value: string; sub?: string; flag?: string }) {
-    return (
-        <div className="flex items-center justify-between py-2 px-2 hover:bg-[#252525] rounded-lg transition-colors">
-            <div className="flex items-center gap-2">
-                {flag && <span className="text-sm">{flag}</span>}
-                <span className="text-sm text-gray-300">{label}</span>
-            </div>
-            <div className="text-right">
-                <span className="text-lg font-bold text-white">{value}</span>
-                {sub && <span className="text-xs text-gray-500 ml-2">({sub})</span>}
-            </div>
-        </div>
-    );
-}
 
 // ============================================================
 // 4. Market Trend Table (Investor by Market)
