@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useCallback } from 'react';
-import { Brain, RefreshCw, ArrowUpRight, ArrowDownRight, Eye, ShieldAlert, Sparkles } from 'lucide-react';
+import { Brain, RefreshCw, ArrowUpRight, ArrowDownRight, Eye, ShieldAlert, Sparkles, ChevronRight } from 'lucide-react';
 import { usePortfolio } from '@/context/PortfolioContext';
+import JubotStockCard from './JubotStockCard';
 
 interface StockInsight {
     symbol: string;
@@ -11,6 +12,7 @@ interface StockInsight {
     reason: string;
     action: string;
     priority: 'high' | 'medium' | 'low';
+    financial_highlight?: string | null;
 }
 
 interface PortfolioAnalysis {
@@ -39,6 +41,7 @@ export default function JubotPortfolioInsight() {
     const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
+    const [selectedStock, setSelectedStock] = useState<any>(null);
 
     const fetchAnalysis = useCallback(async () => {
         if (!assets || assets.length === 0) return;
@@ -180,7 +183,23 @@ export default function JubotPortfolioInsight() {
                                         const config = SIGNAL_CONFIG[insight.signal] || SIGNAL_CONFIG.hold;
                                         const Icon = config.icon;
                                         return (
-                                            <div key={i} className={`p-4 rounded-xl border ${config.bg}`}>
+                                            <div key={i} className={`p-4 rounded-xl border ${config.bg} cursor-pointer hover:brightness-110 transition-all`}
+                                                onClick={() => {
+                                                    const asset = activeAssets.find(a => a.symbol === insight.symbol);
+                                                    if (asset) {
+                                                        setSelectedStock({
+                                                            symbol: asset.symbol,
+                                                            name: asset.name,
+                                                            category: asset.category,
+                                                            currentPrice: asset.pricePerShare,
+                                                            avgPrice: asset.pricePerShare,
+                                                            quantity: asset.quantity,
+                                                            targetPriceUpper: asset.targetPriceUpper,
+                                                            targetPriceLower: asset.targetPriceLower,
+                                                        });
+                                                    }
+                                                }}
+                                            >
                                                 <div className="flex items-center justify-between mb-1">
                                                     <div className="flex items-center gap-2">
                                                         <Icon size={18} className={config.color} />
@@ -194,9 +213,13 @@ export default function JubotPortfolioInsight() {
                                                         <span className={`text-sm font-bold px-2 py-0.5 rounded-full bg-[#333] ${config.color}`}>
                                                             {config.label}
                                                         </span>
+                                                        <ChevronRight size={14} className="text-gray-600" />
                                                     </div>
                                                 </div>
                                                 <p className="text-gray-400 text-sm mt-1">{insight.reason}</p>
+                                                {insight.financial_highlight && (
+                                                    <p className="text-purple-400 text-sm mt-1">📊 {insight.financial_highlight}</p>
+                                                )}
                                                 <p className="text-gray-300 text-sm mt-1 font-medium">💡 {insight.action}</p>
                                             </div>
                                         );
@@ -225,6 +248,15 @@ export default function JubotPortfolioInsight() {
                     </div>
                 )}
             </div>
+
+            {/* Stock Detail Modal */}
+            {selectedStock && (
+                <JubotStockCard
+                    isOpen={!!selectedStock}
+                    onClose={() => setSelectedStock(null)}
+                    stock={selectedStock}
+                />
+            )}
         </div>
     );
 }
