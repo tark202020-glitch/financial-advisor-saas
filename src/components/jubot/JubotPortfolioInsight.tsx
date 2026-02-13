@@ -50,30 +50,55 @@ export default function JubotPortfolioInsight() {
         setError(false);
 
         try {
-            // Prepare portfolio data with current prices
-            const portfolioData = assets
-                .filter(a => (a.quantity || 0) > 0)
-                .map(a => {
-                    return {
-                        name: a.name,
-                        symbol: a.symbol,
-                        category: a.category,
-                        sector: a.sector || '',
-                        currentPrice: a.pricePerShare || 0,
-                        avgPrice: a.pricePerShare || 0,
-                        quantity: a.quantity || 0,
-                        changeRate: 0,
-                        targetPriceUpper: a.targetPriceUpper || 0,
-                        targetPriceLower: a.targetPriceLower || 0,
-                    };
-                });
+            const activeList = assets.filter(a => (a.quantity || 0) > 0 && a.symbol);
 
-            if (portfolioData.length === 0) {
+            if (activeList.length === 0) {
                 setError(true);
                 setLoading(false);
                 return;
             }
 
+            // 1. 현재가 조회 (KIS API)
+            const priceMap: Record<string, number> = {};
+
+            for (const a of activeList) {
+                try {
+                    let cleanSymbol = a.symbol;
+                    if (a.symbol.includes('.')) cleanSymbol = a.symbol.split('.')[0];
+
+                    const endpoint = a.category === 'US'
+                        ? `/api/kis/price/overseas/${cleanSymbol}`
+                        : `/api/kis/price/domestic/${cleanSymbol}`;
+
+                    const priceRes = await fetch(endpoint);
+                    if (priceRes.ok) {
+                        const priceData = await priceRes.json();
+                        if (a.category === 'US') {
+                            priceMap[a.symbol] = parseFloat(priceData.last || priceData.base || priceData.clos || 0);
+                        } else {
+                            priceMap[a.symbol] = parseInt(priceData.stck_prpr || priceData.stck_sdpr || 0);
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`[Jubot] Price fetch failed for ${a.symbol}:`, e);
+                }
+            }
+
+            // 2. 포트폴리오 데이터 구성 (실제 현재가 사용)
+            const portfolioData = activeList.map(a => ({
+                name: a.name,
+                symbol: a.symbol,
+                category: a.category,
+                sector: a.sector || '',
+                currentPrice: priceMap[a.symbol] || 0,
+                avgPrice: a.pricePerShare || 0,
+                quantity: a.quantity || 0,
+                changeRate: 0,
+                targetPriceUpper: a.targetPriceUpper || 0,
+                targetPriceLower: a.targetPriceLower || 0,
+            }));
+
+            // 3. AI 분석 호출
             const res = await fetch('/api/jubot/analyze/portfolio', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -83,6 +108,20 @@ export default function JubotPortfolioInsight() {
             const data = await res.json();
             if (data.success && data.analysis) {
                 setAnalysis(data.analysis);
+
+                // 4. 히스토리 자동 저장
+                try {
+                    await fetch('/api/jubot/history', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            analysis_type: 'portfolio_insight',
+                            content: data.analysis,
+                        }),
+                    });
+                } catch (saveErr) {
+                    console.warn('[Jubot] History save failed:', saveErr);
+                }
             } else {
                 setError(true);
             }

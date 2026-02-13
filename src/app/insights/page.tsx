@@ -1,6 +1,7 @@
 "use client";
 
 import JubotPortfolioInsight from '@/components/jubot/JubotPortfolioInsight';
+import JubotHistory from '@/components/jubot/JubotHistory';
 import PortfolioCompositionBlock from '@/components/insights/PortfolioCompositionBlock';
 import TargetProximityBlock from '@/components/insights/TargetProximityBlock';
 import SidebarLayout from "@/components/SidebarLayout";
@@ -22,6 +23,9 @@ export default function InsightsPage() {
 
                 {/* 2. Portfolio Composition */}
                 <PortfolioCompositionBlock />
+
+                {/* 3. AI Analysis History Timeline */}
+                <JubotHistory />
             </div>
         </SidebarLayout>
     );
