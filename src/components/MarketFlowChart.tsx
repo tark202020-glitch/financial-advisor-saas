@@ -315,9 +315,9 @@ function IndexCompactCard({ name, symbol, category, flag }: { name: string; symb
                     {hasData ? Math.round(indexData.value).toLocaleString() : '-'}
                 </span>
                 {hasData && (
-                    <div className={`flex items-center gap-1 text-sm font-bold ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
-                        {isUp ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
-                        <span>{Math.abs(indexData.changePercent).toFixed(2)}%</span>
+                    <div className={`flex items-center gap-1 font-bold ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
+                        {isUp ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
+                        <span className="text-xl">{Math.abs(indexData.changePercent).toFixed(2)}%</span>
                     </div>
                 )}
             </div>
@@ -428,8 +428,8 @@ function ExtraRow({ label, value, sub, flag }: { label: string; value: string; s
                 <span className="text-sm text-gray-300">{label}</span>
             </div>
             <div className="text-right">
-                <span className="text-sm font-bold text-white">{value}</span>
-                {sub && <span className="text-[10px] text-gray-500 ml-1.5">({sub})</span>}
+                <span className="text-lg font-bold text-white">{value}</span>
+                {sub && <span className="text-xs text-gray-500 ml-2">({sub})</span>}
             </div>
         </div>
     );
@@ -502,29 +502,7 @@ export default function MarketFlowChart() {
             {/* 3. Exchange Rates, Gold, Interest Rates */}
             <ExtraMarketBlock />
 
-            {/* 4. Market Trend Table */}
-            <div className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
-                <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#333]">
-                    <h3 className="font-bold text-white text-sm flex items-center gap-1.5">
-                        <TrendingUp size={14} className="text-indigo-400" />
-                        마켓트렌드 (투자자별 순매수)
-                    </h3>
-                    <span className="text-[10px] text-gray-500">단위/억원</span>
-                </div>
-                <div className="grid grid-cols-4 text-[10px] text-gray-500 pb-2 border-b border-[#333] px-2">
-                    <span>종목명</span>
-                    <span className="text-right">개인</span>
-                    <span className="text-right">외국인</span>
-                    <span className="text-right">기관</span>
-                </div>
-                <div>
-                    <MarketTrendRow name="코스피" marketCode="0001" />
-                    <MarketTrendRow name="코스닥" marketCode="1001" />
-                    <MarketTrendRow name="ETF" marketCode="ETF" />
-                </div>
-            </div>
-
-            {/* 5. Sector Bar Chart */}
+            {/* 4. Sector Bar Chart */}
             <SectorBarChart />
         </div>
     );
