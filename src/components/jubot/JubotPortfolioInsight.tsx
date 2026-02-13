@@ -42,6 +42,8 @@ export default function JubotPortfolioInsight() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
     const [selectedStock, setSelectedStock] = useState<any>(null);
+    const [debugPriceMap, setDebugPriceMap] = useState<Record<string, number>>({});
+    const [debugNewsMap, setDebugNewsMap] = useState<Record<string, number>>({});
 
     const fetchAnalysis = useCallback(async () => {
         if (!assets || assets.length === 0) return;
@@ -84,7 +86,46 @@ export default function JubotPortfolioInsight() {
                 }
             }
 
-            // 2. 포트폴리오 데이터 구성 (실제 현재가 사용)
+            // 디버그: priceMap 저장
+            setDebugPriceMap({ ...priceMap });
+
+            // 2-1. 뉴스 참조 수 수집 (RSS 직접 파싱)
+            const newsCountMap: Record<string, number> = {};
+            try {
+                const rssSources = [
+                    'https://rss.news.naver.com/money.xml',
+                    'https://www.hankyung.com/feed/stock',
+                ];
+                const allTitles: string[] = [];
+                for (const rssUrl of rssSources) {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 5000);
+                        const res = await fetch(rssUrl, {
+                            signal: controller.signal,
+                            headers: { 'User-Agent': 'JubotNewsCollector/1.0' }
+                        });
+                        clearTimeout(timeoutId);
+                        if (res.ok) {
+                            const xml = await res.text();
+                            const itemRegex = /<item>[\s\S]*?<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>[\s\S]*?<\/item>/gi;
+                            let match;
+                            while ((match = itemRegex.exec(xml)) !== null) {
+                                allTitles.push(match[1].replace(/<[^>]+>/g, '').trim());
+                            }
+                        }
+                    } catch { /* RSS 실패 무시 */ }
+                }
+                // 각 종목별 매칭 뉴스 수 카운트
+                for (const a of activeList) {
+                    const cleanSym = a.symbol.includes('.') ? a.symbol.split('.')[0] : a.symbol;
+                    const count = allTitles.filter(t => t.includes(a.name) || t.includes(cleanSym)).length;
+                    newsCountMap[a.symbol] = count;
+                }
+            } catch { /* 뉴스 수집 실패 */ }
+            setDebugNewsMap({ ...newsCountMap });
+
+            // 2-2. 포트폴리오 데이터 구성 (실제 현재가 사용)
             const portfolioData = activeList.map(a => ({
                 name: a.name,
                 symbol: a.symbol,
@@ -244,6 +285,13 @@ export default function JubotPortfolioInsight() {
                                                         <Icon size={18} className={config.color} />
                                                         <span className="font-bold text-white text-base">{insight.name}</span>
                                                         <span className="text-sm text-gray-500">({insight.symbol})</span>
+                                                        {/* 디버그: 현재가 + 뉴스 참조 수 */}
+                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${debugPriceMap[insight.symbol] ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                                                            ₩{(debugPriceMap[insight.symbol] || 0).toLocaleString()}
+                                                        </span>
+                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${(debugNewsMap[insight.symbol] || 0) > 0 ? 'bg-blue-900/30 text-blue-400' : 'bg-gray-800 text-gray-500'}`}>
+                                                            뉴스 {debugNewsMap[insight.symbol] || 0}건
+                                                        </span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         {insight.priority === 'high' && (
