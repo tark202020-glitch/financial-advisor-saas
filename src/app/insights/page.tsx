@@ -1,12 +1,9 @@
-import AiGuruBlock from '@/components/insights/AiGuruBlock';
+"use client";
+
+import JubotPortfolioInsight from '@/components/jubot/JubotPortfolioInsight';
 import PortfolioCompositionBlock from '@/components/insights/PortfolioCompositionBlock';
 import TargetProximityBlock from '@/components/insights/TargetProximityBlock';
 import SidebarLayout from "@/components/SidebarLayout";
-
-export const metadata = {
-    title: '내 주식 인사이트 - Financial Advisor',
-    description: '보유 주식에 대한 심층 분석 및 목표가 관리',
-};
 
 export default function InsightsPage() {
     return (
@@ -17,8 +14,8 @@ export default function InsightsPage() {
                     <p className="text-gray-400">보유한 주식의 목표가 달성 현황과 포트폴리오 구성을 분석합니다.</p>
                 </header>
 
-                {/* AI Guru Advice */}
-                <AiGuruBlock />
+                {/* AI Portfolio Analysis (주봇) */}
+                <JubotPortfolioInsight />
 
                 {/* 1. Target Price Graphs */}
                 <TargetProximityBlock />
@@ -29,3 +26,4 @@ export default function InsightsPage() {
         </SidebarLayout>
     );
 }
+

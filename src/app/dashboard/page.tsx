@@ -3,6 +3,7 @@
 import SidebarLayout from '@/components/SidebarLayout';
 import MarketFlowChart from '@/components/MarketFlowChart';
 import DashboardWatchlists from '@/components/DashboardWatchlists';
+import JubotBriefing from '@/components/jubot/JubotBriefing';
 import { useState, useEffect } from 'react';
 import FullPageLoader from '@/components/ui/FullPageLoader';
 
@@ -10,7 +11,6 @@ export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Enforce 3s minimum loading for User Experience
         const timer = setTimeout(() => {
             setIsLoading(false);
         }, 3000);
@@ -33,10 +33,12 @@ export default function DashboardPage() {
                 </header>
 
                 <div className="grid grid-cols-12 gap-6">
-                    {/* Main Content (Full Width) */}
                     <div className="col-span-12 space-y-6">
 
-                        {/* 1. Market Info & Trends (Merged) */}
+                        {/* 0. AI Market Briefing */}
+                        <JubotBriefing />
+
+                        {/* 1. Market Info & Trends */}
                         <div className="w-full">
                             <MarketFlowChart />
                         </div>
@@ -50,3 +52,4 @@ export default function DashboardPage() {
         </SidebarLayout>
     );
 }
+
