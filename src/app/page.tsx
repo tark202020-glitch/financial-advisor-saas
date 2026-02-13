@@ -33,7 +33,7 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-6xl md:text-8xl lg:text-9xl font-black leading-[0.9] tracking-tighter mb-8 break-keep">
-            더 똑똑한<br />
+            기록하는<br />
             투자 습관<span className="text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">.</span>
           </h1>
 

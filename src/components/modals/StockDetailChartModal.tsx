@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { useStockPrice } from '@/hooks/useStockPrice';
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
+import FinancialGrid from '@/components/FinancialGrid';
 
 // Color Constants for Consistency
 const COLORS = {
@@ -24,7 +25,8 @@ const COLORS = {
     ma120: '#22c55e', // green-500
     up: '#ef4444',    // red-500
     down: '#3b82f6',  // blue-500
-    buyPrice: '#ef4444' // red-500
+    buyPrice: '#ef4444', // red-500
+    main: '#F7D047'   // Main Chart Color (Yellow)
 };
 
 interface StockDetailModalProps {
@@ -446,7 +448,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                             <Line type="monotone" dataKey="ma20" stroke={COLORS.ma20} strokeWidth={1} dot={false} />
                                             <Line type="monotone" dataKey="ma60" stroke={COLORS.ma60} strokeWidth={1} dot={false} />
                                             <Line type="monotone" dataKey="ma120" stroke={COLORS.ma120} strokeWidth={1} dot={false} />
-                                            <Line type="monotone" dataKey="close" stroke={changePercent >= 0 ? COLORS.up : COLORS.down} strokeWidth={2} dot={false} />
+                                            <Line type="monotone" dataKey="close" stroke={COLORS.main} strokeWidth={2} dot={false} />
 
                                             {/* Avg Purchase Price Line */}
                                             {asset.pricePerShare > 0 && (
@@ -563,6 +565,19 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                             )}
                         </div>
                     </div>
+
+                    {/* ---- ROW 1.5: Detailed Financials (OpenDART + KIS) ---- */}
+                    {asset.category === 'KR' && (
+                        <div className="bg-[#252525] rounded-2xl p-6 border border-[#333] mb-4">
+                            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                                📈 기업 재무 분석
+                                <span className="text-[10px] text-gray-500 font-normal ml-1">
+                                    (OpenDART 데이터 활용)
+                                </span>
+                            </h3>
+                            <FinancialGrid symbol={asset.symbol} />
+                        </div>
+                    )}
 
                     {/* ---- ROW 2: Holdings Info (left) + Goals (right) ---- */}
                     {!viewOnly && <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
