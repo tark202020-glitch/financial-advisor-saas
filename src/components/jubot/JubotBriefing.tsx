@@ -63,7 +63,7 @@ export default function JubotBriefing() {
                         <Newspaper size={20} className="text-black" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-white">📰 오늘의 시장 브리핑</h2>
+                        <h2 className="text-xl font-bold text-white">📰 JUBOT의 오늘 시장 브리핑</h2>
                         <p className="text-sm text-gray-500">
                             {lastUpdated ? `마지막 업데이트: ${lastUpdated}` : '뉴스를 수집하여 AI가 분석합니다'}
                         </p>

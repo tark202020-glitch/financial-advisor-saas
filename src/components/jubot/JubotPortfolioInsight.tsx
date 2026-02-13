@@ -144,7 +144,7 @@ export default function JubotPortfolioInsight() {
                         <Brain size={20} className="text-white" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-white">🔍 내 종목 AI 분석</h2>
+                        <h2 className="text-xl font-bold text-white">🔍 JUBOT의 내 주식 분석</h2>
                         <p className="text-sm text-gray-500">
                             보유 {activeAssets.length}개 종목에 대한 전문가 분석
                         </p>
