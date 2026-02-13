@@ -100,6 +100,51 @@ export default function JubotPortfolioInsight() {
                 completedSteps++;
             }
 
+            // ── STEP 1-2: 현재가 0원 종목 자동 재시도 (최대 2회) ──
+            const MAX_RETRIES = 2;
+            for (let retry = 1; retry <= MAX_RETRIES; retry++) {
+                const zeroStocks = activeList.filter(a => !priceMap[a.symbol] || priceMap[a.symbol] === 0);
+                if (zeroStocks.length === 0) break;
+
+                setProgressStep(`시세 재조회 중... (${retry}/${MAX_RETRIES})`);
+                setProgressDetail(`${zeroStocks.length}개 종목 가격 미수신 → 재시도`);
+                console.log(`[Jubot] 재시도 ${retry}: 0원 종목 ${zeroStocks.length}개 → ${zeroStocks.map(s => s.name).join(', ')}`);
+
+                // 2초 대기 후 재시도 (KIS API rate limit 고려)
+                await new Promise(r => setTimeout(r, 2000));
+
+                for (const a of zeroStocks) {
+                    const cleanSymbol = a.symbol.includes('.') ? a.symbol.split('.')[0] : a.symbol;
+                    setProgressDetail(`재시도: ${a.name} (${cleanSymbol})`);
+
+                    try {
+                        const endpoint = a.category === 'US'
+                            ? `/api/kis/price/overseas/${cleanSymbol}`
+                            : `/api/kis/price/domestic/${cleanSymbol}`;
+
+                        const priceRes = await fetch(endpoint);
+                        if (priceRes.ok) {
+                            const priceData = await priceRes.json();
+                            if (a.category === 'US') {
+                                const val = parseFloat(priceData.last || priceData.base || priceData.clos || 0);
+                                if (val > 0) priceMap[a.symbol] = val;
+                            } else {
+                                const val = parseInt(priceData.stck_prpr || priceData.stck_sdpr || 0);
+                                if (val > 0) priceMap[a.symbol] = val;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`[Jubot] Retry ${retry} failed for ${a.symbol}:`, e);
+                    }
+                }
+            }
+
+            // 최종 결과 로그
+            const finalZero = activeList.filter(a => !priceMap[a.symbol] || priceMap[a.symbol] === 0);
+            if (finalZero.length > 0) {
+                console.warn(`[Jubot] 최종 0원 종목 ${finalZero.length}개: ${finalZero.map(s => s.name).join(', ')}`);
+            }
+
             setDebugPriceMap({ ...priceMap });
 
             // ── STEP 2: 뉴스 수집 (서버 API 경유 — CORS 우회) ──
