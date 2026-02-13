@@ -1,23 +1,39 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, DollarSign, Activity, Percent } from 'lucide-react';
 
 interface FinancialGridProps {
     symbol: string;
 }
 
 interface FinancialData {
-    market_cap: string;        // KIS
-    revenue_cagr: string;      // OpenDART
-    net_income_cagr: string;   // OpenDART
-    gross_margin: string;      // OpenDART
-    per: string;               // KIS
-    pbr: string;               // KIS
-    roe: string;               // OpenDART
-    dividend_yield: string;    // KIS
-    payout_ratio: string;      // OpenDART
-    consecutive_div: string;   // OpenDART
+    market_cap: string;
+    revenue_growth: string;
+    profit_growth: string;
+    gross_margin: string;
+    per: string;
+    pbr: string;
+    roe: string;
+    operating_margin: string;
+    debt_ratio: string;
+    consensus: string;
+}
+
+function formatValue(val: string | undefined | null, suffix: string = ''): string {
+    if (!val || val === '-' || val === '' || val === 'null' || val === 'undefined') return '-';
+    // Remove any existing suffixes and clean up
+    const cleaned = val.replace(/[%배억]/g, '').trim();
+    if (!cleaned || cleaned === '-') return '-';
+    return `${cleaned}${suffix}`;
+}
+
+function getColorClass(val: string | undefined | null): string {
+    if (!val || val === '-') return 'text-white';
+    const num = parseFloat(val.replace(/[^0-9.-]/g, ''));
+    if (isNaN(num)) return 'text-white';
+    if (num > 0) return 'text-red-400';
+    if (num < 0) return 'text-blue-400';
+    return 'text-white';
 }
 
 export default function FinancialGrid({ symbol }: FinancialGridProps) {
@@ -28,36 +44,64 @@ export default function FinancialGrid({ symbol }: FinancialGridProps) {
         let isMounted = true;
         const fetchData = async () => {
             try {
-                // Parallel Fetch
-                const [kisRes, dartRes] = await Promise.all([
-                    fetch(`/api/kis/company/${symbol}`),
-                    fetch(`/api/opendart/company/${symbol}`)
-                ]);
-
+                // Primary: KIS API (always available)
+                const kisRes = await fetch(`/api/kis/company/${symbol}`);
                 const kisJson = await kisRes.json();
-                const dartJson = await dartRes.json();
 
-                if (isMounted) {
-                    // Process KIS Data
-                    const kisStats = kisJson.stats || {};
-                    // Process OpenDART Data
-                    const dartExec = dartJson.financials || {};
-                    const dartDiv = dartJson.dividends || {};
+                if (!isMounted) return;
 
-                    setData({
-                        market_cap: kisStats.market_cap ? `${kisStats.market_cap}억` : '-',
-                        per: kisStats.per ? `${kisStats.per}배` : '-',
-                        pbr: kisStats.pbr ? `${kisStats.pbr}배` : '-',
-                        dividend_yield: kisStats.dividend_yield ? `${kisStats.dividend_yield}%` : '-', // API might not have this, check client.ts
+                const stats = kisJson.stats || {};
+                const fin = kisJson.financials || {};
 
-                        revenue_cagr: dartExec.revenue_cagr_3y ? `${dartExec.revenue_cagr_3y.toFixed(1)}%` : '-',
-                        net_income_cagr: dartExec.net_income_cagr_3y ? `${dartExec.net_income_cagr_3y.toFixed(1)}%` : '-',
-                        gross_margin: dartExec.gross_margin_1y ? `${dartExec.gross_margin_1y.toFixed(1)}%` : '-',
-                        roe: dartExec.roe ? `${dartExec.roe.toFixed(1)}%` : '-',
-                        payout_ratio: dartDiv.payout_ratio ? `${dartDiv.payout_ratio}%` : '-',
-                        consecutive_div: dartDiv.consecutive_years > 0 ? `${dartDiv.consecutive_years}년 이상` : '-'
-                    });
+                // Optional: OpenDART API (may not be available)
+                let dartData: any = null;
+                try {
+                    const dartRes = await fetch(`/api/opendart/company/${symbol}`);
+                    if (dartRes.ok) {
+                        dartData = await dartRes.json();
+                    }
+                } catch {
+                    // OpenDART not available, silently ignore
                 }
+
+                const dartFin = dartData?.financials || {};
+                const dartDiv = dartData?.dividends || {};
+
+                setData({
+                    // KIS Stats
+                    market_cap: stats.market_cap ? `${stats.market_cap}억` : '-',
+                    per: stats.per ? `${stats.per}배` : '-',
+                    pbr: stats.pbr ? `${stats.pbr}배` : '-',
+
+                    // KIS Ratio (primary) / OpenDART (fallback)
+                    roe: formatValue(fin.roe, '%') !== '-'
+                        ? formatValue(fin.roe, '%')
+                        : (dartFin.roe ? `${dartFin.roe.toFixed(1)}%` : '-'),
+
+                    gross_margin: formatValue(fin.gross_margin, '%') !== '-'
+                        ? formatValue(fin.gross_margin, '%')
+                        : (dartFin.gross_margin_1y ? `${dartFin.gross_margin_1y.toFixed(1)}%` : '-'),
+
+                    operating_margin: formatValue(fin.operating_margin, '%'),
+
+                    // KIS Growth (primary) / OpenDART (fallback)
+                    revenue_growth: formatValue(fin.growth_revenue, '%') !== '-'
+                        ? formatValue(fin.growth_revenue, '%')
+                        : (dartFin.revenue_cagr_3y ? `${dartFin.revenue_cagr_3y.toFixed(1)}%` : '-'),
+
+                    profit_growth: formatValue(fin.growth_profit, '%') !== '-'
+                        ? formatValue(fin.growth_profit, '%')
+                        : (dartFin.net_income_cagr_3y ? `${dartFin.net_income_cagr_3y.toFixed(1)}%` : '-'),
+
+                    // KIS Ratio
+                    debt_ratio: formatValue(fin.debt_ratio, '%'),
+
+                    // KIS Consensus
+                    consensus: fin.consensus_price && fin.consensus_price !== '-'
+                        ? `${Number(fin.consensus_price).toLocaleString()}원`
+                        : '-'
+                });
+
             } catch (error) {
                 console.error("Failed to fetch financial data:", error);
             } finally {
@@ -72,7 +116,7 @@ export default function FinancialGrid({ symbol }: FinancialGridProps) {
     if (loading) {
         return (
             <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F7D047]"></div>
             </div>
         );
     }
@@ -81,22 +125,22 @@ export default function FinancialGrid({ symbol }: FinancialGridProps) {
 
     const items = [
         { label: "시가총액", value: data.market_cap },
-        { label: "매출액 증감률 (3년)", value: data.revenue_cagr, color: parseFloat(data.revenue_cagr) > 0 ? 'text-red-400' : (parseFloat(data.revenue_cagr) < 0 ? 'text-blue-400' : 'text-white') },
-        { label: "순수익 증감률 (3년)", value: data.net_income_cagr, color: parseFloat(data.net_income_cagr) > 0 ? 'text-red-400' : (parseFloat(data.net_income_cagr) < 0 ? 'text-blue-400' : 'text-white') },
-        { label: "매출총이익률 (1년)", value: data.gross_margin },
+        { label: "매출 성장률", value: data.revenue_growth, color: getColorClass(data.revenue_growth) },
+        { label: "영업이익 성장률", value: data.profit_growth, color: getColorClass(data.profit_growth) },
+        { label: "매출총이익률", value: data.gross_margin },
         { label: "PER", value: data.per },
         { label: "PBR", value: data.pbr },
-        { label: "ROE (1년)", value: data.roe },
-        { label: "배당수익률", value: data.dividend_yield }, // KIS data usually relies on prev close
-        { label: "배당성향", value: data.payout_ratio },
-        { label: "배당연속지급", value: data.consecutive_div }
+        { label: "ROE", value: data.roe },
+        { label: "영업이익률", value: data.operating_margin },
+        { label: "부채비율", value: data.debt_ratio },
+        { label: "목표가(컨센서스)", value: data.consensus }
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {items.map((item, idx) => (
-                <div key={idx} className="bg-[#1e1e1e] p-4 rounded-xl border border-[#333]">
-                    <div className="text-[11px] text-gray-400 mb-1">{item.label}</div>
+                <div key={idx} className="bg-[#1e1e1e] p-4 rounded-xl border border-[#333] hover:border-[#555] transition-colors">
+                    <div className="text-[11px] text-gray-400 mb-1.5">{item.label}</div>
                     <div className={`text-lg font-bold ${item.color || 'text-white'}`}>
                         {item.value || '-'}
                     </div>

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     try {
         // Parallel Fetch for efficiency
-        const [stats, income, ratio, growth, opinion] = await Promise.all([
+        const [stats, incomeRaw, ratioRaw, growthRaw, opinion] = await Promise.all([
             getFinancialStats(symbol),
             getIncomeStatement(symbol),
             getFinancialRatio(symbol),
@@ -27,30 +27,33 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: 'Failed to fetch financial stats' }, { status: 500 });
         }
 
-        // Mapping Logic
-        // Currently assuming 'output' keys or defaulting to '-'
+        // KIS API returns arrays (quarterly data) - take latest entry [0]
+        const income = Array.isArray(incomeRaw) ? incomeRaw[0] : incomeRaw;
+        const ratio = Array.isArray(ratioRaw) ? ratioRaw[0] : ratioRaw;
+        const growth = Array.isArray(growthRaw) ? growthRaw[0] : growthRaw;
+
         const financials = {
             // Income Statement (FHKST66430200)
             revenue: income?.sale_account || income?.sales || '-',
             operating_profit: income?.bsop_prti || income?.operating_profit || '-',
             net_income: income?.thtr_ntin || income?.net_income || '-',
 
-            // Financial Ratio (FHKST66430300) - Previously Balance Sheet
-            // We map relevant stability/profitability ratios here if available, 
-            // OR if the user intends this to be "Balance Sheet" data (Assets/Debt), we check keys.
-            // "Financial Ratio" usually has ROE, ROA, Debt Ratio (lblt_rate).
-            // Let's assume standard keys for now.
-            assets: ratio?.total_assets || '-', // Might not exist in Ratio API
-            debt: ratio?.total_liabilities || '-', // Might not exist
-            debt_ratio: ratio?.lblt_rate || '-', // Debt Ratio
-            reserve_ratio: ratio?.rsrv_rate || '-', // Reserve Ratio
+            // Financial Ratio (FHKST66430300) - Latest quarter [0]
+            // Confirmed fields from debug: roe_val, grs, bsop_prfi_inrt, ntin_inrt, lblt_rate, rsrv_rate
+            roe: ratio?.roe_val || '-',
+            debt_ratio: ratio?.lblt_rate || '-',
+            reserve_ratio: ratio?.rsrv_rate || '-',
 
-            // Growth (FHKST66430800)
-            growth_revenue: growth?.sales_growth || growth?.grs || '-',
-            growth_profit: growth?.profit_growth || growth?.opr_pft_grs || '-',
+            // Growth rates from ratio API (grs = 매출성장률, bsop_prfi_inrt = 영업이익증가율)
+            growth_revenue: ratio?.grs || '-',
+            growth_operating: ratio?.bsop_prfi_inrt || '-',
+            growth_net_income: ratio?.ntin_inrt || '-',
+
+            // Growth (FHKST66430800) - backup
+            growth_revenue_alt: growth?.grs || growth?.sale_account_inrt || '-',
+            growth_profit_alt: growth?.bsop_prfi_inrt || growth?.opr_pft_grs || '-',
 
             // Consensus (FHKST663300C0)
-            // Likely keys: 'invt_opnn' (Opinion), 'mbcr_prc' (Target Price)
             consensus_score: opinion?.invt_opnn || opinion?.score || '-',
             consensus_price: opinion?.mbcr_prc || opinion?.target_price || '-'
         };
