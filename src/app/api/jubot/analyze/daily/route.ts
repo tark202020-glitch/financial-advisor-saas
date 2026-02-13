@@ -37,6 +37,46 @@ export async function GET(request: NextRequest) {
     const baseUrl = request.nextUrl.origin;
 
     try {
+        const forceRefresh = request.nextUrl.searchParams.get('force') === 'true';
+
+        // 0. 캐시 확인 (오늘 생성된 브리핑이 있는지)
+        if (!forceRefresh) {
+            try {
+                const supabase = await createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+
+                if (user) {
+                    // 한국 시간 기준 오늘 날짜 (YYYY-MM-DD)
+                    const kstNow = new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+                    const todayStr = kstNow.toISOString().slice(0, 10);
+                    const startOfDay = `${todayStr}T00:00:00+09:00`;
+                    const endOfDay = `${todayStr}T23:59:59+09:00`;
+
+                    const { data: cached } = await supabase
+                        .from('jubot_analysis')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .eq('analysis_type', 'daily_briefing')
+                        .gte('created_at', startOfDay) // UTC 변환은 Supabase가 처리하거나, ISO string 사용
+                        // 간단하게 오늘 날짜의 데이터 중 최신 1개
+                        .order('created_at', { ascending: false })
+                        .limit(1)
+                        .single();
+
+                    if (cached) {
+                        return NextResponse.json({
+                            success: true,
+                            generated_at: cached.created_at,
+                            briefing: cached.content,
+                            cached: true
+                        });
+                    }
+                }
+            } catch (cacheErr) {
+                console.warn('[Jubot Daily] Cache check failed:', cacheErr);
+            }
+        }
+
         // 1. 뉴스 + 시장 데이터 병렬 수집
         const [newsResult, marketData] = await Promise.all([
             fetchNewsAnalysis(baseUrl),

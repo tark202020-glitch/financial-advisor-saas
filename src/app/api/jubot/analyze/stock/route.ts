@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { createClient } from '@/utils/supabase/server';
 
 /**
  * /api/jubot/analyze/stock
@@ -180,6 +181,31 @@ export async function POST(request: NextRequest) {
         }
 
         const analysis = JSON.parse(jsonStr);
+
+        // 4. DB 저장
+        try {
+            const supabase = await createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (user) {
+                await supabase.from('jubot_analysis').insert({
+                    user_id: user.id,
+                    analysis_type: 'stock_analysis',
+                    target_symbol: symbol,
+                    content: {
+                        ...analysis,
+                        raw_financials: financialData, // 캐시된 데이터로 UI 복원 시 필요
+                        current_price: currentPrice // 당시 가격 저장
+                    },
+                    data_sources: {
+                        has_financials: !!financialData,
+                        news_count: relatedNews.length
+                    }
+                });
+            }
+        } catch (dbErr) {
+            console.warn('[Jubot Stock] DB Save failed:', dbErr);
+        }
 
         return NextResponse.json({
             success: true,

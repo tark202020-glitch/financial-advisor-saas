@@ -18,15 +18,17 @@ export default function JubotBriefing() {
     const [error, setError] = useState(false);
     const [lastUpdated, setLastUpdated] = useState<string>('');
 
-    const fetchBriefing = useCallback(async () => {
+    const fetchBriefing = useCallback(async (force = false) => {
         setLoading(true);
         setError(false);
         try {
-            const res = await fetch('/api/jubot/analyze/daily');
+            const res = await fetch(`/api/jubot/analyze/daily${force ? '?force=true' : ''}`);
             const data = await res.json();
             if (data.success && data.briefing) {
                 setBriefing(data.briefing);
-                setLastUpdated(new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }));
+                // generated_at이 있으면 그것을 사용, 없으면 현재 시간
+                const genDate = data.generated_at ? new Date(data.generated_at) : new Date();
+                setLastUpdated(genDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }));
             } else {
                 setError(true);
             }
@@ -65,12 +67,12 @@ export default function JubotBriefing() {
                     <div>
                         <h2 className="text-xl font-bold text-white">📰 JUBOT의 오늘 시장 브리핑</h2>
                         <p className="text-sm text-gray-500">
-                            {lastUpdated ? `마지막 업데이트: ${lastUpdated}` : '뉴스를 수집하여 AI가 분석합니다'}
+                            {lastUpdated ? `분석 시간: ${lastUpdated}` : '뉴스를 수집하여 AI가 분석합니다'}
                         </p>
                     </div>
                 </div>
                 <button
-                    onClick={fetchBriefing}
+                    onClick={() => fetchBriefing(true)}
                     disabled={loading}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F7D047] text-black font-bold text-base hover:bg-[#f5c518] transition-colors disabled:opacity-50"
                 >
@@ -94,7 +96,7 @@ export default function JubotBriefing() {
                         <AlertTriangle size={32} className="text-yellow-500" />
                         <p className="text-gray-400">브리핑 생성에 실패했습니다</p>
                         <button
-                            onClick={fetchBriefing}
+                            onClick={() => fetchBriefing(true)}
                             className="text-[#F7D047] text-base hover:underline"
                         >
                             다시 시도

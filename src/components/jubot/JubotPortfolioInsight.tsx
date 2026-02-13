@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Brain, RefreshCw, ArrowUpRight, ArrowDownRight, Eye, ShieldAlert, Sparkles, ChevronRight } from 'lucide-react';
 import { usePortfolio } from '@/context/PortfolioContext';
 import JubotStockCard from './JubotStockCard';
@@ -41,6 +41,7 @@ const RISK_CONFIG: Record<string, { label: string; color: string }> = {
 export default function JubotPortfolioInsight() {
     const { assets } = usePortfolio();
     const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
+    const [lastAnalysisTime, setLastAnalysisTime] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
     const [selectedStock, setSelectedStock] = useState<any>(null);
@@ -245,6 +246,9 @@ export default function JubotPortfolioInsight() {
             const data = await res.json();
             if (data.success && data.analysis) {
                 setAnalysis(data.analysis);
+                setLastAnalysisTime(new Date().toLocaleString('ko-KR', {
+                    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                }));
 
                 // 히스토리 자동 저장
                 try {
@@ -272,6 +276,44 @@ export default function JubotPortfolioInsight() {
         }
     }, [assets]);
 
+    // Check cache on mount
+    const checkCache = useCallback(async () => {
+        if (!assets || assets.length === 0) return;
+
+        // 이미 분석 결과가 있으면 스킵 (or could refresh)
+        if (analysis) return;
+
+        setLoading(true);
+        try {
+            const res = await fetch('/api/jubot/history?type=portfolio_insight&limit=1');
+            const data = await res.json();
+            if (data.success && data.history && data.history.length > 0) {
+                const latest = data.history[0];
+                // You might want to check if it's "too old", but user requirement is just "previous analysis"
+                setAnalysis(latest.content);
+                setLastAnalysisTime(new Date(latest.created_at).toLocaleString('ko-KR', {
+                    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                }));
+            }
+        } catch (e) {
+            console.warn('[JubotPortfolio] Cache check failed', e);
+        } finally {
+            setLoading(false);
+        }
+    }, [assets, analysis]);
+
+    // Initial load
+    useState(() => {
+        // assets might be empty initially, so we might need useEffect
+    });
+
+    // Use useEffect for initial check
+    useEffect(() => {
+        if (assets && assets.length > 0 && !analysis) {
+            checkCache();
+        }
+    }, [assets, analysis, checkCache]);
+
     const activeAssets = assets?.filter(a => (a.quantity || 0) > 0) || [];
 
     return (
@@ -286,6 +328,7 @@ export default function JubotPortfolioInsight() {
                         <h2 className="text-xl font-bold text-white">🔍 JUBOT의 내 주식 분석</h2>
                         <p className="text-sm text-gray-500">
                             보유 {activeAssets.length}개 종목에 대한 전문가 분석
+                            {lastAnalysisTime && <span className="ml-2 text-purple-400">• 분석 시간: {lastAnalysisTime}</span>}
                         </p>
                     </div>
                 </div>

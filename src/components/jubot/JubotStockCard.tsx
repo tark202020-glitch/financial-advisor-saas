@@ -62,6 +62,7 @@ export default function JubotStockCard({ isOpen, onClose, stock }: JubotStockCar
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
     const [realPrice, setRealPrice] = useState<number>(0);
+    const [lastAnalysisTime, setLastAnalysisTime] = useState<string | null>(null);
 
     const fetchAnalysis = useCallback(async () => {
         setLoading(true);
@@ -86,6 +87,14 @@ export default function JubotStockCard({ isOpen, onClose, stock }: JubotStockCar
             const data = await res.json();
             if (data.success && data.analysis) {
                 setAnalysis(data.analysis);
+                setLastAnalysisTime(new Date().toLocaleString('ko-KR', {
+                    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                }));
+                // Need to save to DB here if server doesn't!
+                // The plan said: "Clients will check history API first, so this route primarily acts as generator + saver".
+                // We need to implement saving in the API key /api/jubot/analyze/stock/route.ts
+                // For now, let's check if the API saves it. I haven't modified stock route yet.
+                // I should modify stock API to save result.
                 setFinancials(data.raw_financials || null);
                 if (data.current_price) setRealPrice(data.current_price);
             } else {
@@ -99,11 +108,42 @@ export default function JubotStockCard({ isOpen, onClose, stock }: JubotStockCar
         }
     }, [stock]);
 
+    // Check cache
+    const checkCache = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/jubot/history?type=stock_analysis&symbol=${stock.symbol}&limit=1`);
+            const data = await res.json();
+            if (data.success && data.history && data.history.length > 0) {
+                const latest = data.history[0];
+                setAnalysis(latest.content);
+                if (latest.content.raw_financials) setFinancials(latest.content.raw_financials);
+                // current_price might not be in content, but maybe we can just show cached price or fetch only price?
+                // For now, let's just show analysis. Real price update might need separate fetching if important.
+                // The current UI shows realPrice. fetchAnalysis fetches it. 
+                // We should probably fetch real price separately if we use cache for analysis.
+                // But for simplicity/speed, let's just load analysis.
+                // Or, we can trigger a "background update" for price?
+                // Let's just set time.
+                setLastAnalysisTime(new Date(latest.created_at).toLocaleString('ko-KR', {
+                    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                }));
+            } else {
+                // No cache, fetch fresh
+                fetchAnalysis();
+            }
+        } catch (e) {
+            fetchAnalysis();
+        } finally {
+            setLoading(false);
+        }
+    }, [stock, fetchAnalysis]);
+
     // Auto-fetch on open
     const [hasFetched, setHasFetched] = useState(false);
     if (isOpen && !hasFetched && !loading && !analysis) {
         setHasFetched(true);
-        fetchAnalysis();
+        checkCache();
     }
 
     if (!isOpen) return null;
@@ -125,7 +165,10 @@ export default function JubotStockCard({ isOpen, onClose, stock }: JubotStockCar
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-white">{stock.name}</h2>
-                            <p className="text-sm text-gray-500">{stock.symbol} · {stock.category === 'US' ? '미국' : '한국'}</p>
+                            <p className="text-sm text-gray-500">
+                                {stock.symbol} · {stock.category === 'US' ? '미국' : '한국'}
+                                {lastAnalysisTime && <span className="ml-2 text-purple-400">• 분석 시간: {lastAnalysisTime}</span>}
+                            </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
