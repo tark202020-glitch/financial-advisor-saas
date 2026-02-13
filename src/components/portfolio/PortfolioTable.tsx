@@ -55,7 +55,7 @@ export default function PortfolioTable() {
         us: true,
         closed: false
     });
-    const [sort, setSort] = useState<SortOption>('newest');
+    const [sort, setSort] = useState<SortOption>('value');
 
     // Counts
     const counts = useMemo(() => {

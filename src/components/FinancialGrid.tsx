@@ -69,7 +69,7 @@ export default function FinancialGrid({ symbol }: FinancialGridProps) {
 
                 setData({
                     // KIS Stats
-                    market_cap: stats.market_cap ? `${stats.market_cap}억` : '-',
+                    market_cap: stats.market_cap ? `${Number(stats.market_cap).toLocaleString()}억` : '-',
                     per: stats.per ? `${stats.per}배` : '-',
                     pbr: stats.pbr ? `${stats.pbr}배` : '-',
 

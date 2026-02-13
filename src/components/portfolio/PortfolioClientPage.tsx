@@ -2,6 +2,7 @@
 
 import AddAssetForm from '@/components/portfolio/AddAssetForm';
 import PortfolioTable from '@/components/portfolio/PortfolioTable';
+import PortfolioSummaryBlock from '@/components/portfolio/PortfolioSummaryBlock';
 import SidebarLayout from '@/components/SidebarLayout';
 
 import { usePortfolio } from '@/context/PortfolioContext';
@@ -12,6 +13,11 @@ export default function PortfolioClientPage() {
     return (
         <SidebarLayout>
             <div className="max-w-5xl mx-auto space-y-8 p-6 animate-in fade-in duration-500">
+                {/* Portfolio Summary Block */}
+                <section>
+                    <PortfolioSummaryBlock />
+                </section>
+
                 {/* Add Asset Section */}
                 <section>
                     <AddAssetForm />
