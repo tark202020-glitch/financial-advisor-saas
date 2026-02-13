@@ -72,15 +72,41 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 2. 최근 뉴스 수집 (간략하게 RSS 재수집)
+        // 2. 최근 뉴스 수집 (RSS 직접 파싱, self-call 제거)
         let relatedNews: string[] = [];
         try {
-            const newsRes = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/jubot/collect/news`);
-            const newsData = await newsRes.json();
-            if (newsData.success && newsData.analysis?.key_topics) {
-                relatedNews = newsData.analysis.key_topics
-                    .filter((t: any) => t.related_symbols?.includes(symbol) || t.topic?.includes(name))
-                    .map((t: any) => `${t.topic}: ${t.summary} (${t.sentiment})`);
+            const rssSources = [
+                'https://rss.news.naver.com/money.xml',
+                'https://www.hankyung.com/feed/stock',
+            ];
+
+            for (const rssUrl of rssSources) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+                    const res = await fetch(rssUrl, {
+                        signal: controller.signal,
+                        headers: { 'User-Agent': 'JubotNewsCollector/1.0' }
+                    });
+                    clearTimeout(timeoutId);
+
+                    if (res.ok) {
+                        const xml = await res.text();
+                        // 간단 파싱: 종목명이 포함된 기사 제목만 추출
+                        const itemRegex = /<item>[\s\S]*?<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>[\s\S]*?<\/item>/gi;
+                        let match;
+                        while ((match = itemRegex.exec(xml)) !== null && relatedNews.length < 5) {
+                            const title = match[1].replace(/<[^>]+>/g, '').trim();
+                            // 종목명 또는 clean 심볼이 포함된 기사만
+                            const cleanSym = symbol.includes('.') ? symbol.split('.')[0] : symbol;
+                            if (title.includes(name) || title.includes(cleanSym)) {
+                                relatedNews.push(title);
+                            }
+                        }
+                    }
+                } catch {
+                    // RSS 하나 실패해도 계속
+                }
             }
         } catch (e) {
             console.warn('[Jubot Stock] News fetch failed:', e);

@@ -1,4 +1,14 @@
-## [Alpha V1.187] - 2026-02-13 21:15:00
+## [Alpha V1.188] - 2026-02-13 21:30:00
+
+### 🔧 DART 재무 데이터 + 뉴스 연동 근본 수정
+- **Summary**: OpenDART corp_code 매핑 + 뉴스 RSS 직접 파싱으로 전면 수정
+- **Detail**:
+  - `dart-corp-codes.json`: 3,946개 상장사 stock_code→corp_code 매핑 파일 생성
+  - `opendart.ts`: API 호출 대신 JSON 매핑에서 corp_code 즉시 조회, `.KS` suffix 자동 제거
+  - 종목 분석 뉴스: self-call 제거 → RSS 직접 파싱으로 관련 뉴스 추출
+- **Build Time**: 2026-02-13 21:30:00
+
+
 
 ### 🐛 Bug Fix: 심층 분석 현재가 0원 표시 수정
 - **Summary**: 서버 self-call(localhost) 실패 → KIS 클라이언트 직접 import로 전환

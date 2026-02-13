@@ -1,79 +1,30 @@
 /**
  * OpenDART API 직접 호출 유틸리티
  * 
- * Supabase 테이블 없이 OpenDART API를 직접 호출하여 재무 데이터를 가져옵니다.
+ * corpCode.xml에서 추출한 stock_code→corp_code 매핑 파일을 사용하여
+ * OpenDART API를 직접 호출합니다.
  * API 문서: https://opendart.fss.or.kr/guide/main.do
  */
+
+import corpCodeMap from '@/data/dart-corp-codes.json';
 
 const DART_API_KEY = process.env.DART_API_KEY;
 const DART_BASE_URL = 'https://opendart.fss.or.kr/api';
 
-interface DartFinancialItem {
-    rcept_no: string;
-    bsns_year: string;
-    corp_code: string;
-    stock_code: string;
-    fs_div: string; // CFS: 연결, OFS: 별도
-    fs_nm: string;
-    sj_div: string; // BS: 재무상태표, IS: 손익계산서
-    sj_nm: string;
-    account_id: string;
-    account_nm: string;
-    account_detail: string;
-    thstrm_nm: string;
-    thstrm_amount: string;
-    frmtrm_nm: string;
-    frmtrm_amount: string;
-    bfefrmtrm_nm: string;
-    bfefrmtrm_amount: string;
-}
-
-interface DartDividendItem {
-    rcept_no: string;
-    corp_code: string;
-    se: string; // 구분
-    stock_knd: string; // 주식종류
-    thstrm: string; // 당기
-    frmtrm: string; // 전기
-    lwfr: string; // 전전기
-}
-
-// corp_code 조회용 캐시
-const corpCodeCache: Record<string, string> = {};
-
 /**
  * 종목코드(stock_code) → corp_code 변환
- * OpenDART의 기업고유번호 조회
+ * JSON 매핑 파일에서 즉시 조회 (API 호출 없음)
  */
-export async function getCorpCode(stockCode: string): Promise<string | null> {
-    if (!DART_API_KEY) {
-        console.warn('[DART] API key not set');
-        return null;
-    }
+export function getCorpCode(stockCode: string): string | null {
+    // .KS, .KQ 등 suffix 제거
+    let clean = stockCode;
+    if (clean.includes('.')) clean = clean.split('.')[0];
 
-    if (corpCodeCache[stockCode]) return corpCodeCache[stockCode];
-
-    try {
-        // OpenDART는 전체 기업 목록 파일을 제공하지만, 대안으로 회사검색 API 사용
-        const url = `${DART_BASE_URL}/company.json?crtfc_key=${DART_API_KEY}&stock_code=${stockCode}`;
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.status === '000' && data.corp_code) {
-            corpCodeCache[stockCode] = data.corp_code;
-            return data.corp_code;
-        }
-
-        return null;
-    } catch (e) {
-        console.warn(`[DART] Corp code lookup failed for ${stockCode}:`, e);
-        return null;
-    }
+    return (corpCodeMap as Record<string, string>)[clean] || null;
 }
 
 /**
  * 재무제표 데이터 조회 (단일회사 주요계정)
- * fnlttSinglAcntAll 엔드포인트 사용
  */
 export async function fetchFinancials(stockCode: string, year?: number): Promise<{
     year: number;
@@ -85,22 +36,29 @@ export async function fetchFinancials(stockCode: string, year?: number): Promise
     operatingProfit_prev: number | null;
     netIncome_prev: number | null;
 } | null> {
-    if (!DART_API_KEY) return null;
+    if (!DART_API_KEY) {
+        console.warn('[DART] API key not set');
+        return null;
+    }
 
-    const corpCode = await getCorpCode(stockCode);
-    if (!corpCode) return null;
+    const corpCode = getCorpCode(stockCode);
+    if (!corpCode) {
+        console.warn(`[DART] No corp_code found for stock_code: ${stockCode}`);
+        return null;
+    }
 
-    const targetYear = year || new Date().getFullYear() - 1; // 기본: 전년도
+    const targetYear = year || new Date().getFullYear() - 1;
 
     try {
-        // 단일회사 주요계정 조회 (연간)
+        // 단일회사 주요계정 조회 (연간 사업보고서)
         const url = `${DART_BASE_URL}/fnlttSinglAcnt.json?crtfc_key=${DART_API_KEY}&corp_code=${corpCode}&bsns_year=${targetYear}&reprt_code=11011`;
-        // reprt_code: 11011=사업보고서(연간), 11012=반기, 11013=1분기, 11014=3분기
+        console.log(`[DART] Fetching financials: corp_code=${corpCode}, year=${targetYear}`);
 
         const res = await fetch(url);
         const data = await res.json();
 
         if (data.status !== '000' || !data.list) {
+            console.warn(`[DART] No data for ${corpCode}/${targetYear}: status=${data.status}, msg=${data.message}`);
             // 이전 연도 시도
             const prevUrl = `${DART_BASE_URL}/fnlttSinglAcnt.json?crtfc_key=${DART_API_KEY}&corp_code=${corpCode}&bsns_year=${targetYear - 1}&reprt_code=11011`;
             const prevRes = await fetch(prevUrl);
@@ -143,13 +101,12 @@ function processFinancialData(list: any[], year: number) {
         return { current: null, prev: null };
     };
 
-    const revenue = findValue('매출액');
+    let revenue = findValue('매출액');
     if (!revenue.current) {
         // 일부 기업: '수익(매출액)' 또는 '영업수익'
         const altRevenue = findValue('수익');
         if (altRevenue.current) {
-            revenue.current = altRevenue.current;
-            revenue.prev = altRevenue.prev;
+            revenue = altRevenue;
         }
     }
 
@@ -170,8 +127,7 @@ function processFinancialData(list: any[], year: number) {
 }
 
 /**
- * 전체회사 주요계정 (다년도 조회)
- * 각 연도별로 호출하여 데이터 수집
+ * 다년도 재무 데이터 조회
  */
 export async function fetchMultiYearFinancials(stockCode: string, years: number = 3): Promise<Array<{
     year: number;
@@ -210,7 +166,7 @@ export async function fetchDividends(stockCode: string, year?: number): Promise<
 } | null> {
     if (!DART_API_KEY) return null;
 
-    const corpCode = await getCorpCode(stockCode);
+    const corpCode = getCorpCode(stockCode);
     if (!corpCode) return null;
 
     const targetYear = year || new Date().getFullYear() - 1;
@@ -243,7 +199,6 @@ export async function fetchDividends(stockCode: string, year?: number): Promise<
 
 /**
  * 종합 재무 요약 (포트폴리오 분석용)
- * 최근 1년 핵심 지표만 빠르게 조회
  */
 export async function fetchCompanySummary(stockCode: string): Promise<{
     baseYear: number;
