@@ -222,10 +222,11 @@ export default function TargetProximityBlock() {
 
         return (
             <g transform={`translate(${x},${y})`}>
-                <foreignObject x={-100} y={-15} width={90} height={40}>
-                    <div className="h-full flex items-center justify-end">
-                        <p className={`text-[11px] font-bold leading-tight text-right line-clamp-2 overflow-hidden text-ellipsis break-keep ${isUrgent5 ? 'text-red-600 scale-105 origin-right' : 'text-gray-400'}`}>
-                            {isUrgent5 && <span className="mr-1 inline-block animate-bounce">🔥</span>}
+                {/* Fixed width for safety on iPad/Mobile */}
+                <foreignObject x={-115} y={-15} width={110} height={40}>
+                    <div className="h-full flex items-center justify-end pr-1">
+                        <p className={`text-[11px] font-bold leading-tight text-right line-clamp-2 overflow-hidden text-ellipsis break-keep ${isUrgent5 ? 'text-red-600' : 'text-gray-400'}`}>
+                            {isUrgent5 && <span className="mr-1 inline-block">🔥</span>}
                             {payload.value}
                         </p>
                     </div>
@@ -287,7 +288,7 @@ export default function TargetProximityBlock() {
                                     <YAxis
                                         dataKey="name"
                                         type="category"
-                                        width={100}
+                                        width={120}
                                         tick={<CustomYAxisTick data={upperData} />}
                                         interval={0}
                                         onClick={handleBarClick}
@@ -336,7 +337,7 @@ export default function TargetProximityBlock() {
                                     <YAxis
                                         dataKey="name"
                                         type="category"
-                                        width={100}
+                                        width={120}
                                         tick={<CustomYAxisTick data={lowerData} />}
                                         interval={0}
                                         onClick={handleBarClick}
