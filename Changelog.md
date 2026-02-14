@@ -1,5 +1,15 @@
 
 
+## [Alpha V1.213] - 2026-02-14 22:30:00
+
+### 💡 Feature: Jubot Page Guide
+- **Summary**: 각 페이지 상단에 주봇 가이드 아이콘 추가
+- **Detail**:
+  - `Dashboard`, `Portfolio`, `Insights`, `ConditionSearch` 페이지 타이틀 옆에 주봇 아이콘 배치.
+  - 클릭 시 말풍선으로 해당 페이지의 역할과 사용팁 안내.
+  - `JubotPageGuide` 공통 컴포넌트 구현.
+- **Build Time**: 2026-02-14 22:30:00
+
 ## [Alpha V1.211] - 2026-02-14 21:30:00
 
 ### 📐 UI: Global Mobile Padding Reduction

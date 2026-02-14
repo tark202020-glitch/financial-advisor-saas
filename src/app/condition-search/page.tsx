@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import SidebarLayout from "@/components/SidebarLayout";
+import JubotPageGuide from '@/components/common/JubotPageGuide';
 
 // === Types ===
 interface ConditionRange {
@@ -225,7 +226,10 @@ export default function ConditionSearchPage() {
         <SidebarLayout>
             <div className="p-1 pb-32 sm:p-8 sm:pb-32 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
                 <header className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2">조건검색</h1>
+                    <div className="flex items-center gap-2 mb-2">
+                        <h1 className="text-3xl font-bold text-white">조건검색</h1>
+                        <JubotPageGuide guideText={`내가 원하는 재무 조건(매출증가율, 영업이익률 등)에 맞는\n우량주를 발굴하는 공간입니다.`} />
+                    </div>
                     <p className="text-gray-400">원하는 조건으로 KOSPI 전체 종목을 분석합니다.</p>
                 </header>
 

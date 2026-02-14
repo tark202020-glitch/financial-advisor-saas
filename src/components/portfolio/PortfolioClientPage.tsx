@@ -3,8 +3,8 @@
 import AddAssetForm from '@/components/portfolio/AddAssetForm';
 import PortfolioTable from '@/components/portfolio/PortfolioTable';
 import PortfolioSummaryBlock from '@/components/portfolio/PortfolioSummaryBlock';
+import JubotPageGuide from '@/components/common/JubotPageGuide';
 import SidebarLayout from '@/components/SidebarLayout';
-
 import { usePortfolio } from '@/context/PortfolioContext';
 
 export default function PortfolioClientPage() {
@@ -13,6 +13,11 @@ export default function PortfolioClientPage() {
     return (
         <SidebarLayout>
             <div className="max-w-5xl mx-auto space-y-8 p-1 sm:p-6 animate-in fade-in duration-500">
+                <header className="flex items-center gap-2 mb-4">
+                    <h1 className="text-2xl font-bold text-white">내 주식일지</h1>
+                    <JubotPageGuide guideText={`보유한 주식을 기록하고, 매수/매도 이유와 목표가를 설정하여\n나만의 투자 원칙을 지키는 공간입니다.`} />
+                </header>
+
                 {/* Portfolio Summary Block */}
                 <section>
                     <PortfolioSummaryBlock />
