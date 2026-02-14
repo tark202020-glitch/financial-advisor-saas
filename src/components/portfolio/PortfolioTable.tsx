@@ -144,7 +144,7 @@ export default function PortfolioTable() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
             {/* Error Refresh Banner */}
             {hasAnyError && !isRefreshing && (
                 <StockLoadError
@@ -156,7 +156,7 @@ export default function PortfolioTable() {
             )}
 
             {/* Control Bar */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#1E1E1E] p-4 rounded-2xl border border-[#333] shadow-lg shadow-black/20">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#1E1E1E] p-3 sm:p-4 rounded-2xl border border-[#333] shadow-lg shadow-black/20">
 
                 {/* Filters */}
                 <div className="flex flex-wrap gap-2">
@@ -204,7 +204,7 @@ export default function PortfolioTable() {
                     <p className="text-gray-500">조건에 맞는 자산이 없습니다.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                     {filteredAndSortedAssets.map((asset) => {
                         // Prepare Stock Data prop
                         const cleanSymbol = asset.symbol.replace('.KS', '');

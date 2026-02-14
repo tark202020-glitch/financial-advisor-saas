@@ -39,7 +39,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             <main
                 className={`
                     transition-all duration-300 ease-in-out
-                    ${isMobile ? "pt-14 p-4" : (isCollapsed ? "pl-20" : "pl-64")}
+                    ${isMobile ? "pt-14 p-2" : (isCollapsed ? "pl-20" : "pl-64")}
                 `}
             >
                 {children}
