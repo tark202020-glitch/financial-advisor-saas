@@ -581,6 +581,7 @@ export default function JubotPortfolioInsight() {
             {/* Stock Detail Modal */}
             {selectedStock && (
                 <JubotStockCard
+                    key={selectedStock.symbol}
                     isOpen={!!selectedStock}
                     onClose={() => setSelectedStock(null)}
                     stock={selectedStock}

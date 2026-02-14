@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { X, Brain, TrendingUp, TrendingDown, Shield, AlertTriangle, Lightbulb, Target, BarChart3, Newspaper, RefreshCw } from 'lucide-react';
 import { formatCurrency } from '@/utils/format';
 
@@ -139,12 +139,21 @@ export default function JubotStockCard({ isOpen, onClose, stock }: JubotStockCar
         }
     }, [stock, fetchAnalysis]);
 
+    // Reset state when stock changes
+    useEffect(() => {
+        setAnalysis(null);
+        setFinancials(null);
+        setError(false);
+        setRealPrice(0);
+        setLastAnalysisTime(null);
+    }, [stock.symbol]);
+
     // Auto-fetch on open
-    const [hasFetched, setHasFetched] = useState(false);
-    if (isOpen && !hasFetched && !loading && !analysis) {
-        setHasFetched(true);
-        checkCache();
-    }
+    useEffect(() => {
+        if (isOpen && !analysis && !loading) {
+            checkCache();
+        }
+    }, [isOpen, analysis, loading, checkCache]);
 
     if (!isOpen) return null;
 
