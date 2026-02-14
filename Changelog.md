@@ -1,3 +1,11 @@
+## [Alpha V1.210] - 2026-02-14 21:20:00
+
+### 📐 UI: Mobile Margin Refinement
+- **Summary**: 주봇 페이지 전체 컨테이너 여백 축소 (모바일)
+- **Detail**:
+  - `JubotPage`의 컨테이너 패딩을 `p-6`에서 모바일 기준 `p-2`로 대폭 축소하여 화면 활용도 극대화 (기존 대비 약 1/3 수준으로 여백 감소)
+- **Build Time**: 2026-02-14 21:20:00
+
 ## [Alpha V1.209] - 2026-02-14 21:10:00
 
 ### 📐 UI: Mobile Padding Adjustment
