@@ -96,7 +96,7 @@ export default function JubotBriefing() {
     return (
         <div className="bg-[#1e1e1e] rounded-2xl border border-[#333] overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-[#333] flex flex-col gap-4">
+            <div className="px-3 py-4 sm:px-6 border-b border-[#333] flex flex-col gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F7D047] to-[#F59E0B] flex items-center justify-center flex-shrink-0">
                         <Newspaper size={20} className="text-black" />
@@ -119,7 +119,7 @@ export default function JubotBriefing() {
             </div>
 
             {/* Content */}
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
                 {loading && !briefing && (
                     <div className="flex flex-col items-center justify-center py-12 gap-4">
                         <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#333] border-t-[#F7D047]"></div>

@@ -358,7 +358,7 @@ export default function JubotPortfolioInsight() {
     return (
         <div className="bg-[#1e1e1e] rounded-2xl border border-[#333] overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-[#333] flex flex-col gap-4">
+            <div className="px-3 py-4 sm:px-6 border-b border-[#333] flex flex-col gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
                         <Brain size={20} className="text-white" />
@@ -382,7 +382,7 @@ export default function JubotPortfolioInsight() {
             </div>
 
             {/* Content */}
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
                 {/* ── Loading with Progress Bar ── */}
                 {loading && !analysis && (
                     <div className="flex flex-col items-center justify-center py-16 gap-5">
