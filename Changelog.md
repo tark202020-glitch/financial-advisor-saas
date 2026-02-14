@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.215] - 2026-02-14 23:35:00
+
+### 🎨 UI: Hero Section Animation
+- **Summary**: 랜딩 페이지 Hero 섹션 대시보드 이미지 애니메이션 적용
+- **Detail**:
+  - `HeroSection`: 대시보드 스크린샷(`dashboard_ALL.png`)이 천천히 위로 스크롤되는 애니메이션 추가.
+  - 사용자가 실제 대시보드를 훑어보는 듯한 시각적 효과 구현.
+- **Build Time**: 2026-02-14 23:35:00
+
 ## [Alpha V1.214] - 2026-02-14 23:30:00
 
 ### 🎨 UI: Landing Page Overhaul
