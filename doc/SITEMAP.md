@@ -1,4 +1,4 @@
-# 📋 Financial Advisor SaaS — 사이트맵 & 페이지 네이밍 가이드
+# 📋 Financial Advisor SaaS — 사이트맵 & 페이지 네이밍 가이드 (jubot.goraebang.com)
 
 > 전체 UI 수정 작업을 위한 페이지별 구조 정리 문서  
 > 최종 업데이트: 2026-02-12

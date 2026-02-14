@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.218] - 2026-02-15 00:15:00
+
+### 🐛 Fix: Favicon Visibility
+- **Summary**: 파비콘 미표시 문제 해결을 위한 명시적 설정 추가
+- **Detail**:
+  - `src/app/layout.tsx`: Next.js Metadata에 `icons` 속성 명시적 추가.
+  - `public/favicon.ico`: `icon.png`를 복사하여 레거시 브라우저 호환성 확보.
+- **Build Time**: 2026-02-15 00:15:00
+
 ## [Alpha V1.217] - 2026-02-14 23:55:00
 
 ### 🎨 UI: Favicon Update
