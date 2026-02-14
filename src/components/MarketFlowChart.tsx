@@ -306,20 +306,20 @@ function KospiMainBlock() {
     return (
         <div className="bg-[#1E1E1E] rounded-2xl border border-[#333] shadow-lg shadow-black/20 overflow-hidden">
             {/* Header */}
-            <div className="px-6 pt-5 pb-3 border-b border-[#333] flex items-center justify-between">
+            <div className="px-4 py-4 sm:px-6 sm:pt-5 sm:pb-3 border-b border-[#333] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-8 bg-[#F7D047] rounded-full" />
-                    <h3 className="text-xl font-bold text-white">KOSPI</h3>
+                    <div className="w-1.5 h-6 sm:h-8 bg-[#F7D047] rounded-full" />
+                    <h3 className="text-lg sm:text-xl font-bold text-white">KOSPI</h3>
                 </div>
                 <div className="flex items-baseline gap-3">
-                    <span className="text-4xl font-extrabold text-white tracking-tight">
+                    <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
                         {indexData.value > 0 ? Math.round(indexData.value).toLocaleString() : '...'}
                     </span>
                     {indexData.value > 0 && (
-                        <div className={`flex items-center text-lg font-bold ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
-                            {isUp ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
+                        <div className={`flex items-center text-sm sm:text-lg font-bold ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
+                            {isUp ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
                             <span className="ml-1">{Math.round(Math.abs(indexData.change)).toLocaleString()}</span>
-                            <span className="ml-2 text-base opacity-90">{isUp ? '+' : '-'}{Math.abs(indexData.changePercent).toFixed(2)}%</span>
+                            <span className="ml-2 text-xs sm:text-base opacity-90">{isUp ? '+' : '-'}{Math.abs(indexData.changePercent).toFixed(2)}%</span>
                         </div>
                     )}
                 </div>
@@ -328,10 +328,10 @@ function KospiMainBlock() {
             {/* Content: Chart (Left) + Investor (Right) */}
             <div className="flex flex-col lg:flex-row">
                 {/* Chart Area */}
-                <div className="flex-1 p-4 lg:p-6 min-h-[300px]">
+                <div className="flex-1 p-3 sm:p-4 lg:p-6 min-h-[250px] sm:min-h-[300px]">
                     {chartData.length > 0 ? (
                         <ResponsiveContainer width="100%" height={300}>
-                            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                            <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="kospiGradient" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="0%" stopColor="#F7D047" stopOpacity={0.3} />
@@ -342,14 +342,14 @@ function KospiMainBlock() {
                                 <XAxis
                                     dataKey="date"
                                     tickFormatter={(v) => `${v.slice(4, 6)}/${v.slice(6, 8)}`}
-                                    tick={{ fill: '#666', fontSize: 11 }}
+                                    tick={{ fill: '#666', fontSize: 10 }}
                                     axisLine={{ stroke: '#333' }}
                                     tickLine={false}
                                     interval={Math.floor(chartData.length / 6)}
                                 />
                                 <YAxis
                                     domain={[minVal, maxVal]}
-                                    tick={{ fill: '#666', fontSize: 11 }}
+                                    tick={{ fill: '#666', fontSize: 10 }}
                                     axisLine={false}
                                     tickLine={false}
                                     tickFormatter={(v) => v.toLocaleString()}
@@ -378,7 +378,7 @@ function KospiMainBlock() {
                 </div>
 
                 {/* Investor Trend (Right) */}
-                <div className="lg:w-[340px] border-t lg:border-t-0 lg:border-l border-[#333] p-5">
+                <div className="lg:w-[340px] border-t lg:border-t-0 lg:border-l border-[#333] p-4 sm:p-5">
                     <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5">
                         <Activity size={14} className="text-[#F7D047]" />
                         투자자 동향
@@ -454,27 +454,27 @@ function IndexCompactCard({ name, symbol, category, flag }: { name: string; symb
     }
 
     return (
-        <div className="bg-[#1E1E1E] rounded-xl p-4 border border-[#333] hover:border-[#555] transition-all group">
+        <div className="bg-[#1E1E1E] rounded-xl p-3 sm:p-4 border border-[#333] hover:border-[#555] transition-all group">
             <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-1.5">
-                    {flag && <span className="text-sm">{flag}</span>}
-                    <span className="font-bold text-white text-sm">{name}</span>
+                    {flag && <span className="text-xs sm:text-sm">{flag}</span>}
+                    <span className="font-bold text-white text-xs sm:text-sm">{name}</span>
                 </div>
-                {timeStr && <span className="text-[10px] text-gray-600">{timeStr}</span>}
+                {timeStr && <span className="text-[10px] text-gray-600 hidden sm:block">{timeStr}</span>}
             </div>
             <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-extrabold text-white">
+                <span className="text-xl sm:text-2xl font-extrabold text-white">
                     {hasData ? Math.round(indexData.value).toLocaleString() : '-'}
                 </span>
                 {hasData && (
                     <div className={`flex items-center gap-1 font-bold ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
-                        {isUp ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
-                        <span className="text-xl">{Math.abs(indexData.changePercent).toFixed(2)}%</span>
+                        {isUp ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+                        <span className="text-base sm:text-xl">{Math.abs(indexData.changePercent).toFixed(2)}%</span>
                     </div>
                 )}
             </div>
             {hasData && (
-                <div className={`text-xs mt-1 ${isUp ? 'text-red-500/70' : 'text-blue-500/70'}`}>
+                <div className={`text-[10px] sm:text-xs mt-1 ${isUp ? 'text-red-500/70' : 'text-blue-500/70'}`}>
                     {isUp ? '+' : ''}{Math.round(indexData.change).toLocaleString()}
                 </div>
             )}
@@ -544,7 +544,7 @@ export default function MarketFlowChart() {
             <KospiMainBlock />
 
             {/* 2. Other Indices Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 <IndexCompactCard name="KOSDAQ" symbol="1001" category="KR" flag="🇰🇷" />
                 <IndexCompactCard name="DOW" symbol=".DJI" category="US" flag="🇺🇸" />
                 <IndexCompactCard name="NASDAQ" symbol="COMP" category="US" flag="🇺🇸" />

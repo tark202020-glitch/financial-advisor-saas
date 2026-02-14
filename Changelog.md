@@ -1,3 +1,14 @@
+## [Alpha V1.206] - 2026-02-14 18:35:00
+
+### 📱 Mobile UI Overhaul
+- **Summary**: Comprehensive mobile UI responsiveness updates.
+- **Detail**:
+  - **Navigation**: Added `MobileHeader` and `MobileDrawer` to replace the sidebar on mobile devices.
+  - **Dashboard**: Refactored `MarketFlowChart` and `DashboardIndex` to stack correctly on single-column layouts.
+  - **Portfolio**: Improved `PortfolioCard`, `PortfolioSummaryBlock`, and `SidebarLayout` padding for better mobile readability and to prevent overflow.
+  - **Modals**: Optimized `StockDetailChartModal` to fit mobile screens with adjusted padding and chart heights.
+- **Build Time**: 2026-02-14 18:35:00
+
 ## [Alpha V1.205] - 2026-02-14 09:31:00
 
 ### 🤖 주봇 1.0 (JUBOT 1.0) 대규모 업데이트

@@ -4,18 +4,43 @@ import { useState } from "react";
 import Sidebar from "./Sidebar";
 import MemoOverlay from "./memo/MemoOverlay";
 import { StickyNote } from "lucide-react";
+import { useMobile } from "@/hooks/useMobile";
+import MobileHeader from "./mobile/MobileHeader";
+import MobileDrawer from "./mobile/MobileDrawer";
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMemoOpen, setIsMemoOpen] = useState(false);
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+
+    // Detect mobile
+    const isMobile = useMobile();
 
     const toggle = () => setIsCollapsed(!isCollapsed);
 
     return (
         <div className="min-h-screen bg-[#121212] font-sans text-gray-200">
-            <Sidebar isCollapsed={isCollapsed} toggle={toggle} />
+            {/* Desktop Sidebar (Hide on mobile) */}
+            {!isMobile && (
+                <Sidebar isCollapsed={isCollapsed} toggle={toggle} />
+            )}
+
+            {/* Mobile Header (Show on mobile) */}
+            {isMobile && (
+                <>
+                    <MobileHeader onMenuClick={() => setIsMobileDrawerOpen(true)} />
+                    <MobileDrawer
+                        isOpen={isMobileDrawerOpen}
+                        onClose={() => setIsMobileDrawerOpen(false)}
+                    />
+                </>
+            )}
+
             <main
-                className={`transition-all duration-300 ease-in-out ${isCollapsed ? "pl-20" : "pl-64"}`}
+                className={`
+                    transition-all duration-300 ease-in-out
+                    ${isMobile ? "pt-14 p-4" : (isCollapsed ? "pl-20" : "pl-64")}
+                `}
             >
                 {children}
             </main>

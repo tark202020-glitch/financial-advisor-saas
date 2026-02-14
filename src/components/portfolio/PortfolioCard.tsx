@@ -192,9 +192,9 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                         </div>
 
                         {/* Targets */}
-                        <div className="flex gap-4" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex-1">
-                                <label className="block text-xs text-gray-500 mb-1 flex items-center justify-between">
+                        <div className="flex gap-2 sm:gap-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex-1 min-w-0">
+                                <label className="block text-xs text-gray-500 mb-1 flex items-center justify-between whitespace-nowrap">
                                     하한 목표
                                     {getGoalRate(targetLower) !== null && (
                                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getGoalRate(targetLower)! >= 0 ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>
@@ -207,12 +207,12 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                                     value={targetLower}
                                     onChange={(e) => setTargetLower(e.target.value)}
                                     onBlur={handleSave}
-                                    className="w-full bg-[#121212] border border-[#333] rounded-lg px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition placeholder-gray-700"
+                                    className="w-full bg-[#121212] border border-[#333] rounded-lg px-2 sm:px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition placeholder-gray-700"
                                     placeholder="0"
                                 />
                             </div>
-                            <div className="flex-1">
-                                <label className="block text-xs text-gray-500 mb-1 flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                                <label className="block text-xs text-gray-500 mb-1 flex items-center justify-between whitespace-nowrap">
                                     상한 목표
                                     {getGoalRate(targetUpper) !== null && (
                                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${getGoalRate(targetUpper)! >= 0 ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>
@@ -225,7 +225,7 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                                     value={targetUpper}
                                     onChange={(e) => setTargetUpper(e.target.value)}
                                     onBlur={handleSave}
-                                    className="w-full bg-[#121212] border border-[#333] rounded-lg px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition placeholder-gray-700"
+                                    className="w-full bg-[#121212] border border-[#333] rounded-lg px-2 sm:px-3 py-2 text-sm font-bold text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition placeholder-gray-700"
                                     placeholder="0"
                                 />
                             </div>

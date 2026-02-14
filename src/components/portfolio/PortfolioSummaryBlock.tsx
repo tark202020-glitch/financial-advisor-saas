@@ -273,18 +273,18 @@ export default function PortfolioSummaryBlock() {
                                 const isProfit = item.profit >= 0;
                                 const isUs = item.category === 'US';
                                 return (
-                                    <div key={idx} className="flex items-center justify-between bg-[#252525] rounded-lg px-4 py-3 border border-[#333] hover:border-[#555] transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs text-gray-500 w-5">{idx + 1}</span>
-                                            <div>
-                                                <div className="text-sm font-medium text-white">{item.name}</div>
-                                                <div className="text-xs text-gray-500">{item.symbol} | {item.category}</div>
+                                    <div key={idx} className="flex items-center justify-between bg-[#252525] rounded-lg px-4 py-3 border border-[#333] hover:border-[#555] transition-colors gap-3">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <span className="text-xs text-gray-500 w-5 shrink-0">{idx + 1}</span>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="text-sm font-medium text-white truncate">{item.name}</div>
+                                                <div className="text-xs text-gray-500 truncate">{item.symbol} | {item.category}</div>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="flex items-center gap-3 text-xs text-gray-400">
+                                        <div className="text-right shrink-0">
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 text-xs text-gray-400">
                                                 <span>매수 {fmtValue(item.buyAmount, isUs ? 'us' : 'kr')}</span>
-                                                <span>→</span>
+                                                <span className="hidden sm:inline">→</span>
                                                 <span>매도 {fmtValue(item.sellAmount, isUs ? 'us' : 'kr')}</span>
                                             </div>
                                             <div className={`text-sm font-bold mt-0.5 ${isProfit ? 'text-red-400' : 'text-blue-400'}`}>

@@ -426,10 +426,10 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-[#1E1E1E] rounded-2xl shadow-2xl shadow-black/50 border border-[#333] w-full max-w-7xl h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-[#1E1E1E] rounded-2xl shadow-2xl shadow-black/50 border border-[#333] w-[95%] sm:w-[90%] max-w-5xl h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
 
                 {/* ======= HEADER ======= */}
-                <div className="px-8 py-4 border-b border-[#333] flex justify-between items-center bg-[#252525] flex-shrink-0">
+                <div className="p-4 sm:p-6 border-b border-[#333] flex justify-between items-start bg-[#252525] flex-shrink-0">
                     <div className="flex items-center gap-6">
                         <div>
                             <div className="flex items-center gap-2 text-gray-500 text-xs mb-0.5">
@@ -438,19 +438,19 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                 <span>{asset.category === 'KR' ? 'KOSPI' : 'US'}</span>
                                 {asset.sector && (<><span className="text-gray-600">|</span><span>{asset.sector}</span></>)}
                             </div>
-                            <h2 className="text-2xl font-bold text-white tracking-tight">{asset.name || asset.symbol}</h2>
+                            <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight">{asset.name || asset.symbol}</h2>
                         </div>
-                        <div className="border-l border-[#333] pl-6">
-                            <div className={`text-3xl font-bold ${changePercent >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                        <div className="border-l border-[#333] pl-4 sm:pl-6">
+                            <div className={`text-xl sm:text-3xl font-bold ${changePercent >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                                 {formatPrice(currentPrice)}
                             </div>
-                            <div className={`text-sm font-bold flex items-center gap-1 ${changePercent >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                            <div className={`text-xs sm:text-sm font-bold flex items-center gap-1 ${changePercent >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
                                 {changePercent >= 0 ? '▲' : '▼'} {Math.abs(changePercent).toFixed(2)}%
                             </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        {!viewOnly && <button onClick={handleSaveGoals} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition">저장</button>}
+                        {!viewOnly && <button onClick={handleSaveGoals} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-bold rounded-lg transition">저장</button>}
                         <button onClick={onClose} className="p-2 text-gray-500 hover:text-white hover:bg-[#333] rounded-lg transition">
                             <X size={20} />
                         </button>
@@ -458,13 +458,13 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                 </div>
 
                 {/* ======= BODY ======= */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
 
                     {/* ---- ROW 1: Chart (2col) + Investor Trend (1col) ---- */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
                         {/* Chart Block */}
-                        <div className="lg:col-span-2 bg-[#252525] rounded-2xl p-5 border border-[#333] relative">
+                        <div className="lg:col-span-2 bg-[#252525] rounded-2xl p-4 sm:p-5 border border-[#333] relative">
                             {/* Chart Header */}
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-3 text-gray-500 text-xs font-medium">
@@ -480,7 +480,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                             </div>
 
                             {/* Price Chart */}
-                            <div className="h-[280px] w-full">
+                            <div className="h-[250px] sm:h-[400px] w-full">
                                 {chartLoading ? (
                                     <div className="h-full flex items-center justify-center text-gray-600">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
