@@ -250,6 +250,14 @@ export default function JubotPortfolioInsight() {
                     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
                 }));
 
+                // SessionStorage에 저장
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('jubot_portfolio_analysis', JSON.stringify({
+                        analysis: data.analysis,
+                        timestamp: Date.now()
+                    }));
+                }
+
                 // 히스토리 자동 저장
                 try {
                     await fetch('/api/jubot/history', {
@@ -308,10 +316,38 @@ export default function JubotPortfolioInsight() {
     });
 
     // Use useEffect for initial check
+    // Use useEffect for initial check
     useEffect(() => {
-        if (assets && assets.length > 0 && !analysis) {
-            checkCache();
-        }
+        const check = async () => {
+            if (!assets || assets.length === 0) return;
+            if (analysis) return;
+
+            // 1. SessionStorage 확인
+            if (typeof window !== 'undefined') {
+                const cached = sessionStorage.getItem('jubot_portfolio_analysis');
+                if (cached) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        // 1시간 이내 데이터만 유효하다고 가정? 아니면 그냥 보여줌?
+                        // 사용자 요청은 "페이지 이동시 바로 정보 불러옴"
+                        setAnalysis(parsed.analysis);
+                        const date = new Date(parsed.timestamp);
+                        setLastAnalysisTime(date.toLocaleString('ko-KR', {
+                            month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                        }));
+                        return;
+                    } catch (e) {
+                        // ignore
+                    }
+                }
+            }
+
+            // 2. 서버 히스토리 확인 (기존 checkCache)
+            // checkCache 함수 내용 인라인 또는 호출
+            await checkCache();
+        };
+
+        check();
     }, [assets, analysis, checkCache]);
 
     const activeAssets = assets?.filter(a => (a.quantity || 0) > 0) || [];

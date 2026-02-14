@@ -55,22 +55,29 @@ export async function GET() {
     try {
         // Parallel Fetch
         // symbols: KRW=X (USD/KRW), JPYKRW=X, CNYKRW=X, GC=F (Gold Futures)
-        const [usd, jpy, cny, gold, rates] = await Promise.all([
+        const [usd, jpy, cny, gold, rates, kospi, kosdaq, sp500, nasdaq] = await Promise.all([
             fetchYahooData('KRW=X'),
             fetchYahooData('JPYKRW=X'),
             fetchYahooData('CNYKRW=X'),
             fetchYahooData('GC=F'),
-            fetchInterestRates()
+            fetchInterestRates(),
+            fetchYahooData('^KS11'), // KOSPI
+            fetchYahooData('^KQ11'), // KOSDAQ
+            fetchYahooData('^GSPC'), // S&P 500
+            fetchYahooData('^IXIC')  // NASDAQ
         ]);
 
         return NextResponse.json({
             exchangeRates: {
                 usd_krw: usd,
-                jpy_krw: jpy, // Note: Yahoo JPYKRW=X is usually 1 JPY to KRW (approx 9.xx). Need to check unit.
-                // Usually JPYKRW=X returns ~9.0. If so, mult by 100 for 100 Yen.
-                // Let's verify standard behavior. Yahoo JPYKRW=X is price in KRW for 1 JPY. 
-                // Wait, usually it's ~9.4. So for "100 Yen", we display price * 100.
+                jpy_krw: jpy,
                 cny_krw: cny,
+            },
+            indices: {
+                kospi: kospi,
+                kosdaq: kosdaq,
+                sp500: sp500,
+                nasdaq: nasdaq
             },
             gold: gold, // price in USD
             interestRates: rates,

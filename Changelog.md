@@ -1,3 +1,12 @@
+## [Alpha V1.204] - 2026-02-14 17:30:00
+
+### 🔧 Bug Fix & UX Improvement
+- **Summary**: 주요 지수 데이터 연동 및 브리핑/포트폴리오 로딩 속도 개선 (Phase 6.5)
+- **Detail** :
+  - **지수 데이터**: KOSPI, KOSDAQ, S&P500, NASDAQ 데이터 연동 (Yahoo Finance API 활용)
+  - **즉시 로딩**: SessionStorage를 활용하여 페이지 이동 시 분석 결과가 '즉시' 표시되도록 개선 (불필요한 로딩바 제거)
+- **Build Time**: 2026-02-14 17:30:00
+
 ## [Alpha V1.203] - 2026-02-14 17:00:00
 
 ### 🚀 Performance Optimization

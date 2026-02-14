@@ -29,6 +29,15 @@ export default function JubotBriefing() {
                 // generated_at이 있으면 그것을 사용, 없으면 현재 시간
                 const genDate = data.generated_at ? new Date(data.generated_at) : new Date();
                 setLastUpdated(genDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }));
+
+                // SessionStorage에 저장 (페이지 이동 시 재사용)
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('jubot_daily_briefing', JSON.stringify({
+                        briefing: data.briefing,
+                        generated_at: data.generated_at,
+                        timestamp: Date.now()
+                    }));
+                }
             } else {
                 setError(true);
             }
@@ -39,6 +48,33 @@ export default function JubotBriefing() {
             setLoading(false);
         }
     }, []);
+
+    // Initial Load & Cache Check
+    useEffect(() => {
+        // 1. SessionStorage 확인
+        if (typeof window !== 'undefined') {
+            const cached = sessionStorage.getItem('jubot_daily_briefing');
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    // 하루(24시간) 지났는지 간단 체크 (혹은 날짜 비교)
+                    const cachedDate = new Date(parsed.generated_at || parsed.timestamp);
+                    const isToday = cachedDate.toDateString() === new Date().toDateString();
+
+                    if (isToday) {
+                        setBriefing(parsed.briefing);
+                        setLastUpdated(cachedDate.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }));
+                        return; // 캐시 사용 시 fetch 생략
+                    }
+                } catch (e) {
+                    // Ignore parsing error
+                }
+            }
+        }
+
+        // 2. 캐시 없으면 API 호출
+        fetchBriefing();
+    }, [fetchBriefing]);
 
     const getImpactIcon = (impact: string) => {
         switch (impact) {
