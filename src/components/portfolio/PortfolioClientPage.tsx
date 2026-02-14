@@ -12,7 +12,7 @@ export default function PortfolioClientPage() {
 
     return (
         <SidebarLayout>
-            <div className="max-w-5xl mx-auto space-y-8 p-6 animate-in fade-in duration-500">
+            <div className="max-w-5xl mx-auto space-y-8 p-1 sm:p-6 animate-in fade-in duration-500">
                 {/* Portfolio Summary Block */}
                 <section>
                     <PortfolioSummaryBlock />

@@ -8,7 +8,7 @@ import { Bot } from 'lucide-react';
 export default function JubotPage() {
     return (
         <SidebarLayout>
-            <div className="max-w-[1400px] mx-auto p-2 sm:p-6 animate-in fade-in duration-500">
+            <div className="max-w-[1400px] mx-auto p-1 sm:p-6 animate-in fade-in duration-500">
                 {/* Header */}
                 <header className="mb-8">
                     <div className="flex items-center gap-3 mb-2">

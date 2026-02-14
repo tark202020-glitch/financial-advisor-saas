@@ -1,3 +1,12 @@
+## [Alpha V1.211] - 2026-02-14 21:30:00
+
+### 📐 UI: Global Mobile Padding Reduction
+- **Summary**: 모든 페이지의 모바일 컨테이너 여백 축소 (`p-1`)
+- **Detail**:
+  - `Dashboard`, `Portfolio`, `Insights`, `ConditionSearch`, `Jubot` 등 모든 메인 페이지의 모바일 컨테이너 패딩을 `p-6`에서 `p-1`(약 4px)로 일괄 축소.
+  - 모바일 환경에서의 가용 화면 너비를 극대화하여 콘텐츠 집중도 향상.
+- **Build Time**: 2026-02-14 21:30:00
+
 ## [Alpha V1.210] - 2026-02-14 21:20:00
 
 ### 📐 UI: Mobile Margin Refinement

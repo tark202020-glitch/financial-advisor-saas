@@ -223,7 +223,7 @@ export default function ConditionSearchPage() {
     // === Render ===
     return (
         <SidebarLayout>
-            <div className="p-8 pb-32 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+            <div className="p-1 pb-32 sm:p-8 sm:pb-32 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
                 <header className="mb-8">
                     <h1 className="text-3xl font-bold text-white mb-2">조건검색</h1>
                     <p className="text-gray-400">원하는 조건으로 KOSPI 전체 종목을 분석합니다.</p>
