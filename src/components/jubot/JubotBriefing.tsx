@@ -96,9 +96,9 @@ export default function JubotBriefing() {
     return (
         <div className="bg-[#1e1e1e] rounded-2xl border border-[#333] overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-[#333] flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[#333] flex flex-col gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F7D047] to-[#F59E0B] flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F7D047] to-[#F59E0B] flex items-center justify-center flex-shrink-0">
                         <Newspaper size={20} className="text-black" />
                     </div>
                     <div>
@@ -111,7 +111,7 @@ export default function JubotBriefing() {
                 <button
                     onClick={() => fetchBriefing(true)}
                     disabled={loading}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#F7D047] text-black font-bold text-base hover:bg-[#f5c518] transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#F7D047] text-black font-bold text-base hover:bg-[#f5c518] transition-colors disabled:opacity-50"
                 >
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                     {loading ? '분석 중...' : briefing ? '새로고침' : '브리핑 생성'}

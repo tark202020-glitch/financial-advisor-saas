@@ -1,3 +1,12 @@
+## [Alpha V1.208] - 2026-02-14 21:00:00
+
+### 🎨 UI: Jubot Header Refinement
+- **Summary**: 주봇 분석 컴포넌트 헤더 레이아웃 수정 (가로 → 세로)
+- **Detail**:
+  - **JubotPortfolioInsight**: 제목/시간과 재분석 버튼을 세로로 배치하여 모바일 가독성 및 터치 편의성 개선
+  - **JubotBriefing**: 일관된 UX를 위해 브리핑 헤더도 동일한 수직 레이아웃 적용
+- **Build Time**: 2026-02-14 21:00:00
+
 ## [Alpha V1.207] - 2026-02-14 20:45:00
 
 ### 📱 Mobile UI Refinement

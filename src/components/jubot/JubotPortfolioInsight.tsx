@@ -358,9 +358,9 @@ export default function JubotPortfolioInsight() {
     return (
         <div className="bg-[#1e1e1e] rounded-2xl border border-[#333] overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-[#333] flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-[#333] flex flex-col gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center flex-shrink-0">
                         <Brain size={20} className="text-white" />
                     </div>
                     <div>
@@ -374,7 +374,7 @@ export default function JubotPortfolioInsight() {
                 <button
                     onClick={fetchAnalysis}
                     disabled={loading || activeAssets.length === 0}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 text-white font-bold text-base hover:bg-purple-500 transition-colors disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-purple-600 text-white font-bold text-base hover:bg-purple-500 transition-colors disabled:opacity-50"
                 >
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                     {loading ? '분석 중...' : analysis ? '재분석' : '분석 시작'}
