@@ -1,5 +1,18 @@
 
 
+## [Alpha V1.214] - 2026-02-14 23:30:00
+
+### 🎨 UI: Landing Page Overhaul
+- **Summary**: 랜딩 페이지 전면 개편 (6단계 설득 구조)
+- **Detail**:
+  - `Hero`: "기록하는 투자 습관" 슬로건 및 메인 액션.
+  - `Problem`: 초보 투자자의 Pain Point (매수/매도 기준 부재) 공감.
+  - `Solution`: 주봇 = 페이스메이커 컨셉 제시.
+  - `Features`: 4대 핵심 기능(일일체크, 주식일지, 인사이트, 조건검색) Benefit 강조.
+  - `SocialProof` & `CTA`: 사용자 후기 및 가입 유도.
+  - `framer-motion` 도입으로 스크롤 애니메이션 적용.
+- **Build Time**: 2026-02-14 23:30:00
+
 ## [Alpha V1.213] - 2026-02-14 22:30:00
 
 ### 💡 Feature: Jubot Page Guide
