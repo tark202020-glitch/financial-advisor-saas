@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.217] - 2026-02-14 23:55:00
+
+### 🎨 UI: Favicon Update
+- **Summary**: 파비콘(Favicon) 및 앱 아이콘 적용
+- **Detail**:
+  - `src/app/icon.png`: 사용자 제공 파비콘 이미지 적용.
+  - 브라우저 탭 및 북마크 아이콘이 주봇 로고로 변경됨.
+- **Build Time**: 2026-02-14 23:55:00
+
 ## [Alpha V1.216] - 2026-02-14 23:45:00
 
 ### 🎨 UI: Landing Page Polish
