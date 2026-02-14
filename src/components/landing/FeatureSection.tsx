@@ -11,7 +11,8 @@ const features = [
         title: "일일 체크",
         subtitle: "투자자의 아침 루틴을 완성하다",
         description: "4개 경제지 브리핑, 전문가 선정 지수, 섹터별 대표 종목을 한 페이지에서.\n여기저기 사이트를 헤맬 필요 없이 하루 흐름을 3분 만에 파악하세요.",
-        color: "bg-blue-500"
+        color: "bg-blue-500",
+        image: "/images/feature_daily.png"
     },
     {
         id: 'journal',
@@ -19,7 +20,8 @@ const features = [
         title: "내 주식 일지",
         subtitle: "감으로 하는 투자를 데이터로 바꾸다",
         description: "매수 이유와 매도 목표를 기록하세요.\n당신의 목표가 현실적인지, 언제 도달할 수 있을지 주봇이 냉철하게 분석해 드립니다.",
-        color: "bg-teal-500"
+        color: "bg-teal-500",
+        image: "/images/feature_journal.png"
     },
     {
         id: 'insight',
@@ -27,7 +29,8 @@ const features = [
         title: "내 주식 인사이트",
         subtitle: "나만을 위한 전용 애널리스트",
         description: "매일 100여 개의 기사와 1년 치 공시를 AI가 대신 읽습니다.\n내 종목에 딱 필요한 정보만 골라 아침마다 리포트로 받아보세요.",
-        color: "bg-purple-500"
+        color: "bg-purple-500",
+        image: "/images/feature_insight.png"
     },
     {
         id: 'search',
@@ -35,7 +38,8 @@ const features = [
         title: "조건 검색",
         subtitle: "우량주를 발굴하는 안목",
         description: "남들이 좋다는 주식 말고, 매출 증가율과 영업이익률 등\n확실한 재무 데이터로 증명된 진짜 우량주를 직접 발굴해 보세요.",
-        color: "bg-orange-500"
+        color: "bg-orange-500",
+        image: "/images/feature_search.png"
     }
 ];
 
@@ -95,24 +99,19 @@ export default function FeatureSection() {
                                 </p>
                             </div>
 
-                            {/* Mockup Area */}
-                            <div className="mt-auto bg-[#121212] rounded-xl border border-[#333] p-4 aspect-[16/9] flex items-center justify-center relative overflow-hidden group">
-                                <div className="absolute inset-0 bg-gradient-to-br from-[#252525] to-[#121212]"></div>
-                                {/* Abstract UI Placeholder */}
-                                <div className="relative z-10 w-full max-w-[80%] space-y-3 opacity-80 group-hover:scale-105 transition-transform duration-500">
-                                    <div className="h-4 w-1/3 bg-[#333] rounded mb-6"></div>
-                                    <div className="h-2 w-full bg-[#333] rounded"></div>
-                                    <div className="h-2 w-5/6 bg-[#333] rounded"></div>
-                                    <div className="h-2 w-4/6 bg-[#333] rounded"></div>
-                                    <div className="grid grid-cols-3 gap-2 mt-4">
-                                        <div className="h-24 bg-[#333] rounded"></div>
-                                        <div className="h-24 bg-[#333] rounded"></div>
-                                        <div className="h-24 bg-[#333] rounded"></div>
-                                    </div>
-                                </div>
-                                <div className="absolute bottom-4 right-4 text-xs text-gray-600 font-mono">
-                                    {features[activeFeature].title} Preview
-                                </div>
+                            {/* Image Area */}
+                            <div className="mt-auto bg-[#121212] rounded-xl border border-[#333] p-2 aspect-[16/10] relative overflow-hidden group">
+                                <motion.img
+                                    key={features[activeFeature].image}
+                                    src={features[activeFeature].image}
+                                    alt={features[activeFeature].title}
+                                    initial={{ opacity: 0, scale: 1.05 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.5 }}
+                                    className="w-full h-full object-cover rounded-lg filter brightness-[0.9] contrast-[1.1] saturate-[1.1] group-hover:brightness-100 transition-all duration-500"
+                                />
+                                {/* Overlay for subtle texture */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#121212]/20 to-transparent pointer-events-none rounded-lg"></div>
                             </div>
                         </motion.div>
                     </div>

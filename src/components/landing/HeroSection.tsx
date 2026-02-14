@@ -26,8 +26,8 @@ export default function HeroSection() {
                     transition={{ duration: 0.5, delay: 0.1 }}
                     className="text-5xl sm:text-6xl md:text-8xl font-black leading-[0.9] tracking-tighter mb-8 break-keep"
                 >
-                    쓰기 좋아 하는<br />
-                    당신을 위한 투자 기록 노트<span className="text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">.</span>
+                    기록하는<br />
+                    투자 습관<span className="text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">.</span>
                 </motion.h1>
 
                 {/* Subheading */}
@@ -69,12 +69,11 @@ export default function HeroSection() {
                             </div>
                             <div className="flex-1 bg-[#252525] h-6 rounded-md ml-4"></div>
                         </div>
-                        {/* Content Area - Animated Image */}
-                        <div className="aspect-[16/10] bg-[#1E1E1E] rounded-lg border border-[#333] relative overflow-hidden w-full">
+                        <div className="aspect-[16/10] bg-[#1E1E1E] rounded-lg border border-[#333] relative overflow-hidden w-full group">
                             <motion.img
                                 src="/images/dashboard_ALL.png"
                                 alt="Jubot Dashboard"
-                                className="w-full object-cover object-top"
+                                className="w-full object-cover object-top filter brightness-[0.9] contrast-[1.1] saturate-[1.1] group-hover:brightness-100 transition-all duration-500"
                                 initial={{ y: "0%" }}
                                 animate={{ y: "-65%" }}
                                 transition={{
@@ -84,6 +83,8 @@ export default function HeroSection() {
                                     ease: "linear"
                                 }}
                             />
+                            {/* Overlay for subtle texture */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#121212]/50 to-transparent pointer-events-none"></div>
                         </div>
                     </div>
                 </motion.div>

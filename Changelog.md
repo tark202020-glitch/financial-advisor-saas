@@ -1,5 +1,15 @@
 
 
+## [Alpha V1.216] - 2026-02-14 23:45:00
+
+### 🎨 UI: Landing Page Polish
+- **Summary**: 랜딩 페이지 이미지 리소스 적용 및 디자인 필터 추가
+- **Detail**:
+  - `FeatureSection`: 4가지 핵심 기능(일일체크, 주식일지, 인사이트, 조건검색)에 실제 프리뷰 이미지 적용.
+  - `Design Filter`: Hero 및 Feature 이미지에 미세한 밝기/대비 조절 필터(`brightness-90 contrast-110 saturate-110`)를 적용하여 세련된 느낌 전달.
+  - `Hover Effect`: 이미지 호버 시 필터가 해제되면서 원본 색상이 드러나는 인터랙션 추가.
+- **Build Time**: 2026-02-14 23:45:00
+
 ## [Alpha V1.215] - 2026-02-14 23:35:00
 
 ### 🎨 UI: Hero Section Animation
