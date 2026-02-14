@@ -7,6 +7,7 @@ interface BriefingData {
     headline: string;
     market_overview: string;
     key_indices?: Array<{ name: string; value: string; change: string; comment: string }>;
+    expert_opinions?: Array<{ expert_name: string; title: string; summary: string; source: string }>;
     top_stories?: Array<{ title: string; summary: string; impact: string; related_stocks?: string[] }>;
     watchpoints?: string[];
     jubot_opinion?: string;
@@ -179,6 +180,25 @@ export default function JubotBriefing() {
                                             </div>
                                         );
                                     })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Expert Opinions (주봇 1.0) */}
+                        {briefing.expert_opinions && briefing.expert_opinions.length > 0 && (
+                            <div>
+                                <h4 className="text-base font-bold text-gray-400 mb-3">🎤 전문가 의견</h4>
+                                <div className="space-y-2">
+                                    {briefing.expert_opinions.map((expert, i) => (
+                                        <div key={i} className="p-4 rounded-xl border border-orange-900/30 bg-orange-900/10">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-base font-bold text-orange-300">{expert.expert_name}</span>
+                                                <span className="text-xs text-gray-500">({expert.source})</span>
+                                            </div>
+                                            <div className="font-medium text-white text-sm">{expert.title}</div>
+                                            <div className="text-gray-400 text-sm mt-1">{expert.summary}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}

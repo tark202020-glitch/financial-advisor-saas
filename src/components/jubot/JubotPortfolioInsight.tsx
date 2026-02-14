@@ -12,9 +12,11 @@ interface StockInsight {
     reason: string;
     action: string;
     priority: 'high' | 'medium' | 'low';
+    trade_review?: string | null;
     financial_highlight?: string | null;
     upcoming_events?: string | null;
     dividend_info?: string | null;
+    related_news?: string | null;
 }
 
 interface PortfolioAnalysis {
@@ -214,6 +216,7 @@ export default function JubotPortfolioInsight() {
                 targetPriceUpper: a.targetPriceUpper || 0,
                 targetPriceLower: a.targetPriceLower || 0,
                 newsCount: newsCountMap[a.symbol] || 0,
+                trades: (a as any).trades || [], // 주봇 1.0: 거래기록 전달
             }));
 
             // ── 평가금액 순 정렬 (높은 것부터) ──
@@ -533,6 +536,12 @@ export default function JubotPortfolioInsight() {
                                                 <p className="text-gray-400 text-sm mt-1">{insight.reason}</p>
                                                 {insight.financial_highlight && (
                                                     <p className="text-purple-400 text-sm mt-1">📊 {insight.financial_highlight}</p>
+                                                )}
+                                                {insight.trade_review && (
+                                                    <p className="text-orange-400 text-sm mt-1">📈 {insight.trade_review}</p>
+                                                )}
+                                                {insight.related_news && (
+                                                    <p className="text-cyan-400 text-sm mt-1">📰 {insight.related_news}</p>
                                                 )}
                                                 {insight.upcoming_events && (
                                                     <p className="text-yellow-400 text-sm mt-1">📅 {insight.upcoming_events}</p>

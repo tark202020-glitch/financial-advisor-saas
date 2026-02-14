@@ -4,9 +4,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 /**
  * /api/jubot/analyze/portfolio
  * 
- * Phase 2: 포트폴리오 AI 분석 (재무 데이터 통합)
- * - OpenDART API 직접 호출로 재무 데이터(매출, 영업이익, ROE, 배당) 조회
- * - 최근 뉴스와의 종목 연관성 분석
+ * 주봇 1.0: 포트폴리오 AI 분석 (재무 + 공시 + 배당 + 뉴스 + 거래기록 통합)
+ * - OpenDART API 직접 호출로 재무 데이터 조회
+ * - 뉴스 RSS 수집 및 전문가(박시동, 이광수) 우선 분석
+ * - 거래기록(trades) 기반 리뷰 (0순위)
  * - 종합 AI 인사이트 생성
  */
 
@@ -80,6 +81,23 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        // 주봇 1.0: 뉴스 데이터 수집 (서버 측 직접 호출)
+        let newsArticles: any[] = [];
+        let expertArticles: any[] = [];
+        try {
+            const baseUrl = request.nextUrl.origin;
+            const newsRes = await fetch(`${baseUrl}/api/jubot/collect/news`, { next: { revalidate: 0 } });
+            if (newsRes.ok) {
+                const newsData = await newsRes.json();
+                if (newsData.success) {
+                    newsArticles = newsData.articles || [];
+                    expertArticles = newsData.expert_articles || [];
+                }
+            }
+        } catch (e) {
+            console.warn('[Jubot Portfolio] News fetch failed:', e);
+        }
+
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
@@ -119,6 +137,8 @@ export async function POST(request: NextRequest) {
                     payoutRatio: div.payoutRatio,
                     totalDividend: div.dps && a.quantity ? div.dps * a.quantity : null,
                 } : null,
+                // 주봇 1.0: 거래기록 포함
+                trades: a.trades || [],
             };
         }));
 
@@ -139,7 +159,18 @@ export async function POST(request: NextRequest) {
 
         ${marketData ? `**시장 데이터:** ${JSON.stringify(marketData)}` : ''}
 
+        ${newsArticles.length > 0 ? `**최근 뉴스 (종목 연관 분석용, ${newsArticles.length}개):**\n${newsArticles.slice(0, 15).map((a: any) => `- (${a.source}) ${a.title}`).join('\n')}` : ''}
+
+        ${expertArticles.length > 0 ? `⭐ **전문가(박시동, 이광수) 기사 (우선 분석):**\n${expertArticles.map((a: any) => `- (${a.source}, ${a.expertName}) ${a.title}: ${a.description}`).join('\n')}` : ''}
+
         ⚠️ **분석 우선순위 (반드시 이 순서대로 분석):**
+
+        📌 **0순위: 거래기록 리뷰 (최우선)**
+        - 각 종목의 trades 데이터를 확인하여 최근 매수/매도 기록이 있으면 반드시 reason 첫 문장에 언급
+        - 거래 타이밍이 적절했는지, 수익률 변화는 어떤지 해석
+        - 반대로 매도 후 주가가 더 올랐다면 "조금 아쉬운 타이밍" 등 솔직하게 평가
+        - 예시: "2/10 50주 매수(52,000원) → 현재가 기준 +3.8%. 매수 타이밍이 적절했습니다"
+        - trades가 없는 종목은 이 항목 생략
 
         📌 **1순위: 공시 분석 및 향후 일정**
         - 각 종목의 recentDisclosures(최근 6개월 공시)를 분석하고, 주가에 크게 영향을 주는 공시가 있으면 반드시 reason에 언급
@@ -168,12 +199,14 @@ export async function POST(request: NextRequest) {
                     "symbol": "종목코드",
                     "name": "종목명",
                     "signal": "buy/hold/sell/watch",
-                    "reason": "공시/배당/재무 기반 근거 (2-3문장, 공시 내용 우선 언급)",
-                    "action": "구체적 날짜 포함 액션 조언 (예: 'X월 X일 실적발표 확인하세요')",
+                    "reason": "거래기록/공시/배당/재무 기반 근거 (2-3문장, 거래기록 > 공시 순서로 언급)",
+                    "action": "구체적 날짜 포함 액션 조언",
                     "priority": "high/medium/low",
+                    "trade_review": "최근 거래기록에 대한 평가 (trades가 있으면 작성, 없으면 null)",
                     "financial_highlight": "핵심 재무/공시/배당 포인트 1문장",
-                    "upcoming_events": "향후 예상 공시/이벤트 일정 (있으면 작성, 없으면 null)",
-                    "dividend_info": "배당 관련 정보 (있으면 작성, 없으면 null)"
+                    "upcoming_events": "향후 예상 공시/이벤트 일정",
+                    "dividend_info": "배당 관련 정보",
+                    "related_news": "관련 뉴스 요약 (1문장, 뉴스가 있으면 작성, 없으면 null)"
                 }
             ],
             "sector_analysis": "업종 관련 코멘트 (1-2문장)",
@@ -182,11 +215,11 @@ export async function POST(request: NextRequest) {
 
         규칙:
         - stock_insights에는 전달받은 **모든 종목을 빠짐없이** 포함 (평가금액 순서 유지)
-        - 공시 데이터가 있으면 reason 첫 문장에 반드시 공시 내용 언급
+        - trades 데이터가 있으면 trade_review에 반드시 작성하고 reason 첫 문장에 거래 타이밍 평가 포함
+        - 공시 데이터가 있으면 reason에 반드시 공시 내용 언급
         - action은 절대 추상적 조언 금지 ("모니터링하세요" X → "3월 실적발표에서 영업이익 확인 후 -20% 손절 판단" O)
         - 배당금 총액 1만원 이상인 종목은 dividend_info에 금액과 일정 반드시 명시
-        - upcoming_events는 향후 1-3개월 내 예상 이벤트 (정기보고서/주총/배당기준일 등)
-        - 특별한 이슈가 없는 안정 종목도 반드시 포함하되, signal: "hold"로 표시
+        - ⭐ 전문가(박시동, 이광수) 관련 뉴스가 있으면 해당 종목의 related_news에 우선 반영
         - 모든 텍스트는 한국어, 전문가답게 간결하게
         - 금액 표기 시 원화는 소수점 없이(예: 1,234원), 달러는 소수점 2자리(예: $12.34)로 표기
         - JSON만 출력 (마크다운 코드블록 없이)

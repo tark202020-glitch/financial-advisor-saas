@@ -98,6 +98,11 @@ export async function GET(request: NextRequest) {
             ? JSON.stringify(newsResult.analysis)
             : '뉴스 데이터 없음';
 
+        // 전문가 기사 컨텍스트 (주봇 1.0)
+        const expertContext = newsResult?.expert_articles && newsResult.expert_articles.length > 0
+            ? `\n\n⭐ **전문가(박시동, 이광수) 기사:**\n${JSON.stringify(newsResult.expert_articles)}`
+            : '';
+
         const marketContext = marketData
             ? JSON.stringify(marketData)
             : '시장 데이터 없음';
@@ -116,6 +121,7 @@ export async function GET(request: NextRequest) {
 
         **뉴스 분석:**
         ${newsContext}
+        ${expertContext}
 
         **출력 형식 (JSON):**
         {
@@ -125,6 +131,14 @@ export async function GET(request: NextRequest) {
             "market_overview": "시장 전반 동향 요약 (3-4문장)",
             "key_indices": [
                 { "name": "KOSPI", "value": "숫자", "change": "+0.8%", "comment": "한마디 코멘트" }
+            ],
+            "expert_opinions": [
+                {
+                    "expert_name": "전문가 이름",
+                    "title": "기사/칼럼 제목",
+                    "summary": "전문가 의견 요약 (1-2문장)",
+                    "source": "출처"
+                }
             ],
             "top_stories": [
                 {
@@ -141,8 +155,11 @@ export async function GET(request: NextRequest) {
             "jubot_opinion": "주봇의 종합 의견 (2-3문장, 전문가답게)"
         }
 
+        규칙:
         - top_stories는 3~5개
         - key_indices에서 실제 숫자가 없으면 추정하지 마세요
+        - ⭐ 전문가(박시동, 이광수) 기사가 있으면 expert_opinions에 반드시 포함하고 top_stories에도 우선 배치
+        - 전문가 기사가 없으면 expert_opinions는 빈 배열 []
         - 모든 텍스트는 한국어
         - JSON만 출력하세요 (마크다운 코드블록 없이)
         `;

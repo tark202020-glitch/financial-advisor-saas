@@ -4,17 +4,21 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 /**
  * /api/jubot/collect/news
  * 
- * 뉴스 수집 + AI 요약 파이프라인
- * - 네이버 증권 뉴스 RSS
- * - 한국경제 RSS
- * - 사용자 추가 URL (향후)
+ * 주봇 1.0 — 뉴스 수집 + AI 요약 파이프라인
+ * - 매일경제 증권 RSS
+ * - 연합뉴스 경제 RSS
+ * - 네이버 경제 RSS (NEW)
+ * - 인베스팅닷컴 한국 RSS (NEW)
  * 
- * Vercel Cron 또는 수동 호출
+ * 전문가 우선 노출: 박시동, 이광수
  */
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
 
-// RSS 소스 정의 (2026-02 기준 실제 작동 확인된 소스)
+// 주목해야 할 전문가 목록
+const EXPERT_NAMES = ['박시동', '이광수'];
+
+// RSS 소스 정의 (주봇 1.0 기준)
 const DEFAULT_RSS_SOURCES = [
     {
         name: '매일경제 증권',
@@ -26,7 +30,19 @@ const DEFAULT_RSS_SOURCES = [
         url: 'https://www.yna.co.kr/rss/economy.xml',
         type: 'rss'
     },
+    {
+        name: '네이버 경제',
+        url: 'https://rss.news.naver.com/economic.xml',
+        type: 'rss'
+    },
+    {
+        name: '인베스팅닷컴',
+        url: 'https://kr.investing.com/rss/news.rss',
+        type: 'rss'
+    },
 ];
+
+const MAX_ITEMS_PER_SOURCE = 10;
 
 // RSS XML 파싱 (가벼운 정규식 기반)
 function parseRSSItems(xml: string, sourceName: string): Array<{
@@ -35,12 +51,14 @@ function parseRSSItems(xml: string, sourceName: string): Array<{
     pubDate: string;
     description: string;
     source: string;
+    isExpert: boolean;
+    expertName: string | null;
 }> {
     const items: Array<any> = [];
     const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
     let match;
 
-    while ((match = itemRegex.exec(xml)) !== null && items.length < 15) {
+    while ((match = itemRegex.exec(xml)) !== null && items.length < MAX_ITEMS_PER_SOURCE) {
         const itemXml = match[1];
 
         const getTag = (tag: string) => {
@@ -55,7 +73,20 @@ function parseRSSItems(xml: string, sourceName: string): Array<{
         const description = getTag('description').replace(/<[^>]+>/g, '').slice(0, 300);
 
         if (title) {
-            items.push({ title, link, pubDate, description, source: sourceName });
+            // 전문가 기사 판별
+            const fullText = `${title} ${description}`;
+            let isExpert = false;
+            let expertName: string | null = null;
+
+            for (const expert of EXPERT_NAMES) {
+                if (fullText.includes(expert)) {
+                    isExpert = true;
+                    expertName = expert;
+                    break;
+                }
+            }
+
+            items.push({ title, link, pubDate, description, source: sourceName, isExpert, expertName });
         }
     }
 
@@ -63,7 +94,10 @@ function parseRSSItems(xml: string, sourceName: string): Array<{
 }
 
 // AI로 뉴스 요약 및 감성 분석
-async function analyzeNewsWithAI(articles: Array<{ title: string; description: string; source: string }>) {
+async function analyzeNewsWithAI(
+    articles: Array<{ title: string; description: string; source: string }>,
+    expertArticles: Array<{ title: string; description: string; source: string; expertName: string | null }>
+) {
     if (!apiKey || articles.length === 0) return null;
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -73,12 +107,19 @@ async function analyzeNewsWithAI(articles: Array<{ title: string; description: s
         `[${i + 1}] (${a.source}) ${a.title}: ${a.description}`
     ).join('\n');
 
+    const expertText = expertArticles.length > 0
+        ? `\n\n⭐ **전문가 기사 (우선 분석 필수):**\n` + expertArticles.map((a, i) =>
+            `[전문가${i + 1}] (${a.source}, ${a.expertName}) ${a.title}: ${a.description}`
+        ).join('\n')
+        : '';
+
     const prompt = `
     당신은 주식 시장 전문 분석가입니다.
     아래 오늘의 주요 증권 뉴스를 분석하여 투자자에게 유용한 시장 브리핑을 작성하세요.
 
     **뉴스 목록:**
     ${newsText}
+    ${expertText}
 
     **출력 형식 (JSON):**
     {
@@ -89,6 +130,14 @@ async function analyzeNewsWithAI(articles: Array<{ title: string; description: s
                 "summary": "이 주제에 대한 1-2문장 요약",
                 "sentiment": "positive 또는 negative 또는 neutral",
                 "related_symbols": ["005930", "AAPL"]
+            }
+        ],
+        "expert_opinions": [
+            {
+                "expert_name": "전문가 이름",
+                "title": "기사/칼럼 제목",
+                "summary": "전문가 의견 요약 (1-2문장)",
+                "source": "출처"
             }
         ],
         "risk_alerts": ["주의해야 할 리스크 1", "리스크 2"],
@@ -102,8 +151,11 @@ async function analyzeNewsWithAI(articles: Array<{ title: string; description: s
         ]
     }
 
+    규칙:
     - key_topics는 3~5개
     - related_symbols는 관련 종목코드 (한국: 6자리 숫자, 미국: 영문 티커)
+    - ⭐ 전문가(박시동, 이광수) 기사가 있으면 expert_opinions에 반드시 포함하고, top_stories에도 우선 배치
+    - 전문가 기사가 없으면 expert_opinions는 빈 배열 []
     - 모든 텍스트는 한국어
     - JSON만 출력하세요 (마크다운 코드블록 없이)
     `;
@@ -130,6 +182,7 @@ async function analyzeNewsWithAI(articles: Array<{ title: string; description: s
 export async function GET(request: NextRequest) {
     try {
         const allArticles: Array<any> = [];
+        const expertArticles: Array<any> = [];
 
         // 1. Fetch from all RSS sources
         for (const source of DEFAULT_RSS_SOURCES) {
@@ -146,7 +199,14 @@ export async function GET(request: NextRequest) {
                 if (res.ok) {
                     const xml = await res.text();
                     const items = parseRSSItems(xml, source.name);
-                    allArticles.push(...items);
+
+                    // 전문가 기사 별도 분류
+                    for (const item of items) {
+                        if (item.isExpert) {
+                            expertArticles.push(item);
+                        }
+                        allArticles.push(item);
+                    }
                 }
             } catch (e) {
                 console.warn(`[Jubot] Failed to fetch ${source.name}:`, e);
@@ -158,19 +218,22 @@ export async function GET(request: NextRequest) {
                 success: false,
                 error: '뉴스를 수집하지 못했습니다',
                 articles: [],
+                expert_articles: [],
                 analysis: null
             });
         }
 
         // 2. AI 분석
-        const analysis = await analyzeNewsWithAI(allArticles);
+        const analysis = await analyzeNewsWithAI(allArticles, expertArticles);
 
-        // 3. 결과 반환 (DB 저장은 클라이언트 또는 별도 호출에서 처리)
+        // 3. 결과 반환
         return NextResponse.json({
             success: true,
             collected_at: new Date().toISOString(),
             article_count: allArticles.length,
-            articles: allArticles.slice(0, 20), // 최대 20개
+            expert_count: expertArticles.length,
+            articles: allArticles.slice(0, 30), // 최대 30개
+            expert_articles: expertArticles,
             analysis
         });
 
