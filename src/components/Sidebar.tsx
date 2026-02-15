@@ -85,11 +85,14 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                         </Link>
                     );
                 })}
+            </nav>
 
-                {/* Divider */}
-                <div className="my-4 border-t border-[#333] mx-2"></div>
+            {/* Divider */}
+            <div className="h-[1px] bg-[#333] w-full"></div>
 
-                {/* My Info & Logout */}
+            {/* Footer Section (Fixed at bottom) */}
+            <div className="p-3 space-y-2 bg-[#1E1E1E]">
+                {/* My Info */}
                 <div
                     className={`
                         w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group
@@ -111,10 +114,11 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                     )}
                 </div>
 
+                {/* Help Button */}
                 <Link
                     href="/help"
                     className={`
-                        w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group text-gray-400 hover:bg-[#333] hover:text-white mt-auto
+                        w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group text-gray-400 hover:bg-[#333] hover:text-white
                         ${isCollapsed ? "justify-center" : ""}
                     `}
                 >
@@ -122,6 +126,7 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                     {!isCollapsed && <span className="font-bold">도움말</span>}
                 </Link>
 
+                {/* Logout Button */}
                 <button
                     onClick={handleLogout}
                     className={`
@@ -132,7 +137,7 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                     <LogOut size={20} />
                     {!isCollapsed && <span className="font-bold">로그아웃</span>}
                 </button>
-            </nav>
+            </div>
         </aside>
     );
 }

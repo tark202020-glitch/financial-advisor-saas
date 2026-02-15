@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.231] - 2026-02-15 17:05:00
+
+### 🐛 Fix: Sidebar Help Button Visibility
+- **Summary**: 사이드바 하단 버튼(도움말, 로그아웃)이 보이지 않는 문제 해결.
+- **Detail**:
+  - **Layout**: `nav` 내부 스크롤 영역에서 하단 프로필/버튼 영역을 분리하여 `fixed footer` 형태로 변경.
+  - **UI**: 스크롤 여부와 관계없이 항상 하단에 고정되도록 개선.
+- **Build Time**: 2026-02-15 17:05:00
+
 ## [Alpha V1.230] - 2026-02-15 16:50:00
 
 ### 📚 Feature: Help Page
