@@ -39,8 +39,8 @@ export default function HeroSection() {
 
                 {/* Right Actions */}
                 <div className="flex items-center gap-3 ml-auto">
-                    <Link href="/login" className="px-6 py-2 border border-black rounded-full hover:bg-black hover:text-[#F7D047] transition-all uppercase text-xs font-bold flex items-center gap-2 bg-white/50 backdrop-blur-sm">
-                        Start Now <ArrowRight size={14} />
+                    <Link href="/login" className="px-6 py-2 border border-black rounded-full hover:bg-black hover:text-[#F7D047] transition-all text-xs font-bold flex items-center gap-2 bg-white/50 backdrop-blur-sm">
+                        시작하기 <ArrowRight size={14} />
                     </Link>
                     <button className="w-10 h-10 border border-black rounded-full flex items-center justify-center hover:bg-black hover:text-[#F7D047] transition-all bg-white/50 backdrop-blur-sm">
                         <Search size={16} />
@@ -77,10 +77,10 @@ export default function HeroSection() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4, duration: 0.6 }}
-                    className="text-lg md:text-2xl font-medium text-center max-w-xl text-gray-900 leading-relaxed mix-blend-hard-light"
+                    className="text-lg md:text-2xl font-medium text-center max-w-xl text-gray-900 leading-relaxed mix-blend-hard-light whitespace-pre-line"
                 >
-                    AI-driven investment strategies based on your data. <br className="hidden md:block" />
-                    Simple, transparent, and powerful.
+                    당신의 데이터에 기반한 AI 투자 전략.<br className="hidden md:block" />
+                    심플하고, 투명하며, 강력합니다.
                 </motion.p>
 
                 {/* Floating Navigation Pill */}
@@ -91,11 +91,11 @@ export default function HeroSection() {
                     className="bg-[#222]/90 text-gray-300 backdrop-blur-md px-1.5 py-1.5 rounded-full flex flex-wrap justify-center gap-1 items-center shadow-2xl"
                 >
                     {[
-                        { name: 'Dashboard', href: '/dashboard' },
-                        { name: 'Portfolio', href: '/portfolio' },
-                        { name: 'Insights', href: '/insights' },
-                        { name: 'Search', href: '/condition-search' },
-                        { name: 'Journal', href: '/memo' }
+                        { name: '대시보드', href: '/dashboard' },
+                        { name: '포트폴리오', href: '/portfolio' },
+                        { name: '인사이트', href: '/insights' },
+                        { name: '조건검색', href: '/condition-search' },
+                        { name: '매매일지', href: '/memo' }
                     ].map((item) => (
                         <Link href={item.href} key={item.name} className="px-6 py-2.5 hover:bg-white hover:text-black rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all">
                             {item.name}

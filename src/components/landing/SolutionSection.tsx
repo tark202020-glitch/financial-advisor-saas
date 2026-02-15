@@ -1,113 +1,90 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { GitCommit, Cpu, BarChart3, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Database, BrainCircuit, LineChart, RefreshCw } from 'lucide-react';
+
+const steps = [
+    {
+        step: "01",
+        label: "DATA INPUT",
+        title: "루틴 형성",
+        description: "시장 브리핑과 관심 종목 정리로\n하루 투자를 체계적으로 시작합니다.",
+        icon: <Database className="w-6 h-6" />
+    },
+    {
+        step: "02",
+        label: "AI ANALYSIS",
+        title: "AI 정밀 분석",
+        description: "입력된 데이터와 시장 상황을 분석하여\n객관적인 투자 지표를 산출합니다.",
+        icon: <BrainCircuit className="w-6 h-6" />
+    },
+    {
+        step: "03",
+        label: "EXECUTION",
+        title: "원칙 매매",
+        description: "감정이 아닌 데이터와 원칙에 기반하여\n매수하고 매도합니다.",
+        icon: <LineChart className="w-6 h-6" />
+    },
+    {
+        step: "04",
+        label: "FEEDBACK",
+        title: "복기 및 성장",
+        description: "매매 결과를 기록하고 분석하여\n나만의 투자 알고리즘을 고도화합니다.",
+        icon: <RefreshCw className="w-6 h-6" />
+    }
+];
 
 export default function SolutionSection() {
     return (
-        <section className="py-24 px-6 bg-white text-black overflow-hidden relative">
-            {/* Background Grid */}
-            <div className="absolute inset-0 z-0 pointer-events-none bg-[linear-gradient(to_right,#f0f0f0_1px,transparent_1px),linear-gradient(to_bottom,#f0f0f0_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
-
-            <div className="max-w-7xl mx-auto relative z-10">
-                <div className="flex flex-col items-center mb-20">
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-black/10 bg-white/50 backdrop-blur-sm mb-8"
-                    >
-                        <span className="w-2 h-2 rounded-full bg-[#14B8A6] animate-pulse"></span>
-                        <span className="text-xs font-mono font-bold tracking-widest text-gray-500 uppercase">System Optimization</span>
-                    </motion.div>
-
-                    <motion.h2
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        className="text-4xl md:text-6xl font-black text-center mb-10 leading-[0.9] tracking-tighter break-keep"
-                    >
-                        We Don't Just Give Answers.<br />
-                        <span className="text-gray-400">We Optimize the Process.</span>
-                    </motion.h2>
-
-                    <p className="text-lg md:text-xl text-gray-600 text-center max-w-2xl font-medium break-keep leading-relaxed border-l-4 border-[#F7D047] pl-6">
-                        주봇은 당신의 투자 프로세스를 디버깅하고,<br />
-                        데이터 기반의 의사결정 알고리즘을 구축합니다.
+        <section className="py-32 px-6 bg-gray-50 text-black border-t border-gray-200">
+            <div className="max-w-[1920px] mx-auto">
+                <div className="flex flex-col md:flex-row justify-between items-end mb-24">
+                    <div>
+                        <div className="inline-block px-3 py-1 bg-black text-white text-xs font-bold font-mono rounded-full mb-6">
+                            PROCESS OPTIMIZATION
+                        </div>
+                        <h2 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9]">
+                            From Chaos<br />
+                            <span className="text-gray-400">To Clarity.</span>
+                        </h2>
+                    </div>
+                    <p className="text-lg font-medium text-gray-500 max-w-md text-right md:text-left mt-8 md:mt-0 leading-relaxed break-keep">
+                        주봇은 당신의 투자를 단순한 '감'의 영역에서<br />
+                        '데이터 기반의 과학'으로 변화시킵니다.
                     </p>
                 </div>
 
-                {/* Process Flow Layout */}
-                <div className="relative">
-                    {/* Connecting Line (Desktop) */}
-                    <div className="hidden md:block absolute top-[50%] left-0 w-full h-[2px] bg-gray-200 -z-10 -translate-y-[50%]"></div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
+                    {/* Connecting Line */}
+                    <div className="hidden md:block absolute top-[60px] left-0 w-full h-[1px] bg-black/10 -z-10"></div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <SolutionCard
-                            step="01"
-                            title="Routine Input"
-                            subtitle="투자 루틴 형성"
-                            desc="시장 브리핑과 함께 하루를 시작하는 데이터 인풋 프로세스"
-                            icon={<GitCommit className="w-6 h-6" />}
-                        />
-                        <SolutionCard
-                            step="02"
-                            title="Data Processing"
-                            subtitle="데이터 기반 의사결정"
-                            desc="재무 데이터와 기록을 바탕으로 감정을 배제한 연산"
-                            icon={<Cpu className="w-6 h-6" />}
-                        />
-                        <SolutionCard
-                            step="03"
-                            title="Logic Execution"
-                            subtitle="매매 원칙 확립"
-                            desc="매수/매도 이유를 기록하고 나만의 투자 알고리즘 실행"
-                            icon={<BarChart3 className="w-6 h-6" />}
-                        />
-                        <SolutionCard
-                            step="04"
-                            title="System Upgrade"
-                            subtitle="지속 가능한 성장"
-                            desc="데이터 복기를 통해 투자 모델을 지속적으로 업데이트"
-                            icon={<ShieldCheck className="w-6 h-6" />}
-                        />
-                    </div>
+                    {steps.map((item, index) => (
+                        <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.5, delay: index * 0.1 }}
+                            className="bg-gray-50 group"
+                        >
+                            <div className="flex items-center gap-4 mb-6 bg-gray-50 pr-4">
+                                <div className="w-12 h-12 bg-white border border-gray-200 flex items-center justify-center rounded-full group-hover:bg-black group-hover:text-white group-hover:border-black transition-all duration-300 shadow-sm">
+                                    {item.icon}
+                                </div>
+                                <span className="font-mono text-xs font-bold text-gray-400 group-hover:text-black transition-colors">STEP {item.step}</span>
+                            </div>
+
+                            <div className="pr-8">
+                                <div className="font-mono text-[10px] font-bold text-[#F7D047] mb-2 uppercase tracking-wider">{item.label}</div>
+                                <h3 className="text-2xl font-bold mb-4">{item.title}</h3>
+                                <p className="text-sm text-gray-500 leading-relaxed break-keep">
+                                    {item.description}
+                                </p>
+                            </div>
+                        </motion.div>
+                    ))}
                 </div>
             </div>
         </section>
     );
-}
-
-function SolutionCard({ step, title, subtitle, desc, icon }: { step: string, title: string, subtitle: string, desc: string, icon: React.ReactNode }) {
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            whileHover={{ y: -10 }}
-            className="bg-white border text-left border-gray-200 p-6 h-full flex flex-col justify-between shadow-sm hover:shadow-xl hover:border-black transition-all duration-300 group relative"
-        >
-            {/* Hover Decor */}
-            <div className="absolute top-0 left-0 w-full h-1 bg-black transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
-
-            <div className="mb-8">
-                <div className="flex justify-between items-start mb-4">
-                    <span className="font-mono text-xs font-bold text-gray-400">STEP_{step}</span>
-                    <div className="text-gray-300 group-hover:text-black transition-colors">
-                        {icon}
-                    </div>
-                </div>
-                <h3 className="text-sm font-mono font-bold text-black mb-1 uppercase tracking-wider">{title}</h3>
-                <h4 className="text-lg font-bold text-gray-800 mb-4">{subtitle}</h4>
-                <p className="text-xs text-gray-500 font-medium leading-relaxed break-keep border-t border-gray-100 pt-4">
-                    {desc}
-                </p>
-            </div>
-
-            <div className="flex items-center gap-2 text-[10px] font-mono font-bold text-gray-400 group-hover:text-[#F7D047] transition-colors">
-                <span>EXECUTE_NODE</span>
-                <ArrowRight className="w-3 h-3" />
-            </div>
-        </motion.div>
-    )
 }
