@@ -3,10 +3,34 @@
 import Link from 'next/link';
 import { ArrowRight, Bot } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
 
 export default function HeroSection() {
+    useEffect(() => {
+        const scriptId = 'unicorn-studio-script';
+
+        if (!document.getElementById(scriptId)) {
+            const script = document.createElement('script');
+            script.id = scriptId;
+            script.src = "https://cdn.jsdelivr.net/gh/hiunicornstudio/unicornstudio.js@v2.0.5/dist/unicornStudio.umd.js";
+            script.onload = () => {
+                if ((window as any).UnicornStudio) {
+                    (window as any).UnicornStudio.init();
+                }
+            };
+            document.head.appendChild(script);
+        } else {
+            if ((window as any).UnicornStudio) {
+                (window as any).UnicornStudio.init();
+            }
+        }
+    }, []);
+
     return (
         <section className="relative bg-[#F7D047] text-black pt-28 pb-32 sm:pt-40 sm:pb-48 px-6 overflow-hidden">
+            {/* Unicorn Studio Background */}
+            <div className="absolute inset-0 z-0 pointer-events-none" data-us-project="vMVJssJVC9dieFjgZjEd" style={{ width: '100%', height: '100%' }}></div>
+
             <div className="max-w-7xl mx-auto text-center relative z-10">
 
                 {/* Badge */}

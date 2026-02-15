@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.219] - 2026-02-15 10:00:00
+
+### 🎨 UI: Landing Page Background Effect
+- **Summary**: 랜딩 페이지 Hero 섹션에 Unicorn Studio 배경 효과 적용
+- **Detail**:
+  - `HeroSection`: Unicorn Studio 스크립트 연동 및 배경 컨테이너 추가.
+  - 기존 노란색(`bg-[#F7D047]`) 배경 위에 Unicorn Studio 효과가 오버레이되도록 처리.
+- **Build Time**: 2026-02-15 10:00:00
+
 ## [Alpha V1.218] - 2026-02-15 00:15:00
 
 ### 🐛 Fix: Favicon Visibility
