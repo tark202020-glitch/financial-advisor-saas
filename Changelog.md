@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.235] - 2026-02-15 17:35:00
+
+### 🎨 UI: Premium Design Upgrade (Footer & Depth Effects)
+- **Summary**: 랜딩 페이지의 프리미엄 감성을 위한 푸터 전면 개편 및 입체감 강화.
+- **Detail**:
+  - **Footer**: 별도 컴포넌트(`Footer.tsx`)로 분리 및 **System Status**, **대형 타이포그래피**가 포함된 테크 디자인 적용.
+  - **Interaction**: Problem/Solution 섹션 카드에 마우스 호버 시 은은한 **Spotlight & Border Glow** 효과 추가.
+- **Build Time**: 2026-02-15 17:35:00
+
 ## [Alpha V1.234] - 2026-02-15 17:25:00
 
 ### 🎨 UI: Landing Page Design Harmonization

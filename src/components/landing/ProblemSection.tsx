@@ -59,9 +59,12 @@ export default function ProblemSection() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.6, delay: index * 0.1 }}
-                            className="border-b border-[#333] lg:border-r last:border-r-0 border-[#333] p-12 hover:bg-[#1E1E1E] transition-colors duration-500 group flex flex-col justify-between min-h-[500px]"
+                            className="relative border-b border-[#333] lg:border-r last:border-r-0 border-[#333] p-12 hover:bg-[#1E1E1E] transition-colors duration-500 group flex flex-col justify-between min-h-[500px] overflow-hidden"
                         >
-                            <div>
+                            {/* Spotlight Effect */}
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,100,100,0.05)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+
+                            <div className="relative z-10">
                                 <div className="flex justify-between items-start mb-12">
                                     <span className="font-mono text-lg font-bold opacity-30 group-hover:opacity-100 group-hover:text-[#FF4D4D] transition-all text-gray-500">
                                         {problem.id}

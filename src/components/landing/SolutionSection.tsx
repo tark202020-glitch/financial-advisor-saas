@@ -65,21 +65,26 @@ export default function SolutionSection() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.5, delay: index * 0.1 }}
-                            className="bg-black group"
+                            className="bg-black group relative p-6 rounded-2xl border border-transparent hover:border-[#F7D047]/30 transition-all duration-500"
                         >
-                            <div className="flex items-center gap-4 mb-6 bg-black pr-4">
-                                <div className="w-12 h-12 bg-[#1A1A1A] border border-[#333] flex items-center justify-center rounded-full group-hover:bg-[#F7D047] group-hover:text-black group-hover:border-[#F7D047] transition-all duration-300 shadow-sm z-10">
-                                    {item.icon}
-                                </div>
-                                <span className="font-mono text-xs font-bold text-gray-500 group-hover:text-white transition-colors">STEP {item.step}</span>
-                            </div>
+                            {/* Hover Highlight */}
+                            <div className="absolute inset-0 bg-[#F7D047]/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
 
-                            <div className="pr-8">
-                                <div className="font-mono text-[10px] font-bold text-[#F7D047] mb-2 uppercase tracking-wider">{item.label}</div>
-                                <h3 className="text-2xl font-bold mb-4 text-white">{item.title}</h3>
-                                <p className="text-sm text-gray-400 leading-relaxed break-keep">
-                                    {item.description}
-                                </p>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-4 mb-6 bg-transparent pr-4">
+                                    <div className="w-12 h-12 bg-[#1A1A1A] border border-[#333] flex items-center justify-center rounded-full group-hover:bg-[#F7D047] group-hover:text-black group-hover:border-[#F7D047] transition-all duration-300 shadow-sm z-10">
+                                        {item.icon}
+                                    </div>
+                                    <span className="font-mono text-xs font-bold text-gray-500 group-hover:text-white transition-colors">STEP {item.step}</span>
+                                </div>
+
+                                <div className="pr-8">
+                                    <div className="font-mono text-[10px] font-bold text-[#F7D047] mb-2 uppercase tracking-wider">{item.label}</div>
+                                    <h3 className="text-2xl font-bold mb-4 text-white">{item.title}</h3>
+                                    <p className="text-sm text-gray-400 leading-relaxed break-keep">
+                                        {item.description}
+                                    </p>
+                                </div>
                             </div>
                         </motion.div>
                     ))}
