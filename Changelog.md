@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.234] - 2026-02-15 17:25:00
+
+### 🎨 UI: Landing Page Design Harmonization
+- **Summary**: 랜딩 페이지 전체 섹션의 톤앤매너 통일 및 시인성 개선.
+- **Detail**:
+  - **Hero**: 메인 문구("투자는 운이 아니라...") 가독성 강화를 위한 글래스모피즘 백그라운드 및 텍스트 스타일 개선.
+  - **Problem/Solution**: 기존 화이트 테마를 다크 테마(`bg-[#111]`, `bg-black`)로 변경하여 전체 페이지의 일관성 확보.
+- **Build Time**: 2026-02-15 17:25:00
+
 ## [Alpha V1.233] - 2026-02-15 17:20:00
 
 ### 🎨 UI: Landing Page Polish (Dark Mode & Details)

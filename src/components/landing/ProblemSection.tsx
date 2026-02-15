@@ -32,7 +32,7 @@ const problems = [
 
 export default function ProblemSection() {
     return (
-        <section className="py-32 px-6 bg-white text-black">
+        <section className="py-32 px-6 bg-[#111] text-white">
             <div className="max-w-[1920px] mx-auto">
                 <div className="mb-24 flex flex-col items-start">
                     <div className="flex items-center gap-3 mb-6">
@@ -47,11 +47,11 @@ export default function ProblemSection() {
                         className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] uppercase"
                     >
                         Investment<br />
-                        <span className="text-gray-300">Errors.</span>
+                        <span className="text-gray-600">Errors.</span>
                     </motion.h2>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border-t border-black">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border-t border-[#333]">
                     {problems.map((problem, index) => (
                         <motion.div
                             key={index}
@@ -59,11 +59,11 @@ export default function ProblemSection() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.6, delay: index * 0.1 }}
-                            className="border-b border-black lg:border-r last:border-r-0 border-gray-200 p-12 hover:bg-black hover:text-white transition-colors duration-500 group flex flex-col justify-between min-h-[500px]"
+                            className="border-b border-[#333] lg:border-r last:border-r-0 border-[#333] p-12 hover:bg-[#1E1E1E] transition-colors duration-500 group flex flex-col justify-between min-h-[500px]"
                         >
                             <div>
                                 <div className="flex justify-between items-start mb-12">
-                                    <span className="font-mono text-lg font-bold opacity-30 group-hover:opacity-100 group-hover:text-[#FF4D4D] transition-all">
+                                    <span className="font-mono text-lg font-bold opacity-30 group-hover:opacity-100 group-hover:text-[#FF4D4D] transition-all text-gray-500">
                                         {problem.id}
                                     </span>
                                     <div className="group-hover:scale-110 transition-transform duration-500">
@@ -71,17 +71,17 @@ export default function ProblemSection() {
                                     </div>
                                 </div>
 
-                                <h3 className="text-3xl md:text-4xl font-bold mb-8 leading-tight whitespace-pre-line group-hover:text-[#FF4D4D] transition-colors">
+                                <h3 className="text-3xl md:text-4xl font-bold mb-8 leading-tight whitespace-pre-line group-hover:text-[#FF4D4D] transition-colors text-white">
                                     {problem.title}
                                 </h3>
 
-                                <p className="text-lg text-gray-500 group-hover:text-gray-300 transition-colors leading-relaxed break-keep">
+                                <p className="text-lg text-gray-400 group-hover:text-gray-300 transition-colors leading-relaxed break-keep">
                                     {problem.description}
                                 </p>
                             </div>
 
-                            <div className="mt-12 pt-6 border-t border-gray-200 group-hover:border-[#333] flex justify-between items-center opacity-0 group-hover:opacity-100 transition-all duration-500">
-                                <span className="font-mono text-xs tracking-widest">SEVERITY LEVEL</span>
+                            <div className="mt-12 pt-6 border-t border-[#333] group-hover:border-[#555] flex justify-between items-center opacity-0 group-hover:opacity-100 transition-all duration-500">
+                                <span className="font-mono text-xs tracking-widest text-gray-500">SEVERITY LEVEL</span>
                                 <span className="font-mono text-xs font-bold text-[#FF4D4D]">{problem.severity}</span>
                             </div>
                         </motion.div>

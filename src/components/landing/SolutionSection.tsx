@@ -36,19 +36,19 @@ const steps = [
 
 export default function SolutionSection() {
     return (
-        <section className="py-32 px-6 bg-gray-50 text-black border-t border-gray-200">
+        <section className="py-32 px-6 bg-black text-white border-t border-[#222]">
             <div className="max-w-[1920px] mx-auto">
                 <div className="flex flex-col md:flex-row justify-between items-end mb-24">
                     <div>
-                        <div className="inline-block px-3 py-1 bg-black text-white text-xs font-bold font-mono rounded-full mb-6">
+                        <div className="inline-block px-3 py-1 bg-[#F7D047] text-black text-xs font-bold font-mono rounded-full mb-6">
                             PROCESS OPTIMIZATION
                         </div>
                         <h2 className="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9]">
                             From Chaos<br />
-                            <span className="text-gray-400">To Clarity.</span>
+                            <span className="text-gray-600">To Clarity.</span>
                         </h2>
                     </div>
-                    <p className="text-lg font-medium text-gray-500 max-w-md text-right md:text-left mt-8 md:mt-0 leading-relaxed break-keep">
+                    <p className="text-lg font-medium text-gray-400 max-w-md text-right md:text-left mt-8 md:mt-0 leading-relaxed break-keep">
                         주봇은 당신의 투자를 단순한 '감'의 영역에서<br />
                         '데이터 기반의 과학'으로 변화시킵니다.
                     </p>
@@ -56,7 +56,7 @@ export default function SolutionSection() {
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
                     {/* Connecting Line */}
-                    <div className="hidden md:block absolute top-[60px] left-0 w-full h-[1px] bg-black/10 -z-10"></div>
+                    <div className="hidden md:block absolute top-[60px] left-0 w-full h-[1px] bg-[#333] -z-10"></div>
 
                     {steps.map((item, index) => (
                         <motion.div
@@ -65,19 +65,19 @@ export default function SolutionSection() {
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
                             transition={{ duration: 0.5, delay: index * 0.1 }}
-                            className="bg-gray-50 group"
+                            className="bg-black group"
                         >
-                            <div className="flex items-center gap-4 mb-6 bg-gray-50 pr-4">
-                                <div className="w-12 h-12 bg-white border border-gray-200 flex items-center justify-center rounded-full group-hover:bg-black group-hover:text-white group-hover:border-black transition-all duration-300 shadow-sm">
+                            <div className="flex items-center gap-4 mb-6 bg-black pr-4">
+                                <div className="w-12 h-12 bg-[#1A1A1A] border border-[#333] flex items-center justify-center rounded-full group-hover:bg-[#F7D047] group-hover:text-black group-hover:border-[#F7D047] transition-all duration-300 shadow-sm z-10">
                                     {item.icon}
                                 </div>
-                                <span className="font-mono text-xs font-bold text-gray-400 group-hover:text-black transition-colors">STEP {item.step}</span>
+                                <span className="font-mono text-xs font-bold text-gray-500 group-hover:text-white transition-colors">STEP {item.step}</span>
                             </div>
 
                             <div className="pr-8">
                                 <div className="font-mono text-[10px] font-bold text-[#F7D047] mb-2 uppercase tracking-wider">{item.label}</div>
-                                <h3 className="text-2xl font-bold mb-4">{item.title}</h3>
-                                <p className="text-sm text-gray-500 leading-relaxed break-keep">
+                                <h3 className="text-2xl font-bold mb-4 text-white">{item.title}</h3>
+                                <p className="text-sm text-gray-400 leading-relaxed break-keep">
                                     {item.description}
                                 </p>
                             </div>

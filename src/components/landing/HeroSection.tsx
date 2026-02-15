@@ -98,15 +98,17 @@ export default function HeroSection() {
 
             {/* Bottom Section */}
             <div className="relative z-10 w-full flex flex-col items-center gap-12 pb-8">
-                <motion.p
+                <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4, duration: 0.6 }}
-                    className="text-lg md:text-2xl font-medium text-center max-w-xl text-gray-900 leading-relaxed mix-blend-hard-light whitespace-pre-line"
+                    className="relative max-w-4xl px-6 py-4 rounded-2xl bg-white/30 backdrop-blur-md border border-white/40 shadow-xl"
                 >
-                    투자는 운이 아니라 기록입니다.<br className="hidden md:block" />
-                    매일 쓰고, 복기하고, AI와 분석하는 나만의 주식 실습 노트 '주봇'
-                </motion.p>
+                    <p className="text-xl md:text-3xl font-bold text-center text-gray-900 leading-relaxed whitespace-pre-line drop-shadow-sm">
+                        <span className="text-black font-black">"투자는 운이 아니라 기록입니다."</span><br className="hidden md:block" />
+                        매일 쓰고, AI와 분석하는 나만의 주식 실습 노트 <span className="text-[#F7D047] bg-black px-2 py-0.5 rounded-md inline-block transform -skew-x-12 ml-1">주봇</span>
+                    </p>
+                </motion.div>
 
                 {/* Floating Navigation Pill Removed */}
             </div>
