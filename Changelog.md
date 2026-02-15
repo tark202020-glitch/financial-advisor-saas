@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.229] - 2026-02-15 13:25:00
+
+### 🎨 UI: Unicorn Studio Badge Removal (Advanced)
+- **Summary**: Unicorn Studio "Made with" 배지를 완벽하게 제거하기 위한 이중 조치 적용.
+- **Detail**:
+  - **JS**: `MutationObserver`를 사용하여 동적으로 생성되는 배지 요소를 즉시 감지하고 제거 (`HeroSection.tsx`).
+  - **CSS**: `globals.css`에 강력한 CSS 선택자(`!important`)를 추가하여 시각적 숨김 처리 강화.
+- **Build Time**: 2026-02-15 13:25:00
+
 ## [Alpha V1.228] - 2026-02-15 13:00:00
 
 ### 🎨 UI: Landing Page Polish

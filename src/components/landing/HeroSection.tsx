@@ -24,6 +24,31 @@ export default function HeroSection() {
                 (window as any).UnicornStudio.init();
             }
         }
+
+        // Remove Unicorn Studio Badge
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node instanceof HTMLElement) {
+                        if (node.innerText.includes('Made with unicorn.studio') || (node.tagName === 'A' && (node as HTMLAnchorElement).href.includes('unicorn.studio'))) {
+                            node.style.display = 'none';
+                            node.remove();
+                        }
+                        // Check children
+                        const badges = node.querySelectorAll('a[href*="unicorn.studio"], .us-branding');
+                        badges.forEach(badge => {
+                            (badge as HTMLElement).style.display = 'none';
+                            badge.remove();
+                        });
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Cleanup
+        return () => observer.disconnect();
     }, []);
 
     return (
