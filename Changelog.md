@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.225] - 2026-02-15 13:30:00
+
+### 🚑 Hotfix: Hero Section Redesign Not Applied
+- **Summary**: `HeroSection.tsx` 파일이 이전 버전(V1.220)으로 남아있는 문제 확인 및 강제 덮어쓰기 배포.
+- **Detail**:
+  - **Correction**: "Minimalist Bold" 디자인 코드가 파일 시스템에 정상적으로 반영되지 않았던 오류 수정.
+  - **Verification**: `page.tsx` 버전을 `Alpha V1.225`로 업데이트하고, Hero 섹션의 Bento Grid 코드가 완전히 제거되었음을 확인.
+- **Build Time**: 2026-02-15 13:30:00
+
 ## [Alpha V1.224] - 2026-02-15 13:00:00
 
 ### 🚀 Deployment: Force Refresh

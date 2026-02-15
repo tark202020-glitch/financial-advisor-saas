@@ -50,8 +50,8 @@
 - **마이크로 인터랙션**: 버튼 Hover 시 Glitch 효과 등 디테일 추가 검토.
 
 ## 📊 Build Status
-- **Last Version**: Alpha V1.224
-- **Build Time**: 2026-02-15 13:00:00
+- **Last Version**: Alpha V1.225
+- **Build Time**: 2026-02-15 13:30:00
 
 ---
 
