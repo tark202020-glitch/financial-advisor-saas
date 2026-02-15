@@ -14,6 +14,7 @@ import {
     LineChart,
     StickyNote,
     Bot,
+    HelpCircle,
 } from "lucide-react";
 import { usePortfolio } from "@/context/PortfolioContext";
 
@@ -110,10 +111,21 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                     )}
                 </div>
 
+                <Link
+                    href="/help"
+                    className={`
+                        w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group text-gray-400 hover:bg-[#333] hover:text-white mt-auto
+                        ${isCollapsed ? "justify-center" : ""}
+                    `}
+                >
+                    <HelpCircle size={20} className="group-hover:text-white transition-colors" />
+                    {!isCollapsed && <span className="font-bold">도움말</span>}
+                </Link>
+
                 <button
                     onClick={handleLogout}
                     className={`
-                        w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-all duration-200 group mt-auto
+                        w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-all duration-200 group
                         ${isCollapsed ? "justify-center" : ""}
                     `}
                 >
