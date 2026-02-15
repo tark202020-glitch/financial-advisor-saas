@@ -2,41 +2,45 @@
 
 ## 📅 주요 작업 내역
 
-### 1. 랜딩 페이지 전면 개편 (V1.214 ~ V1.216)
-- **리브랜딩**: "기록하는 투자 습관"을 강조한 스토리텔링형 구조(Hero → Problem → Solution → Features → Social Proof → CTA)로 재구축.
-- **비주얼 강화**:
-  - **Framer Motion**: 스크롤 시 부드럽게 등장하는 애니메이션 적용.
-  - **Hero Animation**: 대시보드 스크린샷이 자동으로 스크롤되는 연출 추가.
-  - **Design Filter**: 주요 기능 이미지에 채도/대비 필터를 적용하여 세련된 톤앤매너 완성.
+### 1. 랜딩 페이지 전면 개편 (V1.221) - Industrial Aesthetic
+- **컨셉**: **"ChainGPT Labs Aesthetic"** (Industrial, Technical, Bento Grid).
+- **디자인 방향성**:
+  - **Color Palette**: High Contrast (Black/White), Accent Yellow (`#F7D047`), Alert Red/Green.
+  - **Typography**: Bold Sans-Serif (Headings) + Monospace (Details/Labels).
+  - **Visual Elements**: Grid Lines, System Logs, Terminal Interfaces, CRT Scanlines.
 
-### 2. 사용자 경험(UX) 디테일 향상 (V1.213, V1.217 ~ V1.218)
-- **Jubot Page Guide**: 각 페이지(대시보드, 포트폴리오 등) 타이틀 옆에 도움말 아이콘을 배치, 클릭 시 기능 설명을 제공하여 온보딩 경험 개선.
-- **Favicon & Icon**: 주봇 로고를 적용한 파비콘 및 앱 아이콘 설정. (`layout.tsx` 메타데이터 명시적 선언으로 호환성 확보)
-- **Domain Update**: `jubot.goraebang.com` 도메인 연결 가이드 제공 및 사이트맵 업데이트.
+### 2. 섹션별 리팩토링 상세
+- **Hero Section**: 
+  - Bento Grid 레이아웃 적용. 
+  - Unicorn Studio 배경(I3ce1qwYAbbqQdgYp5FS) 통합.
+  - "System Status", "Ticker" 등 기술적 디테일 추가.
+- **Problem Section (Diagnosis)**: 
+  - 사용자의 문제를 "System Error"로 진단하는 컨셉.
+  - Alert Icon과 Error Code(`ERR_001`)를 활용한 카드 디자인.
+- **Solution Section (Optimization)**: 
+  - 문제 해결 과정을 "Process Flow"로 시각화.
+  - `Routine Input` -> `Data Processing` -> `System Upgrade` 흐름도 구현.
+- **Feature Section (Control Panel)**: 
+  - 시스템 제어 패널(Control Panel) 컨셉.
+  - 사이드바 네비게이션과 CRT 모니터 효과가 적용된 프리뷰 영역.
+- **Social Proof (User Logs)**: 
+  - 사용자 후기를 "Database Access Log" 형태로 표현.
+  - 코드 에디터 스타일의 실제 활용 예시(JSON Format) 제공.
+- **CTA Section (System Launch)**: 
+  - "Initialize System" 버튼 등 강렬한 실행 유도 디자인.
+  - Warning Stripe 패턴과 Bold Typography 활용.
 
-### 3. 모바일 UI 최적화 (V1.206 ~ V1.211)
-- **레이아웃 재정비**: 모바일 전용 헤더 및 드로어(Drawer) 네비게이션 적용.
-- **공간 활용 극대화**:
-  - 전체 컨테이너 및 카드 내부 여백(`padding`)을 대폭 축소하여 정보 밀도 향상.
-  - 종목 상세 모달을 전체 화면에 가깝게 확장하고 불필요한 헤더 정보 간소화.
-  - 포트폴리오/거래내역 테이블을 모바일 친화적인 **카드 뷰(Card View)**로 변환.
-
-### 4. 랜딩 페이지 배경 효과 적용 (V1.219)
-- **Unicorn Studio 연동**: Hero 섹션에 Unicorn Studio 프로젝트(`vMVJssJVC9dieFjgZjEd`) 배경 효과 적용.
-- **자연스러운 통합**: 기존 디자인과 조화되도록 배경 오버레이 처리.
-
-### 5. Hero Section 리디자인 (V1.220)
-- **ChainGPT Style**: Bento Grid 레이아웃 및 Industrial/Tech 디자인 테마 적용.
-- **Unicorn Studio**: 새로운 프로젝션 배경(I3ce1qwYAbbqQdgYp5FS) 적용.
-- **Visual**: Ticker, Grid Overlay, Yellow Accent(#F7D047) 활용.
+### 3. 글로벌 레이아웃 (Navigation & Footer)
+- **Navigation**: 버튼 스타일을 Industrial(각진 형태, Border)로 변경, "System Status" 인디케이터 추가.
+- **Footer**: 다크 테마(`#0A0A0A`) 적용으로 무게감 있는 마무리, Monospace 폰트 적용.
 
 ## 📝 내일의 계획
-- **사용자 피드백 수집**: 배포된 랜딩 페이지 및 모바일 UI에 대한 실사용 피드백 대기.
-- **온보딩 튜토리얼**: 초보자를 위한 단계별 튜토리얼(Jubot Guide) 심화 구현 검토.
+- **반응형 디테일 점검**: 모바일 환경에서의 Grid 레이아웃 최적화 확인.
+- **마이크로 인터랙션**: 버튼 Hover 시 Glitch 효과 등 디테일 추가 검토.
 
 ## 📊 Build Status
-- **Last Version**: Alpha V1.220
-- **Build Time**: 2026-02-15 10:20:00
+- **Last Version**: Alpha V1.221
+- **Build Time**: 2026-02-15 15:35:00
 
 ---
 
