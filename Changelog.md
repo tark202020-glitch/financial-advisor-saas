@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.228] - 2026-02-15 13:00:00
+
+### 🎨 UI: Landing Page Polish
+- **Summary**: 랜딩 페이지 Hero 섹션 디자인 개선 (Unicorn Studio 배지 및 메뉴 제거).
+- **Detail**:
+  - **HeroSection**: 상단 Floating Menu 제거하여 깔끔한 첫인상 제공.
+  - **CSS**: Unicorn Studio "Made with" 배지 숨김 처리 (`globals.css`).
+- **Build Time**: 2026-02-15 14:10:00
+
 ## [Alpha V1.225] - 2026-02-15 13:30:00
 
 ### 🚑 Hotfix: Hero Section Redesign Not Applied

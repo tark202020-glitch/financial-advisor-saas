@@ -79,29 +79,11 @@ export default function HeroSection() {
                     transition={{ delay: 0.4, duration: 0.6 }}
                     className="text-lg md:text-2xl font-medium text-center max-w-xl text-gray-900 leading-relaxed mix-blend-hard-light whitespace-pre-line"
                 >
-                    당신의 데이터에 기반한 AI 투자 전략.<br className="hidden md:block" />
-                    심플하고, 투명하며, 강력합니다.
+                    투자는 운이 아니라 기록입니다.<br className="hidden md:block" />
+                    매일 쓰고, 복기하고, AI와 분석하는 나만의 주식 실습 노트 '주봇'
                 </motion.p>
 
-                {/* Floating Navigation Pill */}
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.6, duration: 0.5 }}
-                    className="bg-[#222]/90 text-gray-300 backdrop-blur-md px-1.5 py-1.5 rounded-full flex flex-wrap justify-center gap-1 items-center shadow-2xl"
-                >
-                    {[
-                        { name: '대시보드', href: '/dashboard' },
-                        { name: '포트폴리오', href: '/portfolio' },
-                        { name: '인사이트', href: '/insights' },
-                        { name: '조건검색', href: '/condition-search' },
-                        { name: '매매일지', href: '/memo' }
-                    ].map((item) => (
-                        <Link href={item.href} key={item.name} className="px-6 py-2.5 hover:bg-white hover:text-black rounded-full text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all">
-                            {item.name}
-                        </Link>
-                    ))}
-                </motion.div>
+                {/* Floating Navigation Pill Removed */}
             </div>
         </section>
     );

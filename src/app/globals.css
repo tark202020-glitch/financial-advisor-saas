@@ -3,11 +3,11 @@
 :root {
   --background: #121212;
   --foreground: #ffffff;
-  
+
   /* Vibrant Dark Mode Colors */
   --card-bg: #1E1E1E;
   --border-color: #333333;
-  
+
   --accent-yellow: #F7D047;
   --accent-blue: #3B82F6;
   --accent-purple: #8B5CF6;
@@ -26,15 +26,18 @@ body {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-  background: #121212; 
+  background: #121212;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #333; 
+  background: #333;
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #555; 
+  background: #555;
 }
 
 
@@ -49,11 +52,28 @@ body {
   --animate-marquee2: marquee2 25s linear infinite;
 
   @keyframes marquee {
-    0% { transform: translateX(0%); }
-    100% { transform: translateX(-100%); }
+    0% {
+      transform: translateX(0%);
+    }
+
+    100% {
+      transform: translateX(-100%);
+    }
   }
+
   @keyframes marquee2 {
-    0% { transform: translateX(100%); }
-    100% { transform: translateX(0%); }
+    0% {
+      transform: translateX(100%);
+    }
+
+    100% {
+      transform: translateX(0%);
+    }
   }
+}
+
+/* Hide Unicorn Studio Branding Badge */
+a[href*="unicorn.studio"],
+.us-branding {
+  display: none !important;
 }
