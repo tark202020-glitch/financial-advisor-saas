@@ -1,5 +1,15 @@
 
 
+## [Alpha V1.236] - 2026-02-15 17:45:00
+
+### 🔮 UI: Sophisticated Tech Design (Aurora & Glassmorphism)
+- **Summary**: 생동감 넘치는 오로라 그라데이션, 노이즈 텍스처, 인터랙티브 UI로 'Digital Luxury' 감성 구현.
+- **Detail**:
+  - **Global**: 전체 화면에 **Noise Texture(Film Grain)**를 적용하여 밀도감 있는 질감 표현.
+  - **Hero**: **Aurora Gradient** 배경과 스크롤에 반응하는 **Sticky Glassmorphic Header** 추가.
+  - **Feature**: 정적인 차트 이미지를 **실시간 데이터 처리 애니메이션**으로 교체하여 생동감 부여.
+- **Build Time**: 2026-02-15 17:45:00
+
 ## [Alpha V1.235] - 2026-02-15 17:35:00
 
 ### 🎨 UI: Premium Design Upgrade (Footer & Depth Effects)

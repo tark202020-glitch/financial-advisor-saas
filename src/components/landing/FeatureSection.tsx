@@ -102,14 +102,29 @@ export default function FeatureSection() {
 
                         {/* Visual Placeholder for Module Interface */}
                         <div className="mt-12 w-full h-64 bg-[#0A0A0A] border border-[#222] rounded-xl relative overflow-hidden group">
-                            {/* Abstract Chart UI */}
+                            {/* Abstract Chart UI - Animated */}
                             <div className="absolute inset-x-8 bottom-8 top-16 flex items-end justify-between gap-2 opacity-50 group-hover:opacity-80 transition-opacity duration-500">
-                                <div className="w-full bg-[#222] h-[40%] rounded-sm group-hover:bg-[#F7D047]/20 transition-colors delay-75"></div>
-                                <div className="w-full bg-[#222] h-[70%] rounded-sm group-hover:bg-[#F7D047]/40 transition-colors delay-100"></div>
-                                <div className="w-full bg-[#222] h-[55%] rounded-sm group-hover:bg-[#F7D047]/30 transition-colors delay-150"></div>
-                                <div className="w-full bg-[#222] h-[85%] rounded-sm group-hover:bg-[#F7D047]/50 transition-colors delay-200"></div>
-                                <div className="w-full bg-[#222] h-[60%] rounded-sm group-hover:bg-[#F7D047]/30 transition-colors delay-300"></div>
-                                <div className="w-full bg-[#333] h-[95%] rounded-sm bg-gradient-to-t from-[#F7D047] to-[#F7D047]/50 shadow-[0_0_15px_rgba(247,208,71,0.3)]"></div>
+                                {[40, 70, 55, 85, 60, 95, 45, 75].map((height, i) => (
+                                    <motion.div
+                                        key={i}
+                                        initial={{ height: "0%" }}
+                                        whileInView={{ height: `${height}%` }}
+                                        transition={{
+                                            duration: 1,
+                                            delay: i * 0.1,
+                                            type: "spring",
+                                            stiffness: 50
+                                        }}
+                                        className={`w-full rounded-sm ${i === 5 ? "bg-gradient-to-t from-[#F7D047] to-[#F7D047]/50 shadow-[0_0_15px_rgba(247,208,71,0.3)] relative z-10" : "bg-[#222] group-hover:bg-[#F7D047]/20 transition-colors"}`}
+                                    >
+                                        {/* Living Bar Animation */}
+                                        <motion.div
+                                            animate={{ opacity: [0.5, 1, 0.5] }}
+                                            transition={{ duration: 2, repeat: Infinity, delay: i * 0.2 }}
+                                            className="w-full h-full bg-white/5"
+                                        />
+                                    </motion.div>
+                                ))}
                             </div>
 
                             {/* Header Line */}
