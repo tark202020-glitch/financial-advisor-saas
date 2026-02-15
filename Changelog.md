@@ -1,5 +1,29 @@
 
 
+## [Alpha V1.223] - 2026-02-15 12:30:00
+
+### 🎨 UI: Landing Page Hero Redesign (Minimalist Bold)
+- **Summary**: 사용자 피드백(첨부 이미지 Refference)을 반영하여 Hero 섹션을 대담하고 심플한 타이포그래피 중심으로 전면 재설계.
+- **Detail**:
+  - **Concept**: "Your Creative" 스타일의 Massive Typography ("Jubot").
+  - **Layout**: 
+    - Full-screen centered text (`text-[22vw]`).
+    - Top Right Navigation (Start Now, Search).
+    - Floating Bottom Navigation Pill (Dashboard, Portfolio, etc.).
+  - **Background**: 기존 Unicorn Studio Fluid Effect 유지 (`I3ce1qwYAbbqQdgYp5FS`)하며 텍스트와 조화(mix-blend-multiply).
+  - **Cleanup**: `page.tsx`의 중복된 Global Navigation 제거.
+- **Build Time**: 2026-02-15 12:30:00
+
+## [Alpha V1.222] - 2026-02-15 12:00:00
+
+### 🐛 Fix: Favicon not updating
+- **Summary**: 파비콘 변경이 반영되지 않는 문제 해결.
+- **Detail**:
+  - **Cleanup**: `public/favicon.ico` 삭제 (Next.js App Router의 `icon.png` 자동 생성 우선순위 보장).
+  - **Metadata**: `layout.tsx`의 명시적 `icons` 설정을 제거하고 파일 시스템 기반 API(`src/app/icon.png`) 활용으로 전환.
+  - **Verification**: `src/app/icon.png`가 자동으로 리사이징되어 파비콘 및 애플 터치 아이콘으로 생성됨.
+- **Build Time**: 2026-02-15 12:00:00
+
 ## [Alpha V1.221] - 2026-02-15 11:30:00
 
 ### 🎨 UI: Landing Page Redesign (Industrial/Bento Grid)

@@ -34,6 +34,17 @@
 - **Navigation**: 버튼 스타일을 Industrial(각진 형태, Border)로 변경, "System Status" 인디케이터 추가.
 - **Footer**: 다크 테마(`#0A0A0A`) 적용으로 무게감 있는 마무리, Monospace 폰트 적용.
 
+### 4. 버그 수정 (V1.222)
+- **Favicon**: 파비콘이 갱신되지 않는 문제 해결.
+  - `public/favicon.ico` 삭제 및 `src/app/icon.png` 기반 자동 생성 활성화.
+
+### 5. Hero Section 리디자인 (V1.223)
+- **Concept**: 사용자 피드백("Your Creative" 레퍼런스) 반영.
+- **Design**:
+  - 화면을 압도하는 거대한 텍스트("Jubot") 적용.
+  - 불필요한 장식 요소를 제거하고 화이트 스페이스와 볼드한 타이포그래피로 임팩트 강화.
+  - 기존의 움직이는 배경(Unicorn Studio)은 유지하되 텍스트와 자연스럽게 어우러지도록 블렌딩 처리.
+
 ## 📝 내일의 계획
 - **반응형 디테일 점검**: 모바일 환경에서의 Grid 레이아웃 최적화 확인.
 - **마이크로 인터랙션**: 버튼 Hover 시 Glitch 효과 등 디테일 추가 검토.

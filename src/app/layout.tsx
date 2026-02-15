@@ -9,9 +9,6 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Financial Advisor SaaS",
   description: "AI-driven financial insights",
-  icons: {
-    icon: "/icon.png",
-  },
 };
 
 export default async function RootLayout({
