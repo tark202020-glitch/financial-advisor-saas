@@ -1,5 +1,15 @@
 
 
+## [Alpha V1.220] - 2026-02-15 10:20:00
+
+### 🎨 UI: Hero Section Redesign (ChainGPT Style)
+- **Summary**: ChainGPT 스타일의 Bento Grid 레이아웃 적용 및 배경 효과 교체
+- **Detail**:
+  - `HeroSection`: Bento Grid 시스템 도입 (Ticker, Left Panel, Right Visual).
+  - **Background**: Unicorn Studio 프로젝트 교체 (`I3ce1qwYAbbqQdgYp5FS`).
+  - **Design**: Industrial/Tech 테마 적용 (White/Grey 배경 + Yellow 포인트 + Grid Overlay).
+- **Build Time**: 2026-02-15 10:20:00
+
 ## [Alpha V1.219] - 2026-02-15 10:00:00
 
 ### 🎨 UI: Landing Page Background Effect

@@ -25,13 +25,18 @@
 - **Unicorn Studio 연동**: Hero 섹션에 Unicorn Studio 프로젝트(`vMVJssJVC9dieFjgZjEd`) 배경 효과 적용.
 - **자연스러운 통합**: 기존 디자인과 조화되도록 배경 오버레이 처리.
 
+### 5. Hero Section 리디자인 (V1.220)
+- **ChainGPT Style**: Bento Grid 레이아웃 및 Industrial/Tech 디자인 테마 적용.
+- **Unicorn Studio**: 새로운 프로젝션 배경(I3ce1qwYAbbqQdgYp5FS) 적용.
+- **Visual**: Ticker, Grid Overlay, Yellow Accent(#F7D047) 활용.
+
 ## 📝 내일의 계획
 - **사용자 피드백 수집**: 배포된 랜딩 페이지 및 모바일 UI에 대한 실사용 피드백 대기.
 - **온보딩 튜토리얼**: 초보자를 위한 단계별 튜토리얼(Jubot Guide) 심화 구현 검토.
 
 ## 📊 Build Status
-- **Last Version**: Alpha V1.219
-- **Build Time**: 2026-02-15 10:00:00
+- **Last Version**: Alpha V1.220
+- **Build Time**: 2026-02-15 10:20:00
 
 ---
 
