@@ -37,11 +37,11 @@ const reviews = [
 
 export default function SocialProofSection() {
     return (
-        <section className="py-24 bg-white border-t border-gray-200 overflow-hidden">
+        <section className="py-24 bg-black border-t border-[#222] overflow-hidden">
             <div className="max-w-[1920px] mx-auto mb-12 px-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="font-mono text-sm font-bold tracking-widest text-black uppercase">
+                    <div className="w-2 h-2 bg-[#F7D047] rounded-full animate-pulse"></div>
+                    <span className="font-mono text-sm font-bold tracking-widest text-white uppercase opacity-70">
                         LIVE USER FEEDBACK
                     </span>
                 </div>
@@ -51,18 +51,18 @@ export default function SocialProofSection() {
             <div className="relative w-full flex overflow-hidden">
                 <div className="flex animate-marquee whitespace-nowrap">
                     {[...reviews, ...reviews, ...reviews].map((review, index) => (
-                        <div key={index} className="inline-block mx-4 p-6 border border-black bg-white hover:bg-black hover:text-white transition-colors duration-300 min-w-[350px] group">
-                            <div className="flex justify-between items-center mb-4 border-b border-gray-200 group-hover:border-gray-700 pb-2">
-                                <span className="font-mono text-xs font-bold text-gray-400 group-hover:text-gray-500">{review.user}</span>
-                                <span className="font-mono text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full group-hover:bg-green-900 group-hover:text-green-300">
+                        <div key={index} className="inline-block mx-4 p-6 border border-[#333] bg-[#0A0A0A] hover:bg-[#151515] transition-colors duration-300 min-w-[350px] group rounded-xl">
+                            <div className="flex justify-between items-center mb-4 border-b border-[#222] pb-4">
+                                <span className="font-mono text-xs font-bold text-gray-500 group-hover:text-gray-400 transition-colors">{review.user}</span>
+                                <span className="font-mono text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full border border-green-900/50">
                                     {review.status}
                                 </span>
                             </div>
-                            <p className="text-sm font-medium leading-relaxed whitespace-normal break-keep mb-6 h-12 flex items-center">
+                            <p className="text-sm text-gray-300 font-medium leading-relaxed whitespace-normal break-keep mb-6 h-12 flex items-center">
                                 "{review.msg}"
                             </p>
                             <div className="flex justify-end">
-                                <span className="font-mono text-xs font-bold text-black bg-[#F7D047] px-2 py-1">
+                                <span className="font-mono text-xs font-bold text-[#F7D047] bg-[#F7D047]/10 px-3 py-1 rounded-sm border border-[#F7D047]/20">
                                     RESULT: {review.profit}
                                 </span>
                             </div>
@@ -72,18 +72,18 @@ export default function SocialProofSection() {
 
                 <div className="flex animate-marquee2 whitespace-nowrap absolute top-0 left-0">
                     {[...reviews, ...reviews, ...reviews].map((review, index) => (
-                        <div key={index} className="inline-block mx-4 p-6 border border-black bg-white hover:bg-black hover:text-white transition-colors duration-300 min-w-[350px] group">
-                            <div className="flex justify-between items-center mb-4 border-b border-gray-200 group-hover:border-gray-700 pb-2">
-                                <span className="font-mono text-xs font-bold text-gray-400 group-hover:text-gray-500">{review.user}</span>
-                                <span className="font-mono text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full group-hover:bg-green-900 group-hover:text-green-300">
+                        <div key={index} className="inline-block mx-4 p-6 border border-[#333] bg-[#0A0A0A] hover:bg-[#151515] transition-colors duration-300 min-w-[350px] group rounded-xl">
+                            <div className="flex justify-between items-center mb-4 border-b border-[#222] pb-4">
+                                <span className="font-mono text-xs font-bold text-gray-500 group-hover:text-gray-400 transition-colors">{review.user}</span>
+                                <span className="font-mono text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full border border-green-900/50">
                                     {review.status}
                                 </span>
                             </div>
-                            <p className="text-sm font-medium leading-relaxed whitespace-normal break-keep mb-6 h-12 flex items-center">
+                            <p className="text-sm text-gray-300 font-medium leading-relaxed whitespace-normal break-keep mb-6 h-12 flex items-center">
                                 "{review.msg}"
                             </p>
                             <div className="flex justify-end">
-                                <span className="font-mono text-xs font-bold text-black bg-[#F7D047] px-2 py-1">
+                                <span className="font-mono text-xs font-bold text-[#F7D047] bg-[#F7D047]/10 px-3 py-1 rounded-sm border border-[#F7D047]/20">
                                     RESULT: {review.profit}
                                 </span>
                             </div>

@@ -8,7 +8,9 @@ export default function CTASection() {
     return (
         <section className="py-32 px-6 bg-black text-white relative overflow-hidden flex items-center justify-center min-h-[600px]">
             {/* Background Effects */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.1)_0%,transparent_70%)]"></div>
+            {/* Background Effects */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_center,black_40%,transparent_80%)]"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(247,208,71,0.05)_0%,transparent_60%)]"></div>
 
             <div className="max-w-5xl mx-auto text-center relative z-10">
                 <motion.div

@@ -65,8 +65,8 @@ export default function FeatureSection() {
                                 key={index}
                                 onClick={() => setActiveFeature(index)}
                                 className={`group p-8 text-left transition-all duration-300 border border-transparent ${activeFeature === index
-                                        ? "bg-[#1A1A1A] border-gray-700"
-                                        : "hover:bg-[#151515] hover:border-[#333]"
+                                    ? "bg-[#1A1A1A] border-gray-700"
+                                    : "hover:bg-[#151515] hover:border-[#333]"
                                     }`}
                             >
                                 <div className="flex justify-between items-center mb-2">
@@ -101,13 +101,20 @@ export default function FeatureSection() {
                         </div>
 
                         {/* Visual Placeholder for Module Interface */}
-                        <div className="mt-12 w-full h-64 bg-[#111] border border-gray-800 rounded-sm relative overflow-hidden group">
-                            {/* Abstract UI Representation */}
-                            <div className="absolute inset-0 flex items-center justify-center text-gray-700 font-mono text-xs uppercase tracking-widest group-hover:text-[#F7D047] transition-colors">
-                                [ Module Interface Preview ]
+                        <div className="mt-12 w-full h-64 bg-[#0A0A0A] border border-[#222] rounded-xl relative overflow-hidden group">
+                            {/* Abstract Chart UI */}
+                            <div className="absolute inset-x-8 bottom-8 top-16 flex items-end justify-between gap-2 opacity-50 group-hover:opacity-80 transition-opacity duration-500">
+                                <div className="w-full bg-[#222] h-[40%] rounded-sm group-hover:bg-[#F7D047]/20 transition-colors delay-75"></div>
+                                <div className="w-full bg-[#222] h-[70%] rounded-sm group-hover:bg-[#F7D047]/40 transition-colors delay-100"></div>
+                                <div className="w-full bg-[#222] h-[55%] rounded-sm group-hover:bg-[#F7D047]/30 transition-colors delay-150"></div>
+                                <div className="w-full bg-[#222] h-[85%] rounded-sm group-hover:bg-[#F7D047]/50 transition-colors delay-200"></div>
+                                <div className="w-full bg-[#222] h-[60%] rounded-sm group-hover:bg-[#F7D047]/30 transition-colors delay-300"></div>
+                                <div className="w-full bg-[#333] h-[95%] rounded-sm bg-gradient-to-t from-[#F7D047] to-[#F7D047]/50 shadow-[0_0_15px_rgba(247,208,71,0.3)]"></div>
                             </div>
-                            {/* Actual Image if available would go here */}
-                            {/* <img src={features[activeFeature].image} ... /> */}
+
+                            {/* Header Line */}
+                            <div className="absolute top-6 left-8 right-8 h-px bg-[#222]"></div>
+                            <div className="absolute top-6 left-8 w-12 h-1 bg-[#F7D047] rounded-full"></div>
                         </div>
                     </div>
                 </div>
