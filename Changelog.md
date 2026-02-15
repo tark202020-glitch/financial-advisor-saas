@@ -1,5 +1,14 @@
 
 
+## [Alpha V1.224] - 2026-02-15 13:00:00
+
+### 🚀 Deployment: Force Refresh
+- **Summary**: 배포 반영 확인을 위한 버전 범프 및 강제 재배포.
+- **Detail**:
+  - **Version Check**: `page.tsx` Footer에 표시되는 버전을 `Alpha V1.224`로 업데이트하여 사용자가 배포 상태를 직관적으로 확인할 수 있도록 함.
+  - **Force Rebuild**: Vercel 캐시 무효화 및 새 빌드 트리거.
+- **Build Time**: 2026-02-15 13:00:00
+
 ## [Alpha V1.223] - 2026-02-15 12:30:00
 
 ### 🎨 UI: Landing Page Hero Redesign (Minimalist Bold)

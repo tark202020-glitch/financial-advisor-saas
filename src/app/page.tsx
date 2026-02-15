@@ -33,7 +33,7 @@ export default function LandingPage() {
             </div>
             <p className="text-gray-500 font-mono text-xs max-w-xs">
               SYSTEM: ONLINE<br />
-              VERSION: 2.0.0 (BETA)<br />
+              VERSION: Alpha V1.224<br />
               ALL SYSTEMS OPERATIONAL
             </p>
           </div>
