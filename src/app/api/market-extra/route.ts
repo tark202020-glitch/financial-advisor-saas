@@ -16,7 +16,10 @@ async function fetchYahooData(symbol: string) {
         if (!meta) return null;
 
         const price = meta.regularMarketPrice;
-        const prevClose = meta.previousClose;
+        // chartPreviousClose is often more accurate for "yesterday's close" than previousClose in some contexts,
+        // but regularMarketPreviousClose is standard. 
+        // However, yahoo chart often has 'chartPreviousClose'.
+        const prevClose = meta.chartPreviousClose || meta.previousClose;
         const change = price - prevClose;
         const changePercent = (change / prevClose) * 100;
 
@@ -38,15 +41,15 @@ async function fetchInterestRates() {
     // Keeping static/FRED logic for now as base rates don't fluctuate daily like market prices.
     try {
         // Korea base rate: Static for stability (2.75% as of early 2026)
-        // US Fed Rate: Static or FRED
+        // US Fed Rate: Static or FRED. Updated to range 3.50 ~ 3.75 as requested.
         return {
             korea: { rate: 2.75, date: '2026-01-16' },
-            us: { rate: 4.25, date: '2026-01-29' }
+            us: { rate: "3.50 ~ 3.75", date: '2026-01-29' }
         };
     } catch (e) {
         return {
             korea: { rate: 2.75, date: '2026-01-16' },
-            us: { rate: 4.25, date: '2026-01-29' }
+            us: { rate: "3.50 ~ 3.75", date: '2026-01-29' }
         };
     }
 }
@@ -67,6 +70,30 @@ export async function GET() {
             fetchYahooData('^IXIC')  // NASDAQ
         ]);
 
+        // Process Gold to KRW/g
+        // 1 Troy Ounce = 31.1034768 Grams
+        let goldKRW = null;
+        if (gold && usd) {
+            const priceKRWperOz = gold.price * usd.price;
+            const priceKRWperG = priceKRWperOz / 31.1034768;
+
+            // Calculate previous close in KRW/g to get correct change
+            const prevGoldUSD = gold.price - gold.change;
+            const prevUsdKRW = usd.price - usd.change; // Approx prev close for USD
+            const prevPriceKRWperOz = prevGoldUSD * prevUsdKRW;
+            const prevPriceKRWperG = prevPriceKRWperOz / 31.1034768;
+
+            const changeKRW = priceKRWperG - prevPriceKRWperG;
+            const changePercent = (changeKRW / prevPriceKRWperG) * 100;
+
+            goldKRW = {
+                ...gold,
+                price: priceKRWperG,
+                change: changeKRW,
+                changePercent: changePercent
+            };
+        }
+
         return NextResponse.json({
             exchangeRates: {
                 usd_krw: usd,
@@ -79,7 +106,7 @@ export async function GET() {
                 sp500: sp500,
                 nasdaq: nasdaq
             },
-            gold: gold, // price in USD
+            gold: goldKRW || gold, // Return converted gold if available
             interestRates: rates,
             fetchedAt: new Date().toISOString()
         });

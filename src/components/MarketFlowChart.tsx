@@ -48,8 +48,9 @@ interface MarketExtraData {
     gold: YahooData | null;
     interestRates: {
         korea: { rate: number; date: string };
-        us: { rate: number; date: string };
+        us: { rate: string | number; date: string };
     } | null;
+    fetchedAt?: string;
 }
 
 function ExtraMarketBlock() {
@@ -85,13 +86,20 @@ function ExtraMarketBlock() {
         return date;
     };
 
+    // Format reference date (fetchedAt or current date if missing)
+    const refDate = extra.fetchedAt ? new Date(extra.fetchedAt) : new Date();
+    const refDateStr = `${String(refDate.getMonth() + 1).padStart(2, '0')}.${String(refDate.getDate()).padStart(2, '0')}`;
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Exchange Rates */}
             <div className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
-                <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5">
-                    <DollarSign size={14} className="text-green-400" />
-                    환율
+                <h4 className="font-bold text-white text-sm mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                        <DollarSign size={14} className="text-green-400" />
+                        환율
+                    </div>
+                    <span className="text-[10px] text-gray-500 font-normal">{refDateStr} 기준</span>
                 </h4>
                 <div className="space-y-2">
                     {extra.exchangeRates ? (
@@ -124,17 +132,20 @@ function ExtraMarketBlock() {
 
             {/* Gold & Interest Rates */}
             <div className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
-                <h4 className="font-bold text-white text-sm mb-3 flex items-center gap-1.5">
-                    <Percent size={14} className="text-amber-400" />
-                    금 · 금리
+                <h4 className="font-bold text-white text-sm mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                        <Percent size={14} className="text-amber-400" />
+                        금 · 금리
+                    </div>
+                    <span className="text-[10px] text-gray-500 font-normal">{refDateStr} 기준</span>
                 </h4>
                 <div className="space-y-2">
                     {extra.gold && (
                         <ExtraRow
-                            label="금 (1oz)"
+                            label="금 (1g)"
                             data={extra.gold}
                             flag="🪙"
-                            prefix="$"
+                            suffix="원/g"
                         />
                     )}
                     {extra.interestRates && (
@@ -147,7 +158,7 @@ function ExtraMarketBlock() {
                             />
                             <ExtraRowSimple
                                 label="미국 기준금리"
-                                value={`${extra.interestRates.us.rate}%`}
+                                value={typeof extra.interestRates.us.rate === 'string' ? `${extra.interestRates.us.rate}%` : `${extra.interestRates.us.rate}%`}
                                 sub={fmtIR(extra.interestRates.us.date)}
                                 flag="🇺🇸"
                             />
@@ -178,7 +189,7 @@ function ExtraRow({ label, data, flag, prefix = '', suffix = '', multiplier = 1 
                     {prefix}{price.toLocaleString(undefined, { maximumFractionDigits: 2 })}{suffix}
                 </div>
                 <div className={`text-xs flex items-center justify-end gap-1 ${isUp ? 'text-red-400' : 'text-blue-400'}`}>
-                    <span>{isUp ? '▲' : '▼'} {Math.abs(change).toFixed(2)}</span>
+                    <span>{isUp ? '▲' : '▼'} {Math.abs(change).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     <span className="opacity-80">({Math.abs(data.changePercent).toFixed(2)}%)</span>
                 </div>
             </div>
@@ -195,7 +206,7 @@ function ExtraRowSimple({ label, value, sub, flag }: { label: string; value: str
             </div>
             <div className="text-right">
                 <span className="text-lg font-bold text-white">{value}</span>
-                {sub && <span className="text-xs text-gray-500 ml-2">({sub})</span>}
+                {sub && <span className="text-xs text-text-gray-500 ml-2 opacity-60">({sub})</span>}
             </div>
         </div>
     );

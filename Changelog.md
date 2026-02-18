@@ -1,5 +1,16 @@
 
 
+## [Alpha V1.237] - 2026-02-18 14:15:00
+
+### 🐛 Fix: Daily Check Data Accuracy
+- **Summary**: 일일체크 데이터(환율, 금값, 금리) 표기 오류 수정 및 단위 보정.
+- **Detail**:
+  - **환율**: 전일 대비 변동폭(Change/%)이 0으로 표시되던 문제 해결 (Yahoo Finance `chartPreviousClose` 적용).
+  - **금**: 달러/온스(USD/oz) → **원/그램(KRW/g)** 단위로 자동 환산하여 표기 직관성 개선.
+  - **금리**: 미국 기준금리 데이터 현행화 (3.50% ~ 3.75% 범위 표기).
+  - **기준일**: 모든 시장 데이터에 기준 날짜(Reference Date) 표기 추가.
+- **Build Time**: 2026-02-18 14:15:00
+
 ## [Alpha V1.236] - 2026-02-15 17:45:00
 
 ### 🔮 UI: Sophisticated Tech Design (Aurora & Glassmorphism)
