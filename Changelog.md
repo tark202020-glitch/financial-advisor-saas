@@ -1,4 +1,13 @@
-## [Alpha V1.255] - 2026-03-05 20:30:11
+## [Alpha V1.256] - 2026-03-05 20:40:00
+
+### 🐛 Bug Fix: Financial Data Stability - Zero-Value Detection & Quality Retry
+- **Summary**: 기업재무분석 데이터의 안정성 대폭 강화. 핵심 지표(시가총액, PER, PBR 등)가 0으로 잘못 반환되면 누락으로 자동 판별, 자동 재시도 후에도 일부만 불러왔을 경우 "다시 불러오기" 리프레시 버튼 노출.
+- **Detail**:
+  - `src/lib/kis/client.ts`: `getFinancialStats()` 에 `nonZero()` 헬퍼 추가. KIS API 응답 중 PER, PBR, 시가총액 등이 `'0'` 또는 `'0.00'`이면 데이터 없음으로 처리.
+  - `src/components/FinancialGrid.tsx`: `formatValue()` 내부에서도 0 값을 `-`로 변환하도록 강화. 핵심 6개 지표(시가총액, PER, PBR, ROE, 영업이익률, 부채비율) 중 최소 3개 이상 유효해야 '성공'으로 판정하는 품질 검사(Quality Gate) 도입. 미달 시 최대 4번 자동 재시도. 최종 시도 후 일부만 유효할 경우 데이터를 보여주되 상단에 "일부 누락 · 다시 불러오기" 리프레시 버튼을 노출.
+  - OpenDART API 호출에도 `AbortController` 타임아웃(8초)을 적용하여 전체 로딩 시간 단축.
+- **Build Time**: 2026-03-05 20:40:00
+
 
 ### 🐛 Bug Fix: OpenDART Fallback Data Polish
 - **Summary**: OpenDART 보조 API 호출 시 누락된 데이터 매핑 추가 및 비정상 응답 시 에러 처리(리프레시 유도) 강제.

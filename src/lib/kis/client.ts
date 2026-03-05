@@ -510,23 +510,23 @@ export async function getFinancialStats(symbol: string): Promise<KisFinancialSta
     const priceData = await getDomesticPrice(symbol);
     if (!priceData) return null;
 
-    // KIS "Inquire Price" (FHKST01010100) returns these fields in 'output':
-    // per, pbr, eps, bps, hts_avls (Market Cap), bstp_kor_isnm (Sector)
-    // We already have `KisDomStockPrice` interface, let's verify if it has them.
-    // If not, we might need to cast or extend the interface in `types.ts`.
-    // Returning what we have.
-
-    // Note: client.ts:52 getDomesticPrice returns KisDomStockPrice.
-    // We might need to check if that interface includes PER/PBR or raw output has them.
-    // Based on KIS docs, they are in the response. I'll cast to any for now to extract specific fields safely.
     const raw = priceData as any;
 
+    // Helper: KIS API returns '0' or '0.00' strings when data is unavailable.
+    // These should be treated as missing ('-').
+    const nonZero = (val: string | undefined): string => {
+        if (!val || val === '' || val === '-') return '-';
+        const num = parseFloat(val);
+        if (isNaN(num) || num === 0) return '-';
+        return val;
+    };
+
     return {
-        per: raw.per || '-',
-        pbr: raw.pbr || '-',
-        eps: raw.eps || '-',
-        bps: raw.bps || '-',
-        market_cap: raw.hts_avls || '-',
+        per: nonZero(raw.per),
+        pbr: nonZero(raw.pbr),
+        eps: nonZero(raw.eps),
+        bps: nonZero(raw.bps),
+        market_cap: nonZero(raw.hts_avls),
         sector_name: raw.bstp_kor_isnm || '-'
     };
 }
