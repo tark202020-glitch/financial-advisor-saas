@@ -31,6 +31,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         };
 
         const revenue_cagr = calculateCAGR(fin.revenue, fin3y?.revenue || null, 3);
+        const operating_profit_cagr = calculateCAGR(fin.operatingProfit, fin3y?.operatingProfit || null, 3);
         const net_income_cagr = calculateCAGR(fin.netIncome, fin3y?.netIncome || null, 3);
 
         // Gross Margin (매출총이익률 없이: 영업이익률 대체)
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             financials: {
                 revenue: fin.revenue || 0,
                 revenue_cagr_3y: revenue_cagr,
+                operating_profit_cagr_3y: operating_profit_cagr,
                 net_income_cagr_3y: net_income_cagr,
                 gross_margin_1y: operating_margin,
                 roe: roe,

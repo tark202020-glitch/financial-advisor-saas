@@ -38,6 +38,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             operating_profit: income?.bsop_prti || income?.operating_profit || '-',
             net_income: income?.thtr_ntin || income?.net_income || '-',
 
+            // Margin Calculations (Calculate directly to prevent frontend issues)
+            gross_margin: income?.sale_totl_prft && income?.sale_account
+                ? ((Number(income.sale_totl_prft) / Number(income.sale_account)) * 100).toFixed(2)
+                : '-',
+            operating_margin: income?.bsop_prti && income?.sale_account
+                ? ((Number(income.bsop_prti) / Number(income.sale_account)) * 100).toFixed(2)
+                : '-',
+
             // Financial Ratio (FHKST66430300) - Latest quarter [0]
             // Confirmed fields from debug: roe_val, grs, bsop_prfi_inrt, ntin_inrt, lblt_rate, rsrv_rate
             roe: ratio?.roe_val || '-',

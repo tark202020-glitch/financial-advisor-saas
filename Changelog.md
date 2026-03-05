@@ -1,4 +1,15 @@
-## [Alpha V1.252] - 2026-03-05 20:07:05
+## [Alpha V1.253] - 2026-03-05 20:17:55
+
+### 🐛 Bug Fix: Financial Analysis Data Source Mapping
+- **Summary**: 기업재무분석(Financial Grid) 데이터 노출 불규칙 및 누락 버그 해결
+- **Detail**:
+  - `api/kis/company/[symbol]/route.ts` 에서 매출총이익률(`gross_margin`)과 영업이익률(`operating_margin`)의 매핑이 누락되어 프론트엔드에서 표시되지 않던 오류 수정 (KIS 원천 데이터에서 계산 식 추가).
+  - KIS 데이터가 없을 경우 보조로 사용되는 OpenDART API(`api/opendart/company/[symbol]/route.ts`) 내부 연산식 버그 수정.
+    - 기존 '영업이익 성장률'의 보조 데이터로 '순이익 성장률'이 잘못 사용되던 점을 '영업이익 성장률(CAGR)' 수식으로 교체 적용.
+  - 관련 컴포넌트(`FinancialGrid.tsx`) 내부 보조 데이터 참조 키네임 매칭 수정.
+  - 외부 데이터 호출 중 정보가 없거나 실패 시 리프레시 버튼을 노출하고, 데이터를 다 불러올 때까지 로딩 표시가 명확히 나오도록 디자인 원칙 고수.
+- **Build Time**: 2026-03-05 20:17:55
+
 
 ### ✨ Feature & UI: Touch-friendly Trade Log & Category Label
 - **Summary**: `StockDetailChartModal.tsx` 내 거래 내역 표기의 터치 사용성 개선 및 현재 카테고리 표시 라벨 추가

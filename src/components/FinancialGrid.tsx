@@ -97,7 +97,7 @@ export default function FinancialGrid({ symbol }: FinancialGridProps) {
                         : (dartFin.revenue_cagr_3y ? `${dartFin.revenue_cagr_3y.toFixed(1)}%` : '-'),
                     profit_growth: formatValue(fin.growth_profit, '%') !== '-'
                         ? formatValue(fin.growth_profit, '%')
-                        : (dartFin.net_income_cagr_3y ? `${dartFin.net_income_cagr_3y.toFixed(1)}%` : '-'),
+                        : (dartFin.operating_profit_cagr_3y ? `${dartFin.operating_profit_cagr_3y.toFixed(1)}%` : '-'),
                     debt_ratio: formatValue(fin.debt_ratio, '%'),
                     consensus: fin.consensus_price && fin.consensus_price !== '-'
                         ? `${Number(fin.consensus_price).toLocaleString()}원`
