@@ -464,21 +464,21 @@ export default function PortfolioSummaryBlock() {
 
                                 {/* Uncategorized (미분류) Single Line Row */}
                                 {summary.categories['미분류'] && summary.categories['미분류'].valuation > 0 && (
-                                    <div className="mt-4 bg-[#1E1E1E] border border-[#333] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                        <div className="flex items-center gap-2">
+                                    <div className="mt-4 bg-[#1E1E1E] border border-[#333] rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 overflow-x-auto hide-scrollbar">
+                                        <div className="flex items-center gap-2 shrink-0">
                                             <div className="w-1.5 h-4 bg-gray-600 rounded-full"></div>
-                                            <span className="text-sm font-bold text-gray-400">미분류</span>
+                                            <span className="text-sm font-bold text-gray-400 whitespace-nowrap">미분류</span>
                                         </div>
-                                        <div className="flex items-center gap-4 sm:gap-6 justify-between sm:justify-end">
-                                            <div className="text-left sm:text-right">
+                                        <div className="flex items-center gap-4 sm:gap-5 justify-between sm:justify-end shrink-0 min-w-max">
+                                            <div className="text-left sm:text-right whitespace-nowrap">
                                                 <div className="text-[10px] text-gray-500">투자금액</div>
                                                 <div className="text-sm font-bold text-gray-300">{fmtValue(summary.categories['미분류'].purchase, 'kr')}</div>
                                             </div>
-                                            <div className="text-left sm:text-right">
+                                            <div className="text-left sm:text-right whitespace-nowrap">
                                                 <div className="text-[10px] text-gray-500">평가금액</div>
                                                 <div className="text-sm font-bold text-white">{fmtValue(summary.categories['미분류'].valuation, 'kr')}</div>
                                             </div>
-                                            <div className="text-right">
+                                            <div className="text-right whitespace-nowrap">
                                                 <div className="text-[10px] text-gray-500">평가손익 / 수익률</div>
                                                 <div className={`text-sm font-bold ${summary.categories['미분류'].profit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
                                                     {summary.categories['미분류'].profit >= 0 ? '+' : ''}{fmtValue(summary.categories['미분류'].profit, 'kr')}

@@ -1,4 +1,22 @@
-## [Alpha V1.248] - 2026-03-05 19:42:00
+## [Alpha V1.250] - 2026-03-05 20:01:00
+
+### 🐛 UI: Fix text wrapping in uncategorized listing
+- **Summary**: `PortfolioSummaryBlock.tsx` 내 '미분류' 행의 텍스트가 줄바꿈(Wrapping) 되어 레이아웃이 깨지는 현상 수정
+- **Detail**:
+  - 금액 단위가 커질 경우 텍스트 엘리먼트가 찌그러지며 줄바꿈 처리되던 부분을 방지하기 위해 `whitespace-nowrap`, `shrink-0`, `min-w-max` 등의 CSS 클래스 속성을 컨테이너 및 텍스트 블록에 적용
+  - 화면이 극단적으로 좁아질 경우 레이아웃이 깨지지 않도록 가로 스크롤(`overflow-x-auto`)을 임시 지원하여 가독성 보장
+- **Build Time**: 2026-03-05 20:01:00
+
+
+### 🎨 UI: Portfolio Card Design Refinements
+- **Summary**: 포트폴리오 카드(`PortfolioCard.tsx`) 내부의 텍스트 크기 및 정보 배치 개선
+- **Detail**:
+  - `Card Effect / Target` 라벨을 `목표`로 변경하고, 시인성을 위해 폰트 크기 확대 (`text-[10px]` -> `text-sm`)
+  - 목표 내용(메모 텍스트)의 폰트 크기를 키워 가독성 확보 (`text-xs` -> `text-sm`)
+  - `Total Profit` 영역에서 **평가수익금액**이 가장 돋보이도록 수익률과 위치를 변경하고, 금액 크기를 점진적 가변(`text-lg`~`text-3xl`)으로 확대 적용 (금액이 커져도 잘리지 않도록 `truncate` 적용 유지)
+  - `Total Profit` 하단의 **평가액** 텍스트를 `Invested`(투자금액) 수준 이상으로 확대하여 사용자 인지성 강화 (`text-[9px]` -> `text-[10px] sm:text-[11px]`)
+- **Build Time**: 2026-03-05 19:53:00
+
 
 ### 🎨 UI: Typography and Label Adjustments
 - **Summary**: 포트폴리오 요약 대시보드의 핵심 지표 텍스트 크기 조정 및 명칭 변경

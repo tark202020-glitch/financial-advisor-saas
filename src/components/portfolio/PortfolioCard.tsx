@@ -230,13 +230,13 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                             {/* Total Profit */}
                             <div className="w-[45%] rounded-xl p-3 sm:p-4 border border-white/5 bg-gradient-to-br from-white/[0.02] to-black/30 shadow-inner flex flex-col justify-center items-end relative min-w-0">
                                 <span className="text-[10px] text-gray-400 font-bold tracking-wider uppercase mb-1 block">Total Profit</span>
-                                <div className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black tracking-tighter ${colorClass} drop-shadow-md mb-0.5 truncate w-full text-right`}>
-                                    {profitSign}{Math.abs(returnRate).toFixed(2)}%
-                                </div>
-                                <div className={`text-sm sm:text-base font-bold ${colorClass} truncate mb-1 w-full text-right`}>
+                                <div className={`text-lg sm:text-xl md:text-2xl lg:text-3xl font-black tracking-tighter ${colorClass} drop-shadow-md mb-0.5 truncate w-full text-right`} title={`${profitSign}${formatPrice(Math.abs(profitLoss))}`}>
                                     {profitSign}{formatPrice(Math.abs(profitLoss))}
                                 </div>
-                                <div className="text-[9px] text-gray-500 truncate mt-auto w-full text-right">
+                                <div className={`text-sm sm:text-base font-bold ${colorClass} truncate mb-1 w-full text-right`}>
+                                    {profitSign}{Math.abs(returnRate).toFixed(2)}%
+                                </div>
+                                <div className="text-[10px] sm:text-[11px] font-bold text-gray-400 truncate mt-auto w-full text-right" title={`평가액: ${formatPrice(currentPrice * asset.quantity)}`}>
                                     평가액: {formatPrice(currentPrice * asset.quantity)}
                                 </div>
                             </div>
@@ -264,11 +264,11 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                     <div className={`mt-auto rounded-lg p-3 ${themeConfig.accentBg} border border-white/5`}>
                         <div className="flex items-center gap-2 mb-2">
                             <div className={`w-2 h-2 rounded-full ${themeConfig.badgeBg}`}></div>
-                            <span className={`text-[10px] font-black tracking-widest uppercase ${themeConfig.accentText}`}>Card Effect / Target</span>
+                            <span className={`text-sm font-black tracking-widest uppercase ${themeConfig.accentText}`}>목표</span>
                         </div>
 
-                        <div className="text-xs text-gray-300 leading-relaxed mb-3 min-h-[2.5rem] italic">
-                            "{asset.memo || <span className="text-gray-600 font-normal">No tactical memo assigned.</span>}"
+                        <div className="text-sm text-gray-200 leading-relaxed mb-3 min-h-[2.5rem] italic">
+                            "{asset.memo || <span className="text-gray-500 font-normal">설정된 목표 메모가 없습니다.</span>}"
                         </div>
 
                         {(asset.targetPriceLower || asset.targetPriceUpper) ? (
