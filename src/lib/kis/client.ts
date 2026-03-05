@@ -78,7 +78,8 @@ export async function getAccessToken(): Promise<string> {
 export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice | null> {
     const token = await getAccessToken();
 
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}`, {
+    // NXT(넥스트) 시세 사용 - KRX 대비 실시간 가격 정확도 향상
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=NX&FID_INPUT_ISCD=${symbol}`, {
         method: "GET",
         headers: {
             "content-type": "application/json",

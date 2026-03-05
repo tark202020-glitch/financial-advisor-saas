@@ -1,3 +1,12 @@
+## [Alpha V1.257] - 2026-03-05 22:11:00
+
+### ✨ Feature: Real-time Price Accuracy Upgrade (NXT)
+- **Summary**: 국내 주식 현재가 조회 시세를 KRX(한국거래소)에서 NXT(넥스트 트레이드) 기준 시세로 변경하여 실시간 정확도 향상.
+- **Detail**:
+  - `src/lib/kis/client.ts` 내의 `getDomesticPrice()` 함수에서 KIS API 호출 시 시장 분류 코드를 `J`(KRX)에서 `NX`(NXT)로 변경 (`FID_COND_MRKT_DIV_CODE=NX`).
+  - 현재가 조회 조회 이외의 차트, 투자자 동향, 시가총액 순위, 기업 재무 분석 등은 데이터 호환성을 고려하여 기존 KRX(`J`) 코드를 유지.
+- **Build Time**: 2026-03-05 22:11:00
+
 ## [Alpha V1.256] - 2026-03-05 20:40:00
 
 ### 🐛 Bug Fix: Financial Data Stability - Zero-Value Detection & Quality Retry
