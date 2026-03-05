@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
 
-const DOCS_DIR = path.join(process.cwd(), "doc");
+const DOCS_DIR = path.join(process.cwd(), "doc", "MSCI");
 
 export async function GET(request: NextRequest) {
     try {
