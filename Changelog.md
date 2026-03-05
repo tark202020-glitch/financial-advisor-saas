@@ -1,5 +1,14 @@
-## [Alpha V1.259] - 2026-03-05 22:54:00
+## [Alpha V1.260] - 2026-03-05 23:00:00
 
+### 🚀 Feature: 주식 스터디 게시판 추가 및 조건검색 제거
+- **Summary**: 사이드바의 "조건검색" 메뉴를 제거하고, 로컬 마크다운 문서(options: `\doc`)를 연동하는 "주식 스터디" 게시판 기능을 신규 추가했습니다.
+- **Detail**:
+  - `src/components/Sidebar.tsx`: "조건검색" 항목을 제거하고 "주식 스터디"(`/study`) 메뉴를 추가. 아이콘 변경(GraduationCap 적용).
+  - `src/app/api/study/route.ts`: `/doc` 폴더 마크다운(`.md`) 파일들을 스캔하고, 문서 내용 조회 및 수정한 텍스트를 파일 시스템에 직접 저장(PUT)하는 API 구축.
+  - `src/app/study/page.tsx`: 왼쪽 파일 목록형 사이드바와 오른쪽 원본 글 렌더링/편집 전환 뷰를 포함한 클라이언트 UI 구현.
+- **Build Time**: 2026-03-05 23:00:00
+
+## [Alpha V1.259] - 2026-03-05 22:54:00
 ### ✨ Feature: Unified Portfolio Currency Display (KRW)
 - **Summary**: 포트폴리오 '해외' 뷰 및 카테고리별 요약, 거래 완료 수익 등 모든 금액 합산을 일관되게 원화(KRW)로 표시하도록 단일화하고 적용 환율 정보를 추가헀습니다.
 - **Detail**:
