@@ -278,14 +278,14 @@ export default function PortfolioSummaryBlock() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     {/* Total Purchase */}
                     <div className="bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1">
-                        <div className="text-xs text-gray-500 mb-1">총 매입금액</div>
-                        <div className="text-sm font-bold text-gray-200">{fmtValue(current.purchase, view)}</div>
+                        <div className="text-xs text-gray-500 mb-1">총 투자 금액</div>
+                        <div className="text-xl sm:text-2xl font-bold text-gray-200">{fmtValue(current.purchase, view)}</div>
                     </div>
 
                     {/* Total Valuation */}
                     <div className="bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1">
                         <div className="text-xs text-gray-500 mb-1">총 평가금액</div>
-                        <div className="text-sm font-bold text-white">{fmtValue(current.valuation, view)}</div>
+                        <div className="text-xl sm:text-2xl font-bold text-white">{fmtValue(current.valuation, view)}</div>
                     </div>
 
                     {/* Profit / Return */}
@@ -437,7 +437,7 @@ export default function PortfolioSummaryBlock() {
                                                         </div>
                                                         <div className="mb-4 flex-1 flex flex-col justify-center min-w-0">
                                                             <div className="text-[10px] text-gray-500 mb-0.5 mt-1">평가금액</div>
-                                                            <div className={`text-2xl xl:text-3xl font-black tracking-tighter truncate ${stats.profit >= 0 ? 'text-red-400' : 'text-blue-400'}`} title={fmtValue(stats.valuation, 'kr')}>
+                                                            <div className={`text-xl xl:text-2xl font-black tracking-tighter truncate ${stats.profit >= 0 ? 'text-red-400' : 'text-blue-400'}`} title={fmtValue(stats.valuation, 'kr')}>
                                                                 {fmtValue(stats.valuation, 'kr')}
                                                             </div>
                                                             <div className={`text-sm font-bold mt-1 ${stats.profit >= 0 ? 'text-red-400/80' : 'text-blue-400/80'}`}>
@@ -467,7 +467,7 @@ export default function PortfolioSummaryBlock() {
                                     <div className="mt-4 bg-[#1E1E1E] border border-[#333] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                         <div className="flex items-center gap-2">
                                             <div className="w-1.5 h-4 bg-gray-600 rounded-full"></div>
-                                            <span className="text-sm font-bold text-gray-400">미분류 기타자산</span>
+                                            <span className="text-sm font-bold text-gray-400">미분류</span>
                                         </div>
                                         <div className="flex items-center gap-4 sm:gap-6 justify-between sm:justify-end">
                                             <div className="text-left sm:text-right">
