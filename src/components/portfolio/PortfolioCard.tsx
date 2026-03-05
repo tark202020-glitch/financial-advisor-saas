@@ -204,7 +204,7 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                         {/* Top Row: Current Value & Total Profit (Larger, more emphasis) */}
                         <div className="flex gap-2 sm:gap-3">
                             {/* Current Value */}
-                            <div className="w-[55%] rounded-xl p-3 sm:p-4 border border-white/5 bg-black/40 shadow-inner flex flex-col justify-center relative min-w-0">
+                            <div className="w-[40%] rounded-xl p-3 sm:p-4 border border-white/5 bg-black/40 shadow-inner flex flex-col justify-center relative min-w-0">
                                 <div className="flex justify-between items-end mb-1">
                                     <span className="text-[10px] text-gray-400 font-bold tracking-wider uppercase">Current Value</span>
                                     {!stockData && onRefresh && (
@@ -216,7 +216,7 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                                         </button>
                                     )}
                                 </div>
-                                <div className={`text-base sm:text-lg md:text-xl lg:text-2xl font-black tracking-tight ${changeAmount > 0 ? 'text-red-400' : changeAmount < 0 ? 'text-blue-400' : 'text-white'} drop-shadow-lg mb-1 truncate`}>
+                                <div className={`text-base sm:text-lg md:text-xl lg:text-xl font-black tracking-tight ${changeAmount > 0 ? 'text-red-400' : changeAmount < 0 ? 'text-blue-400' : 'text-white'} drop-shadow-lg mb-1 truncate`}>
                                     {formatPrice(currentPrice)}
                                 </div>
                                 <div className="flex items-center gap-1 mt-auto">
@@ -228,9 +228,9 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                             </div>
 
                             {/* Total Profit */}
-                            <div className="w-[45%] rounded-xl p-3 sm:p-4 border border-white/5 bg-gradient-to-br from-white/[0.02] to-black/30 shadow-inner flex flex-col justify-center items-end relative min-w-0">
+                            <div className="w-[60%] rounded-xl p-3 sm:p-4 border border-white/5 bg-gradient-to-br from-white/[0.02] to-black/30 shadow-inner flex flex-col justify-center items-end relative min-w-0">
                                 <span className="text-[10px] text-gray-400 font-bold tracking-wider uppercase mb-1 block">Total Profit</span>
-                                <div className={`text-lg sm:text-xl md:text-2xl lg:text-3xl font-black tracking-tighter ${colorClass} drop-shadow-md mb-0.5 truncate w-full text-right`} title={`${profitSign}${formatPrice(Math.abs(profitLoss))}`}>
+                                <div className={`text-lg sm:text-xl md:text-2xl lg:text-2xl font-black tracking-tighter ${colorClass} drop-shadow-md mb-0.5 truncate w-full text-right`} title={`${profitSign}${formatPrice(Math.abs(profitLoss))}`}>
                                     {profitSign}{formatPrice(Math.abs(profitLoss))}
                                 </div>
                                 <div className={`text-sm sm:text-base font-bold ${colorClass} truncate mb-1 w-full text-right`}>

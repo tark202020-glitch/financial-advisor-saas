@@ -28,7 +28,9 @@ const getCategoryStyle = (category: string | undefined) => {
         level: '0',
         label,
         wrapper: "bg-[#1E1E1E] sm:rounded-2xl shadow-2xl shadow-black/50 border border-[#333]",
-        header: "bg-[#252525] border-b border-[#333]"
+        header: "bg-[#252525] border-b border-[#333]",
+        badgeBg: "bg-gradient-to-br from-gray-700 to-gray-900",
+        border: "border-gray-700"
     };
 
     if (category.includes('배당주')) {
@@ -36,7 +38,9 @@ const getCategoryStyle = (category: string | undefined) => {
             level: 'I',
             label,
             wrapper: "bg-[#1E2A22] sm:rounded-2xl shadow-2xl shadow-emerald-900/20 border border-emerald-500/30",
-            header: "bg-gradient-to-r from-emerald-950/40 to-[#252525] border-b border-emerald-500/30"
+            header: "bg-gradient-to-r from-emerald-950/40 to-[#252525] border-b border-emerald-500/30",
+            badgeBg: "bg-gradient-to-br from-emerald-400 to-teal-700",
+            border: "border-emerald-400/50"
         };
     }
     if (category.includes('ETF모음')) {
@@ -44,7 +48,9 @@ const getCategoryStyle = (category: string | undefined) => {
             level: 'II',
             label,
             wrapper: "bg-[#1E242A] sm:rounded-2xl shadow-2xl shadow-blue-900/20 border border-blue-500/30",
-            header: "bg-gradient-to-r from-blue-950/40 to-[#252525] border-b border-blue-500/30"
+            header: "bg-gradient-to-r from-blue-950/40 to-[#252525] border-b border-blue-500/30",
+            badgeBg: "bg-gradient-to-br from-blue-400 to-indigo-700",
+            border: "border-blue-400/50"
         };
     }
     if (category.includes('대형주')) {
@@ -52,7 +58,9 @@ const getCategoryStyle = (category: string | undefined) => {
             level: 'III',
             label,
             wrapper: "bg-[#2A1E2A] sm:rounded-2xl shadow-2xl shadow-purple-900/20 border border-purple-500/30",
-            header: "bg-gradient-to-r from-purple-950/40 to-[#252525] border-b border-purple-500/30"
+            header: "bg-gradient-to-r from-purple-950/40 to-[#252525] border-b border-purple-500/30",
+            badgeBg: "bg-gradient-to-br from-fuchsia-500 to-purple-800",
+            border: "border-purple-400/50"
         };
     }
     if (category.includes('기대주')) {
@@ -60,7 +68,9 @@ const getCategoryStyle = (category: string | undefined) => {
             level: 'IV',
             label,
             wrapper: "bg-[#2A1E1E] sm:rounded-2xl shadow-2xl shadow-red-900/20 border border-red-500/40",
-            header: "bg-gradient-to-r from-red-950/40 to-[#252525] border-b border-red-500/40"
+            header: "bg-gradient-to-r from-red-950/40 to-[#252525] border-b border-red-500/40",
+            badgeBg: "bg-gradient-to-br from-orange-500 to-red-800",
+            border: "border-red-500/50"
         };
     }
 
@@ -68,7 +78,9 @@ const getCategoryStyle = (category: string | undefined) => {
         level: '0',
         label,
         wrapper: "bg-[#1E1E1E] sm:rounded-2xl shadow-2xl shadow-black/50 border border-[#333]",
-        header: "bg-[#252525] border-b border-[#333]"
+        header: "bg-[#252525] border-b border-[#333]",
+        badgeBg: "bg-gradient-to-br from-gray-700 to-gray-900",
+        border: "border-gray-700"
     };
 };
 
@@ -543,6 +555,17 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                         </div>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
+                        {themeStyle.level !== '0' && (
+                            <div className={`px-2 py-1 lg:px-3 rounded-md ${themeStyle.badgeBg} border ${themeStyle.border} flex items-center gap-1.5 shadow-sm mr-1 sm:mr-2`}>
+                                <span className="font-bold italic text-xs text-white tracking-wider">
+                                    Lv.{themeStyle.level}
+                                </span>
+                                <span className="w-px h-2.5 bg-white/30 hidden sm:block"></span>
+                                <span className="text-[10px] sm:text-xs font-bold text-white/90 hidden sm:block">
+                                    {themeStyle.label}
+                                </span>
+                            </div>
+                        )}
                         {!viewOnly && (
                             <button
                                 onClick={handleSaveGoals}

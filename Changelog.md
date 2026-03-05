@@ -1,4 +1,22 @@
-## [Alpha V1.253] - 2026-03-05 20:17:55
+## [Alpha V1.255] - 2026-03-05 20:30:11
+
+### 🐛 Bug Fix: OpenDART Fallback Data Polish
+- **Summary**: OpenDART 보조 API 호출 시 누락된 데이터 매핑 추가 및 비정상 응답 시 에러 처리(리프레시 유도) 강제.
+- **Detail**:
+  - `src/lib/opendart.ts` 내부에서 OpenDART 부채총계(`liability`) 계정과목 파싱 로직 추가.
+  - `src/app/api/opendart/company/[symbol]/route.ts` API에서 영업이익률(`operating_margin`) 및 추가된 부채총계를 바탕으로 부채비율(`debt_ratio`)을 계산해서 프론트엔드로 반환.
+  - KIS API 통신 횟수 초과 혹은 기타 사유로 인해 OpenDART API 보조 호출이 발생했을 때, 핵심 지표(매출, 영업이익)가 `0`으로 조회되어 비정상 렌더링을 막고자 해당 경우 서버 사이드에서 `404` 에러 코드로 강제 반환하여 리프레시 버튼을 유도하도록 정책 변경.
+  - `FinancialGrid.tsx` 내에서 새로 반환되는 `operating_margin`, `debt_ratio` 변수 렌더링 연결 (Fallback).
+- **Build Time**: 2026-03-05 20:30:11
+
+
+### ✨ Feature & UI: Portfolio and Modal Polish
+- **Summary**: Portfolio 카드 수익금액 노출 영역 확대 및 모달 상단 카테고리 뱃지 고정 표시 추가
+- **Detail**:
+  - `PortfolioCard.tsx` 내부의 Current Value 와 Total Profit 컴포넌트 간 차지하는 공간 비율을 55:45 에서 40:60 으로 조정하여 천만 단위 이상의 수익 금액이 들어가도 말줄임 처리되지 않도록 레이아웃 개선. 글씨 크기도 약간 축소 반영(`text-3xl` -> `text-2xl`).
+  - `StockDetailChartModal.tsx` 내의 모달 헤더(저장 버튼 좌측) 고정 영역에 현재 뱃지의 상태(Level. I ~ IV) 정보 라벨 삽입. 스크롤을 내려도 항상 노출됨.
+- **Build Time**: 2026-03-05 20:25:01
+
 
 ### 🐛 Bug Fix: Financial Analysis Data Source Mapping
 - **Summary**: 기업재무분석(Financial Grid) 데이터 노출 불규칙 및 누락 버그 해결

@@ -24,6 +24,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             return NextResponse.json({ error: 'Company not found in OpenDART' }, { status: 404 });
         }
 
+        // 필수 지표 부재 시 실패 처리 (프론트엔드 리프레시 유도)
+        if (!fin.revenue || !fin.operatingProfit || fin.revenue === 0 || fin.operatingProfit === 0) {
+            return NextResponse.json({ error: 'Missing core financial data in OpenDART' }, { status: 404 });
+        }
+
         // CAGR (3년 평균 성장률)
         const calculateCAGR = (current: number | null, past: number | null, yearsDiff: number) => {
             if (!current || !past || past <= 0 || yearsDiff <= 0) return null;
@@ -34,15 +39,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         const operating_profit_cagr = calculateCAGR(fin.operatingProfit, fin3y?.operatingProfit || null, 3);
         const net_income_cagr = calculateCAGR(fin.netIncome, fin3y?.netIncome || null, 3);
 
-        // Gross Margin (매출총이익률 없이: 영업이익률 대체)
-        let operating_margin = null;
-        if (fin.operatingProfit && fin.revenue) {
-            operating_margin = (fin.operatingProfit / fin.revenue) * 100;
+        // Operating Margin
+        const operating_margin = (fin.operatingProfit / fin.revenue) * 100;
+
+        // Debt Ratio
+        let debt_ratio = null;
+        if (fin.liability && fin.equity && fin.equity > 0) {
+            debt_ratio = (fin.liability / fin.equity) * 100;
         }
 
         // ROE
         let roe = null;
-        if (fin.netIncome && fin.equity) {
+        if (fin.netIncome && fin.equity && fin.equity > 0) {
             roe = (fin.netIncome / fin.equity) * 100;
         }
 
@@ -66,11 +74,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             base_year: fin.year,
             currency: 'KRW',
             financials: {
-                revenue: fin.revenue || 0,
+                revenue: fin.revenue,
                 revenue_cagr_3y: revenue_cagr,
                 operating_profit_cagr_3y: operating_profit_cagr,
                 net_income_cagr_3y: net_income_cagr,
-                gross_margin_1y: operating_margin,
+                operating_margin: operating_margin,
+                debt_ratio: debt_ratio,
                 roe: roe,
                 net_income: fin.netIncome || 0
             },

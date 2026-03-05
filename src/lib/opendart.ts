@@ -32,6 +32,7 @@ export async function fetchFinancials(stockCode: string, year?: number): Promise
     operatingProfit: number | null;
     netIncome: number | null;
     equity: number | null;
+    liability: number | null;
     revenue_prev: number | null;
     operatingProfit_prev: number | null;
     netIncome_prev: number | null;
@@ -113,6 +114,7 @@ function processFinancialData(list: any[], year: number) {
     const opProfit = findValue('영업이익');
     const netIncome = findValue('당기순이익');
     const equity = findValue('자본총계');
+    const liability = findValue('부채총계');
 
     return {
         year,
@@ -120,6 +122,7 @@ function processFinancialData(list: any[], year: number) {
         operatingProfit: opProfit.current,
         netIncome: netIncome.current,
         equity: equity.current,
+        liability: liability.current,
         revenue_prev: revenue.prev,
         operatingProfit_prev: opProfit.prev,
         netIncome_prev: netIncome.prev,

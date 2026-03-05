@@ -88,17 +88,19 @@ export default function FinancialGrid({ symbol }: FinancialGridProps) {
                     roe: formatValue(fin.roe, '%') !== '-'
                         ? formatValue(fin.roe, '%')
                         : (dartFin.roe ? `${dartFin.roe.toFixed(1)}%` : '-'),
-                    gross_margin: formatValue(fin.gross_margin, '%') !== '-'
-                        ? formatValue(fin.gross_margin, '%')
-                        : (dartFin.gross_margin_1y ? `${dartFin.gross_margin_1y.toFixed(1)}%` : '-'),
-                    operating_margin: formatValue(fin.operating_margin, '%'),
+                    gross_margin: formatValue(fin.gross_margin, '%'),
+                    operating_margin: formatValue(fin.operating_margin, '%') !== '-'
+                        ? formatValue(fin.operating_margin, '%')
+                        : (dartFin.operating_margin ? `${dartFin.operating_margin.toFixed(1)}%` : '-'),
                     revenue_growth: formatValue(fin.growth_revenue, '%') !== '-'
                         ? formatValue(fin.growth_revenue, '%')
                         : (dartFin.revenue_cagr_3y ? `${dartFin.revenue_cagr_3y.toFixed(1)}%` : '-'),
                     profit_growth: formatValue(fin.growth_profit, '%') !== '-'
                         ? formatValue(fin.growth_profit, '%')
                         : (dartFin.operating_profit_cagr_3y ? `${dartFin.operating_profit_cagr_3y.toFixed(1)}%` : '-'),
-                    debt_ratio: formatValue(fin.debt_ratio, '%'),
+                    debt_ratio: formatValue(fin.debt_ratio, '%') !== '-'
+                        ? formatValue(fin.debt_ratio, '%')
+                        : (dartFin.debt_ratio ? `${dartFin.debt_ratio.toFixed(1)}%` : '-'),
                     consensus: fin.consensus_price && fin.consensus_price !== '-'
                         ? `${Number(fin.consensus_price).toLocaleString()}원`
                         : '-'
