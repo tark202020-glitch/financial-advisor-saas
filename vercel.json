@@ -3,6 +3,10 @@
         {
             "path": "/api/jubot/analyze/daily?save=true",
             "schedule": "0 22 * * *"
+        },
+        {
+            "path": "/api/cron/update-msci",
+            "schedule": "0 22 * * *"
         }
     ]
 }
