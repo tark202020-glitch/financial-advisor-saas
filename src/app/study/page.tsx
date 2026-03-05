@@ -111,6 +111,7 @@ export default function StudyPage() {
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [editedContent, setEditedContent] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(true);
+    const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
     useEffect(() => {
         fetchFiles();
@@ -146,6 +147,26 @@ export default function StudyPage() {
         }
     };
 
+    const handleGenerateMsci = async () => {
+        setIsGenerating(true);
+        try {
+            const res = await fetch("/api/study/generate-msci", { method: "POST" });
+            if (res.ok) {
+                alert("MSCI KOREA INDEX 문서를 성공적으로 생성/업데이트 했습니다.");
+                await fetchFiles();
+                // 자동 선택
+                handleSelectFile("MSCI KOREA INDEX.md");
+            } else {
+                alert("문서 생성에 실패했습니다.");
+            }
+        } catch (error) {
+            console.error("Failed to generate MSCI:", error);
+            alert("문서 생성 중 오류가 발생했습니다.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handleSave = async () => {
         if (!selectedFile) return;
 
@@ -178,12 +199,21 @@ export default function StudyPage() {
             <div className="flex bg-[#121212] h-[calc(100vh-4rem)] text-white w-full">
                 {/* 왼쪽 트리/목록 영역 */}
                 <div className="w-80 border-r border-[#333] bg-[#1E1E1E] flex flex-col h-full rounded-tl-2xl overflow-hidden">
-                    <div className="p-4 border-b border-[#333] flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <BookOpen size={20} className="text-[#F7D047]" />
-                            <h2 className="font-bold text-lg">MSCI 스터디</h2>
+                    <div className="p-4 border-b border-[#333] flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <BookOpen size={20} className="text-[#F7D047]" />
+                                <h2 className="font-bold text-lg">MSCI 스터디</h2>
+                            </div>
+                            <JubotPageGuide guideText="MSCI 관련 문서를 열람하고 수정(저장) 할 수 있습니다. '정보 만들기'로 최신 데이터를 구성하세요." />
                         </div>
-                        <JubotPageGuide guideText="MSCI 관련 문서를 열람하고 수정(저장) 할 수 있습니다." />
+                        <button
+                            onClick={handleGenerateMsci}
+                            disabled={isGenerating}
+                            className="w-full text-sm bg-[#2A2A2A] border border-[#444] hover:bg-[#333] text-gray-200 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium shadow-sm"
+                        >
+                            {isGenerating ? '데이터 수집 및 문서 생성 중...' : '정보 만들기 (업데이트)'}
+                        </button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2">
                         {loading ? (
