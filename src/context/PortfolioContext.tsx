@@ -38,6 +38,7 @@ export interface Asset {
 interface PortfolioContextType {
     assets: Asset[];
     totalInvested: number;
+    exchangeRate: number | null;
     isLoading: boolean;
     error: string | null;
     user: any | null;
@@ -56,6 +57,7 @@ export const PortfolioContext = createContext<PortfolioContextType | undefined>(
 
 export function PortfolioProvider({ children, initialUser }: { children: ReactNode; initialUser?: any | null }) {
     const [assets, setAssets] = useState<Asset[]>([]);
+    const [exchangeRate, setExchangeRate] = useState<number | null>(null);
     const [user, setUser] = useState<any | null>(initialUser || null);
     const [isLoading, setIsLoading] = useState(true);
     const [loadingMessage, setLoadingMessage] = useState<string | null>("FinAdvisor을 시작합니다...");
@@ -132,7 +134,14 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 setLoadingMessage("나의 주식일지를 불러오고 있습니다...");
 
                 try {
-                    await fetchPortfolio(initialUser.id);
+                    await Promise.all([
+                        fetchPortfolio(initialUser.id),
+                        fetch('/api/market-extra').then(res => res.json()).then(data => {
+                            if (data?.exchangeRates?.usd_krw?.price) {
+                                setExchangeRate(data.exchangeRates.usd_krw.price);
+                            }
+                        }).catch(e => console.error("Failed to fetch exchange rate:", e))
+                    ]);
                 } catch (e) {
                     console.error("Init fetch failed:", e);
                 } finally {
@@ -152,7 +161,14 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                     if (user?.id !== session.user.id) {
                         setUser(session.user);
                         setLoadingMessage("내 주식일지를 불러오고 있습니다...");
-                        await fetchPortfolio(session.user.id);
+                        await Promise.all([
+                            fetchPortfolio(session.user.id),
+                            fetch('/api/market-extra').then(res => res.json()).then(data => {
+                                if (data?.exchangeRates?.usd_krw?.price) {
+                                    setExchangeRate(data.exchangeRates.usd_krw.price);
+                                }
+                            }).catch(e => console.error("Failed to fetch exchange rate:", e))
+                        ]);
                     }
                 } else if (mounted) {
                     setIsLoading(false);
@@ -454,6 +470,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
         <PortfolioContext.Provider value={{
             assets,
             totalInvested,
+            exchangeRate,
             isLoading,
             error,
             user,

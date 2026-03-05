@@ -1,3 +1,15 @@
+## [Alpha V1.258] - 2026-03-05 22:27:00
+
+### ✨ Feature: Portfolio Real-time USD to KRW Currency Exchange Application
+- **Summary**: '내 주식일지' 대시보드 내 통합 합계 및 분류별 리포트에서 기준가격을 단순 합산 하던 오류($와 원화가 섞임)를 수정하고 달러 자산에 대해 실시간 환율을 반영하여 총 원화 금액으로 올바르게 제공되도록 개선했습니다.
+- **Detail**:
+  - `src/context/PortfolioContext.tsx`: `fetch('/api/market-extra')`를 통해 실시간 원/달러 환율(`exchangeRate`)을 전역 컨텍스트 상태로 초기화 시 가져오도록 병렬 데이터 페칭 구현.
+  - `src/components/portfolio/PortfolioSummaryBlock.tsx`: 
+    - 달러(US) 자산과 원화(KR) 자산을 조회 시 환율 적용 여부를 구별.
+    - '전체' 뷰 시점 달러 단위 자산은 가져온 실시간 환율을 적용 및 치환하여 `result.all` (총 매수/평가 합계) 및 카테고리별 통계 등에 정확한 원화 수익 금액으로 누적 연산하도록 변환 추가. 
+    - 실현 손익 영역(`realizedGains`)의 합계(totalBuy, totalSell) 계산 시에도 달러 종목의 경우 원화로 체계적으로 변환하여 총합 산출 처리.
+- **Build Time**: 2026-03-05 22:27:00
+
 ## [Alpha V1.257] - 2026-03-05 22:11:00
 
 ### ✨ Feature: Real-time Price Accuracy Upgrade (NXT)

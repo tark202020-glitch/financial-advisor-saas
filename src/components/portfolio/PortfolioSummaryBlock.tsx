@@ -86,7 +86,7 @@ const getCategoryStyle = (category: string | undefined) => {
 };
 
 export default function PortfolioSummaryBlock() {
-    const { assets } = usePortfolio();
+    const { assets, exchangeRate } = usePortfolio();
     const [view, setView] = useState<ViewMode>('all');
 
     // Batch stock data
@@ -129,21 +129,30 @@ export default function PortfolioSummaryBlock() {
             })
             .forEach(a => {
                 const price = getPrice(a);
-                const purchase = a.pricePerShare * a.quantity;
-                const valuation = price * a.quantity;
+                const exRate = exchangeRate || 1350; // Fallback
+
+                const purchaseInCurrency = a.pricePerShare * a.quantity;
+                const valuationInCurrency = price * a.quantity;
                 const cat = a.category === 'KR' ? 'kr' : 'us';
 
-                result[cat].purchase += purchase;
-                result[cat].valuation += valuation;
-                result.all.purchase += purchase;
-                result.all.valuation += valuation;
+                const purchaseKRW = cat === 'us' ? purchaseInCurrency * exRate : purchaseInCurrency;
+                const valuationKRW = cat === 'us' ? valuationInCurrency * exRate : valuationInCurrency;
 
+                // Add to 'kr' or 'us' specific totals (no conversion)
+                result[cat].purchase += purchaseInCurrency;
+                result[cat].valuation += valuationInCurrency;
+
+                // Add to 'all' total (Always in KRW)
+                result.all.purchase += purchaseKRW;
+                result.all.valuation += valuationKRW;
+
+                // Add to category buckets (Always in KRW)
                 const secCat = a.secondary_category || '미분류';
                 if (!result.categories[secCat]) {
                     result.categories[secCat] = { purchase: 0, valuation: 0, profit: 0, rate: 0 };
                 }
-                result.categories[secCat].purchase += purchase;
-                result.categories[secCat].valuation += valuation;
+                result.categories[secCat].purchase += purchaseKRW;
+                result.categories[secCat].valuation += valuationKRW;
             });
 
         // Calculate profits and rates
@@ -159,7 +168,7 @@ export default function PortfolioSummaryBlock() {
         });
 
         return result;
-    }, [assets, getKrData, getUsData, view]);
+    }, [assets, getKrData, getUsData, view, exchangeRate]);
 
     // ===== Realized Gains (Closed Positions) =====
     const realizedGains = useMemo(() => {
@@ -186,6 +195,12 @@ export default function PortfolioSummaryBlock() {
                 else if (t.type === 'SELL') sellAmt += amount;
             });
 
+            const exRate = exchangeRate || 1350;
+            const isUs = a.category === 'US';
+
+            const buyAmtKRW = isUs ? buyAmt * exRate : buyAmt;
+            const sellAmtKRW = isUs ? sellAmt * exRate : sellAmt;
+
             const profit = sellAmt - buyAmt;
             const rate = buyAmt === 0 ? 0 : (profit / buyAmt) * 100;
 
@@ -193,14 +208,19 @@ export default function PortfolioSummaryBlock() {
                 name: a.name,
                 symbol: a.symbol,
                 category: a.category,
-                buyAmount: buyAmt,
+                buyAmount: buyAmt, // Original currency for table display
                 sellAmount: sellAmt,
                 profit,
                 rate
             });
 
-            totalBuy += buyAmt;
-            totalSell += sellAmt;
+            if (view === 'all') {
+                totalBuy += buyAmtKRW;
+                totalSell += sellAmtKRW;
+            } else {
+                totalBuy += buyAmt;
+                totalSell += sellAmt;
+            }
         });
 
         // Sort by absolute profit descending
@@ -214,7 +234,7 @@ export default function PortfolioSummaryBlock() {
             items,
             count: closedAssets.length
         };
-    }, [assets, view]);
+    }, [assets, view, exchangeRate]);
 
     const [isRealizedExpanded, setIsRealizedExpanded] = useState(false);
 
