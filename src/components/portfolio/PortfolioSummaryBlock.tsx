@@ -138,9 +138,9 @@ export default function PortfolioSummaryBlock() {
                 const purchaseKRW = cat === 'us' ? purchaseInCurrency * exRate : purchaseInCurrency;
                 const valuationKRW = cat === 'us' ? valuationInCurrency * exRate : valuationInCurrency;
 
-                // Add to 'kr' or 'us' specific totals (no conversion)
-                result[cat].purchase += purchaseInCurrency;
-                result[cat].valuation += valuationInCurrency;
+                // Add to 'kr' or 'us' specific totals (Always in KRW as per user request to unify)
+                result[cat].purchase += purchaseKRW;
+                result[cat].valuation += valuationKRW;
 
                 // Add to 'all' total (Always in KRW)
                 result.all.purchase += purchaseKRW;
@@ -214,12 +214,10 @@ export default function PortfolioSummaryBlock() {
                 rate
             });
 
-            if (view === 'all') {
+            if (view === 'all' || view === 'kr' || view === 'us') {
+                // User requested all displays to be in KRW unified.
                 totalBuy += buyAmtKRW;
                 totalSell += sellAmtKRW;
-            } else {
-                totalBuy += buyAmt;
-                totalSell += sellAmt;
             }
         });
 
@@ -239,14 +237,11 @@ export default function PortfolioSummaryBlock() {
     const [isRealizedExpanded, setIsRealizedExpanded] = useState(false);
 
     const fmtValue = (n: number, type: ViewMode | 'kr' | 'us') => {
-        const currency = type === 'us' ? 'USD' : 'KRW';
+        // User requested: "모두 한화로 표현을 해줘야 합니다." 
+        // We force KRW formatting regardless of the type parameter in SummaryBlock
+        const currency = 'KRW';
         const formatted = formatCurrency(n, currency);
-        // Only append '원' if currency is KRW, as formatCurrency returns comma formatted number for KRW
-        // and "$ ..." for USD. The existing code appended '원' manually.
-        // User said: "한화 원, 표기는 소수점은 없어야 합니다." (doesn't explicitly say "원" char, but existing UI had it).
-        // Let's keep existing style: append '원' for KRW if formatCurrency doesn't include it (it doesn't).
-        if (currency === 'KRW') return `${formatted}원`;
-        return formatted;
+        return `${formatted}원`;
     };
 
     const current = summary[view];
@@ -277,20 +272,27 @@ export default function PortfolioSummaryBlock() {
                         <Wallet size={20} className="text-[#F7D047]" />
                         <h2 className="text-xl font-bold text-white">내 주식 종합</h2>
                     </div>
-                    {/* View Toggle */}
-                    <div className="flex bg-[#121212] rounded-lg p-1 border border-[#333] w-fit">
-                        {(['all', 'kr', 'us'] as ViewMode[]).map(v => (
-                            <button
-                                key={v}
-                                onClick={() => setView(v)}
-                                className={`px-4 py-1.5 text-xs font-bold rounded flex-1 transition-all ${view === v
-                                    ? 'bg-[#F7D047] text-black shadow-sm'
-                                    : 'text-gray-500 hover:text-white'
-                                    }`}
-                            >
-                                {v === 'all' ? '전체' : v === 'kr' ? '국내' : '해외'}
-                            </button>
-                        ))}
+                    {/* View Toggle & Exchange Rate Info */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        {exchangeRate && (
+                            <div className="text-xs font-medium text-gray-400 bg-[#121212] px-3 py-1.5 rounded-lg border border-[#333]">
+                                적용 환율: <span className="text-white">${exchangeRate.toLocaleString()}원</span>
+                            </div>
+                        )}
+                        <div className="flex bg-[#121212] rounded-lg p-1 border border-[#333] w-fit">
+                            {(['all', 'kr', 'us'] as ViewMode[]).map(v => (
+                                <button
+                                    key={v}
+                                    onClick={() => setView(v)}
+                                    className={`px-4 py-1.5 text-xs font-bold rounded flex-1 transition-all ${view === v
+                                        ? 'bg-[#F7D047] text-black shadow-sm'
+                                        : 'text-gray-500 hover:text-white'
+                                        }`}
+                                >
+                                    {v === 'all' ? '전체' : v === 'kr' ? '국내' : '해외'}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
@@ -561,6 +563,7 @@ export default function PortfolioSummaryBlock() {
                             {realizedGains.items.map((item, idx) => {
                                 const isProfit = item.profit >= 0;
                                 const isUs = item.category === 'US';
+                                const exRate = exchangeRate || 1350; // Add exRate reference for mapping
                                 return (
                                     <div key={idx} className="flex items-center justify-between bg-[#252525] rounded-lg px-4 py-3 border border-[#333] hover:border-[#555] transition-colors gap-3">
                                         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -572,12 +575,12 @@ export default function PortfolioSummaryBlock() {
                                         </div>
                                         <div className="text-right shrink-0">
                                             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 text-xs text-gray-400">
-                                                <span>매수 {fmtValue(item.buyAmount, isUs ? 'us' : 'kr')}</span>
+                                                <span>매수 {fmtValue(isUs ? item.buyAmount * exRate : item.buyAmount, 'kr')}</span>
                                                 <span className="hidden sm:inline">→</span>
-                                                <span>매도 {fmtValue(item.sellAmount, isUs ? 'us' : 'kr')}</span>
+                                                <span>매도 {fmtValue(isUs ? item.sellAmount * exRate : item.sellAmount, 'kr')}</span>
                                             </div>
                                             <div className={`text-sm font-bold mt-0.5 ${isProfit ? 'text-red-400' : 'text-blue-400'}`}>
-                                                {isProfit ? '▲' : '▼'} {isProfit ? '+' : ''}{fmtValue(item.profit, isUs ? 'us' : 'kr')}
+                                                {isProfit ? '▲' : '▼'} {isProfit ? '+' : ''}{fmtValue(isUs ? item.profit * exRate : item.profit, 'kr')}
                                                 <span className="text-xs ml-1">({isProfit ? '+' : ''}{fmtRate(item.rate)}%)</span>
                                             </div>
                                         </div>

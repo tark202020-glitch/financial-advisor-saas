@@ -1,3 +1,13 @@
+## [Alpha V1.259] - 2026-03-05 22:54:00
+
+### ✨ Feature: Unified Portfolio Currency Display (KRW)
+- **Summary**: 포트폴리오 '해외' 뷰 및 카테고리별 요약, 거래 완료 수익 등 모든 금액 합산을 일관되게 원화(KRW)로 표시하도록 단일화하고 적용 환율 정보를 추가헀습니다.
+- **Detail**:
+  - `src/components/portfolio/PortfolioSummaryBlock.tsx`: 여러 통화 혼재를 방지하기 위해 `view` 상태에 상관없이 표시 단위 렌더링을 항상 `formatCurrency(..., 'KRW')`로 강제 적용했습니다.
+  - 적용 환율 안내 UI 추가: 전체/국내/해외 토글 메뉴 좌측에 `적용 환율: $1,350원`과 같이 현재 환자된 기준 환율(`exchangeRate`) 정보 블럭 노출 기능을 붙였습니다. 
+  - 실현 수익 부분에도 해외 종목의 매수, 매도, 수익 환산값이 모두 동일하게 원화 처리되도록 적용 및 검증 완료.
+- **Build Time**: 2026-03-05 22:54:00
+
 ## [Alpha V1.258] - 2026-03-05 22:27:00
 
 ### ✨ Feature: Portfolio Real-time USD to KRW Currency Exchange Application
