@@ -253,26 +253,19 @@ export default function AddAssetForm() {
                                             </div>
 
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-400 mb-1.5">2차 카테고리 (직접 입력)</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="예: 배당주(별1개)"
-                                                    className="w-full p-3 bg-[#121212] border border-[#333] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-white placeholder-gray-600 mb-2"
+                                                <label className="block text-sm font-medium text-gray-400 mb-1.5">2차 카테고리 (분류/레벨)</label>
+                                                <select
                                                     value={formData.secondaryCategory}
                                                     onChange={(e) => setFormData({ ...formData, secondaryCategory: e.target.value })}
-                                                />
-                                                <div className="flex flex-wrap gap-2">
-                                                    {['대형주(별3개)', '배당주(별1개)', 'ETF모음(별2개)', '기대주(별4개)'].map(cat => (
-                                                        <button
-                                                            key={cat}
-                                                            type="button"
-                                                            onClick={() => setFormData({ ...formData, secondaryCategory: cat })}
-                                                            className="px-2 py-1 text-xs border border-[#333] bg-[#252525] text-gray-300 hover:bg-[#333] hover:text-white rounded-md transition"
-                                                        >
-                                                            {cat}
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                                    className="w-full bg-[#121212] border border-[#333] rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none transition appearance-none mb-1"
+                                                >
+                                                    <option value="">미분류 (Lv.0)</option>
+                                                    <option value="배당주(별1개)">배당주 (Lv.1)</option>
+                                                    <option value="ETF모음(별2개)">ETF모음 (Lv.2)</option>
+                                                    <option value="대형주(별3개)">대형주 (Lv.3)</option>
+                                                    <option value="기대주(별4개)">기대주 (Lv.4)</option>
+                                                </select>
+                                                <p className="text-[9px] text-gray-500 mt-1">* 선택한 카테고리에 따라 포트폴리오 카드의 랭크 색상이 변경됩니다.</p>
                                             </div>
 
                                             <div>

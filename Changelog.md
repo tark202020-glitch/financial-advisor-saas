@@ -1,4 +1,22 @@
-## [Alpha V1.250] - 2026-03-05 20:01:00
+## [Alpha V1.252] - 2026-03-05 20:07:05
+
+### ✨ Feature & UI: Touch-friendly Trade Log & Category Label
+- **Summary**: `StockDetailChartModal.tsx` 내 거래 내역 표기의 터치 사용성 개선 및 현재 카테고리 표시 라벨 추가
+- **Detail**:
+  - 아이패드/태블릿 등 터치 환경을 고려해 거래 내역(Trade Log) 항목 간의 상하 간격(Padding)을 넓히고 행간 구분선을 명확히 개선.
+  - 내역 우측의 관리(수정) 버튼이 기존에는 데스크탑 마우스 호버 시에만 나타나던 불편을 해소하기 위해 항시 노출되도록 변경.
+  - 기록 추가/수정 폼의 날짜, 구분, 가격 등 각종 입력 필드 높이를 강제로 `h-9` 로 통일하여, iOS 기기 등에서 발생하는 높이 불일치 현상 수정.
+  - 모달 상단 우측(저장 버튼 옆)에 현재 설정된 2차 카테고리를 직관적으로 인지할 수 있도록, 등급 색상이 반영된 카테고리 라벨(Badge) 추가.
+- **Build Time**: 2026-03-05 20:07:05
+
+
+### ✨ Feature: Sync Secondary Category Input UI
+- **Summary**: `내 주식 기록하기` 모달(`AddAssetForm.tsx`)의 2차 카테고리 입력 방식을 단순 텍스트 입력창에서 선택형(Select) 드롭다운으로 변경
+- **Detail**:
+  - `StockDetailChartModal.tsx`에 적용되어 있던 카테고리 옵션(Lv.0 미분류 ~ Lv.4 기대주)과 동일한 로직의 Select UI를 신규 자산 등록 폼에도 추가
+  - 사용자가 사전에 정의된 등급(레벨)만 선택하도록 제한하여 오타나 형식 불일치로 인한 UI 테마(카드 색상 등) 미적용 버그를 미연에 방지
+- **Build Time**: 2026-03-05 20:06:00
+
 
 ### 🐛 UI: Fix text wrapping in uncategorized listing
 - **Summary**: `PortfolioSummaryBlock.tsx` 내 '미분류' 행의 텍스트가 줄바꿈(Wrapping) 되어 레이아웃이 깨지는 현상 수정

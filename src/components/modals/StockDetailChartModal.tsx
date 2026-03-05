@@ -875,41 +875,41 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                             <div className="bg-[#1E1E1E] rounded-xl p-4 mb-4 border border-[#333] grid grid-cols-6 gap-3 items-end">
                                 <div className="col-span-1">
                                     <label className="text-[10px] text-gray-500 mb-1 block">날짜</label>
-                                    <input type="date" value={newTrade.date} onChange={e => setNewTrade({ ...newTrade, date: e.target.value })} className="w-full p-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs" />
+                                    <input type="date" value={newTrade.date} onChange={e => setNewTrade({ ...newTrade, date: e.target.value })} className="w-full h-9 px-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs" />
                                 </div>
                                 <div>
                                     <label className="text-[10px] text-gray-500 mb-1 block">구분</label>
-                                    <select value={newTrade.type} onChange={e => setNewTrade({ ...newTrade, type: e.target.value as 'BUY' | 'SELL' })} className="w-full p-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs">
+                                    <select value={newTrade.type} onChange={e => setNewTrade({ ...newTrade, type: e.target.value as 'BUY' | 'SELL' })} className="w-full h-9 px-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs">
                                         <option value="BUY">매수</option>
                                         <option value="SELL">매도</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label className="text-[10px] text-gray-500 mb-1 block">가격</label>
-                                    <input type="number" placeholder="0" value={newTrade.price} onChange={e => setNewTrade({ ...newTrade, price: e.target.value })} className="w-full p-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs" />
+                                    <input type="number" placeholder="0" value={newTrade.price} onChange={e => setNewTrade({ ...newTrade, price: e.target.value })} className="w-full h-9 px-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs" />
                                 </div>
                                 <div>
                                     <label className="text-[10px] text-gray-500 mb-1 block">수량</label>
-                                    <input type="number" placeholder="0" value={newTrade.quantity} onChange={e => setNewTrade({ ...newTrade, quantity: e.target.value })} className="w-full p-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs" />
+                                    <input type="number" placeholder="0" value={newTrade.quantity} onChange={e => setNewTrade({ ...newTrade, quantity: e.target.value })} className="w-full h-9 px-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs" />
                                 </div>
                                 <div className="col-span-2">
                                     <div className="flex gap-2">
                                         <div className="flex-1">
                                             <label className="text-[10px] text-gray-500 mb-1 block">메모</label>
-                                            <input type="text" placeholder="메모" value={newTrade.memo} onChange={e => setNewTrade({ ...newTrade, memo: e.target.value })} className="w-full p-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs" />
+                                            <input type="text" placeholder="메모" value={newTrade.memo} onChange={e => setNewTrade({ ...newTrade, memo: e.target.value })} className="w-full h-9 px-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs" />
                                         </div>
                                         <div className="w-20">
                                             <label className="text-[10px] text-gray-500 mb-1 block">지수</label>
-                                            <input type="text" placeholder="지수" value={newTrade.kospiIndex} onChange={e => setNewTrade({ ...newTrade, kospiIndex: e.target.value })} className="w-full p-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs font-mono" />
+                                            <input type="text" placeholder="지수" value={newTrade.kospiIndex} onChange={e => setNewTrade({ ...newTrade, kospiIndex: e.target.value })} className="w-full h-9 px-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs font-mono" />
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex gap-1">
-                                    <button onClick={handleSaveTrade} className="bg-indigo-600 text-white p-2 rounded-lg font-bold hover:bg-indigo-500 flex-1 text-xs">{editingTradeId ? '수정' : '추가'}</button>
+                                    <button onClick={handleSaveTrade} className="bg-indigo-600 text-white h-9 px-2 rounded-lg font-bold hover:bg-indigo-500 flex-1 text-xs">{editingTradeId ? '수정' : '추가'}</button>
                                     {editingTradeId && (
                                         <>
-                                            <button onClick={() => handleDeleteTrade(editingTradeId)} className="bg-red-900/30 text-red-400 p-2 rounded-lg font-bold hover:bg-red-900/50 text-xs">삭제</button>
-                                            <button onClick={() => { setIsAddingLog(false); setEditingTradeId(null); }} className="bg-[#333] text-gray-400 p-2 rounded-lg font-bold hover:bg-[#444] text-xs">취소</button>
+                                            <button onClick={() => handleDeleteTrade(editingTradeId)} className="bg-red-900/30 text-red-400 h-9 px-2 rounded-lg font-bold hover:bg-red-900/50 text-xs">삭제</button>
+                                            <button onClick={() => { setIsAddingLog(false); setEditingTradeId(null); }} className="bg-[#333] text-gray-400 h-9 px-2 rounded-lg font-bold hover:bg-[#444] text-xs">취소</button>
                                         </>
                                     )}
                                 </div>
@@ -929,13 +929,13 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                 <div className="text-right">관리</div>
                             </div>
 
-                            <div className="space-y-3 sm:space-y-1">
+                            <div className="space-y-4 sm:space-y-2">
                                 {asset.trades && asset.trades.length > 0 ? (
                                     asset.trades.map((trade) => (
-                                        <div key={trade.id} className="group relative bg-[#1E1E1E] sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-lg border border-[#333] sm:border-none sm:grid sm:grid-cols-7 sm:items-center sm:hover:bg-[#1E1E1E] transition">
+                                        <div key={trade.id} className="group relative bg-[#1E1E1E] sm:bg-transparent p-4 sm:p-2 sm:py-3 rounded-xl sm:rounded-lg border border-[#333] sm:border-b sm:border-[#333] sm:border-t-0 sm:border-l-0 sm:border-r-0 sm:grid sm:grid-cols-7 sm:items-center sm:hover:bg-[#1E1E1E] transition">
 
                                             {/* Mobile Card View */}
-                                            <div className="sm:hidden flex flex-col gap-2">
+                                            <div className="sm:hidden flex flex-col gap-3">
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${trade.type === 'BUY' ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>
@@ -943,19 +943,19 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                                         </span>
                                                         <span className="font-mono text-gray-400 text-[10px]">{trade.date}</span>
                                                     </div>
-                                                    <button onClick={() => handleEditTrade(trade)} className="text-gray-500 p-1 bg-[#333] rounded"><Edit3 size={12} /></button>
+                                                    <button onClick={() => handleEditTrade(trade)} className="text-gray-500 p-2 bg-[#333] rounded-lg active:scale-95 transition"><Edit3 size={14} /></button>
                                                 </div>
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-white text-sm">{formatPrice(trade.price)}</span>
-                                                        <span className="text-gray-500 text-xs">x {trade.quantity}</span>
+                                                        <span className="font-bold text-white text-base">{formatPrice(trade.price)}</span>
+                                                        <span className="text-gray-500 text-sm">x {trade.quantity}</span>
                                                     </div>
                                                     <div className="text-[10px] text-gray-500 font-mono">
                                                         지수: {trade.kospiIndex ? Number(trade.kospiIndex).toLocaleString() : (kospiMap[trade.date] ? Number(kospiMap[trade.date]).toLocaleString() : '-')}
                                                     </div>
                                                 </div>
                                                 {trade.memo && (
-                                                    <div className="text-[10px] text-gray-600 bg-[#151515] p-1.5 rounded truncate">
+                                                    <div className="text-[11px] text-gray-600 bg-[#151515] p-2 rounded truncate">
                                                         {trade.memo}
                                                     </div>
                                                 )}
@@ -978,9 +978,9 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                                     ) : '-')}
                                                 </div>
                                                 <div className="text-center">{trade.quantity}</div>
-                                                <div className="truncate text-gray-500">{trade.memo || '-'}</div>
+                                                <div className="truncate text-gray-500 pr-2">{trade.memo || '-'}</div>
                                                 <div className="text-right">
-                                                    <button onClick={() => handleEditTrade(trade)} className="text-gray-600 hover:text-indigo-400 transition opacity-0 group-hover:opacity-100"><Edit3 size={12} /></button>
+                                                    <button onClick={() => handleEditTrade(trade)} className="text-gray-500 hover:text-indigo-400 transition p-1 rounded hover:bg-[#333] inline-flex items-center justify-center"><Edit3 size={14} /></button>
                                                 </div>
                                             </div>
                                         </div>
