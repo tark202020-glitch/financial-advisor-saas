@@ -4,27 +4,29 @@ import fs from 'fs/promises';
 import path from 'path';
 
 // 영문 -> 국문 종목명 및 티커 매핑 (Top 20 대응)
-const STOCK_MAPPING: Record<string, { name: string; code: string }> = {
-    'SAMSUNG ELECTRONICS CO': { name: '삼성전자', code: '005930' },
-    'SK HYNIX': { name: 'SK하이닉스', code: '000660' },
-    'SAMSUNG ELECTRONICS PREF': { name: '삼성전자우', code: '005935' },
-    'HYUNDAI MOTOR CO': { name: '현대차', code: '005380' },
-    'SK SQUARE CO': { name: 'SK스퀘어', code: '402340' },
-    'KB FINANCIAL GROUP': { name: 'KB금융', code: '105560' },
-    'KIA CORP': { name: '기아', code: '000270' },
-    'DOOSAN ENERBILITY': { name: '두산에너빌리티', code: '034020' },
-    'SHINHAN FINANCIAL GROUP': { name: '신한지주', code: '055550' },
-    'HANWHA AEROSPACE': { name: '한화에어로스페이스', code: '012450' },
-    'POSCO HOLDINGS': { name: 'POSCO홀딩스', code: '005490' },
-    'SAMSUNG BIOLOGICS CO': { name: '삼성바이오로직스', code: '207940' },
-    'CELLTRION': { name: '셀트리온', code: '068270' },
-    'NAVER LOGISTICS': { name: 'NAVER', code: '035420' },
-    'KAKAO': { name: '카카오', code: '035720' },
-    'LG ENERGY SOLUTION': { name: 'LG에너지솔루션', code: '373220' },
-    'SAMSUNG SDI': { name: '삼성SDI', code: '006400' },
-    'HYUNDAI MOBIS CO': { name: '현대모비스', code: '012330' },
-    'LG CHEM': { name: 'LG화학', code: '051910' }
+const STOCK_MAPPING: Record<string, { name: string; code: string; sector: string }> = {
+    'SAMSUNG ELECTRONICS CO': { name: '삼성전자', code: '005930', sector: '반도체/전자' },
+    'SK HYNIX': { name: 'SK하이닉스', code: '000660', sector: '반도체' },
+    'SAMSUNG ELECTRONICS PREF': { name: '삼성전자우', code: '005935', sector: '반도체/전자' },
+    'HYUNDAI MOTOR CO': { name: '현대차', code: '005380', sector: '자동차' },
+    'SK SQUARE CO': { name: 'SK스퀘어', code: '402340', sector: '지주/투자' },
+    'KB FINANCIAL GROUP': { name: 'KB금융', code: '105560', sector: '금융' },
+    'KIA CORP': { name: '기아', code: '000270', sector: '자동차' },
+    'DOOSAN ENERBILITY': { name: '두산에너빌리티', code: '034020', sector: '에너지/기계' },
+    'SHINHAN FINANCIAL GROUP': { name: '신한지주', code: '055550', sector: '금융' },
+    'HANWHA AEROSPACE': { name: '한화에어로스페이스', code: '012450', sector: '방산/항공' },
+    'POSCO HOLDINGS': { name: 'POSCO홀딩스', code: '005490', sector: '철강/소재' },
+    'SAMSUNG BIOLOGICS CO': { name: '삼성바이오로직스', code: '207940', sector: '바이오' },
+    'CELLTRION': { name: '셀트리온', code: '068270', sector: '바이오' },
+    'NAVER LOGISTICS': { name: 'NAVER', code: '035420', sector: 'IT/플랫폼' },
+    'KAKAO': { name: '카카오', code: '035720', sector: 'IT/플랫폼' },
+    'LG ENERGY SOLUTION': { name: 'LG에너지솔루션', code: '373220', sector: '2차전지' },
+    'SAMSUNG SDI': { name: '삼성SDI', code: '006400', sector: '2차전지' },
+    'HYUNDAI MOBIS CO': { name: '현대모비스', code: '012330', sector: '자동차부품' },
+    'LG CHEM': { name: 'LG화학', code: '051910', sector: '화학/2차전지' }
 };
+
+const ESTIMATED_KOSPI_TOTAL_CAP = 22000000; // 코스피 전체 시총 추정치 (약 2,200조원 => API 단위 22,000,000 억원)
 
 export const dynamic = "force-dynamic";
 
@@ -120,10 +122,9 @@ async function getFallbackTop10(token: string) {
 
     results.sort((a, b) => b.marketCap - a.marketCap);
     const top10 = results.slice(0, 10);
-    const totalTop10MarketCap = top10.reduce((sum, item) => sum + item.marketCap, 0);
 
     return top10.map(item => {
-        const ratio = totalTop10MarketCap > 0 ? ((item.marketCap / totalTop10MarketCap) * 100).toFixed(2) : '0';
+        const ratio = ((item.marketCap / ESTIMATED_KOSPI_TOTAL_CAP) * 100).toFixed(1);
         return {
             name: item.name,
             code: item.code,
@@ -160,13 +161,12 @@ async function getKospiTop10() {
         return await getFallbackTop10(token);
     }
 
-    // 비중을 맞추기 위해 상위 10개만 필터링 
+    // 전체 코스피 시가총액 추정치 대비 비중
     const top10 = data.output.slice(0, 10);
-    const totalTop10MarketCap = top10.reduce((sum: number, item: any) => sum + parseFloat(item.mksc_shra || item.stck_avls || '0'), 0);
 
     return top10.map((item: any) => {
         const mCap = parseFloat(item.mksc_shra || item.stck_avls || '0');
-        const ratio = ((mCap / totalTop10MarketCap) * 100).toFixed(2);
+        const ratio = ((mCap / ESTIMATED_KOSPI_TOTAL_CAP) * 100).toFixed(1);
         return {
             name: item.hts_kor_isnm,
             code: item.mksc_shrn_iscd || item.stck_shrn_iscd,
@@ -188,10 +188,22 @@ export async function GET() {
 
         // 1. MSCI 삽입
         msciData.forEach(mItem => {
+            let krName = mItem.name;
+            let code = '-';
+            let sector = '-';
+
             const mapped = STOCK_MAPPING[mItem.name];
-            const krName = mapped ? mapped.name : mItem.name;
+            if (mapped) {
+                krName = mapped.name;
+                code = mapped.code;
+                sector = mapped.sector;
+            }
+
             integratedMap.set(krName, {
                 name: krName,
+                code: code,
+                sector: sector,
+                marketCap: 0,
                 msciWeight: mItem.weight,
                 kospiWeight: 0
             });
@@ -199,12 +211,25 @@ export async function GET() {
 
         // 2. KOSPI 삽입 (Top 10에 포함된 것)
         kospiData.forEach((kItem: any) => {
-            const existing = integratedMap.get(kItem.name);
+            let krName = kItem.name;
+            let sector = '-';
+
+            // 이름으로 업종 매핑 탐색
+            const foundMap = Object.values(STOCK_MAPPING).find(m => m.name === krName);
+            if (foundMap) sector = foundMap.sector;
+
+            const existing = integratedMap.get(krName);
             if (existing) {
                 existing.kospiWeight = kItem.weight;
+                existing.marketCap = kItem.marketCap;
+                if (existing.code === '-') existing.code = kItem.code;
+                if (existing.sector === '-') existing.sector = sector;
             } else {
-                integratedMap.set(kItem.name, {
-                    name: kItem.name,
+                integratedMap.set(krName, {
+                    name: krName,
+                    code: kItem.code,
+                    sector: sector,
+                    marketCap: kItem.marketCap,
                     msciWeight: 0,
                     kospiWeight: kItem.weight
                 });
@@ -221,14 +246,16 @@ export async function GET() {
         let md = `# MSCI KOREA INDEX (${dateStr})\n\n`;
         md += `> 데이터 갱신 일시: ${kst.toISOString().slice(0, 10)} ${kst.toISOString().slice(11, 19)} (KST)\n\n`;
         md += `## 📊 통합 산출 테이블 (MSCI vs KOSPI Top 10)\n\n`;
-        md += `해당 테이블은 MSCI Top 10 편입 정보와 실제 국내(KIS) KOSPI 최상위 10종목 상의 비중을 대비하여 얼마나 오버/언더웨이트 되었는지 직관적으로 탐색합니다.\n\n`;
-        md += `| 종목명 | MSCI 편입 비율 (%) | KOSPI TOP10 시총 비율 (%) | 비중 갭 (MSCI - KOSPI) |\n`;
-        md += `|:---|---:|---:|---:|\n`;
+        md += `해당 테이블은 MSCI Top 10 편입 정보와 실제 KOSPI 전체 시총(약 2,200조원 추정) 대비 최상위 10종목 상의 비중을 대비하여 얼마나 오버/언더웨이트 되었는지 직관적으로 탐색합니다.\n\n`;
+        md += `| 순위 | 종목명 | 종목코드 | 업종 | 시가총액 (조원) | 코스피 내 비중 (추정) | MSCI 편입 비율 (%) | 비중 갭 |\n`;
+        md += `|:---|:---|:---|:---|---:|---:|---:|---:|\n`;
 
-        integratedArray.forEach(item => {
-            const diff = (item.msciWeight - item.kospiWeight).toFixed(2);
+        integratedArray.forEach((item, idx) => {
+            const diff = (item.msciWeight - item.kospiWeight).toFixed(1);
             const diffStr = parseFloat(diff) > 0 ? `+${diff}` : `${diff}`;
-            md += `| **${item.name}** | ${item.msciWeight > 0 ? item.msciWeight.toFixed(2) : '-'} | ${item.kospiWeight > 0 ? item.kospiWeight.toFixed(2) : '-'} | **${diffStr}** |\n`;
+            const mCapTrillion = item.marketCap > 0 ? (item.marketCap / 10000).toFixed(0) : '-';
+
+            md += `| ${idx + 1} | **${item.name}** | ${item.code} | ${item.sector} | ~${mCapTrillion} | ~${item.kospiWeight > 0 ? item.kospiWeight.toFixed(1) : '-'}% | ${item.msciWeight > 0 ? item.msciWeight.toFixed(1) : '-'}% | **${diffStr}** |\n`;
         });
 
         // 4. 로컬/서버리스 환경 디스크 쓰기
