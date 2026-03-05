@@ -61,17 +61,29 @@ export async function PUT(request: NextRequest) {
         const body = await request.json();
         const { path: filePathParam, content } = body;
 
+        console.log("PUT /api/study - filePathParam:", filePathParam);
+
         if (!filePathParam || content === undefined) {
             return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
         }
 
-        const absolutePath = path.join(DOCS_DIR, filePathParam);
+        const absolutePath = path.resolve(DOCS_DIR, filePathParam);
+        const resolvedDocsDir = path.resolve(DOCS_DIR);
 
-        if (!absolutePath.startsWith(DOCS_DIR)) {
+        console.log("PUT /api/study - absolutePath:", absolutePath);
+        console.log("PUT /api/study - DOCS_DIR:", resolvedDocsDir);
+
+        // Windows 환경 대소문자 무시 하위 경로 검증
+        const normalizedAbsolute = path.normalize(absolutePath).toLowerCase();
+        const normalizedDir = path.normalize(resolvedDocsDir).toLowerCase();
+
+        if (!normalizedAbsolute.startsWith(normalizedDir)) {
+            console.log("PUT /api/study - Path traversal attempt blocked!");
             return NextResponse.json({ error: "Invalid path" }, { status: 403 });
         }
 
         await fs.writeFile(absolutePath, content, "utf-8");
+        console.log("PUT /api/study - Saved successfully");
         return NextResponse.json({ success: true });
 
     } catch (error: any) {
