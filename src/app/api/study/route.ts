@@ -63,6 +63,12 @@ export async function PUT(request: NextRequest) {
 
         console.log("PUT /api/study - filePathParam:", filePathParam);
 
+        if (process.env.NODE_ENV === "production") {
+            return NextResponse.json({
+                error: "운영 서버(Vercel) 환경에서는 파일 저장이 제한되어 있습니다. 로컬 환경에서 수정한 뒤 배포해주세요."
+            }, { status: 403 });
+        }
+
         if (!filePathParam || content === undefined) {
             return NextResponse.json({ error: "Missing parameters" }, { status: 400 });
         }
