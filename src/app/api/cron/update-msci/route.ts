@@ -66,6 +66,73 @@ async function getAccessToken() {
     return data.access_token;
 }
 
+/** Get Fallback Top 10 using individual stock inquiries for off-hours */
+async function getFallbackTop10(token: string) {
+    const TOP_STOCKS = [
+        { symbol: '005930', name: '삼성전자' },
+        { symbol: '000660', name: 'SK하이닉스' },
+        { symbol: '373220', name: 'LG에너지솔루션' },
+        { symbol: '207940', name: '삼성바이오로직스' },
+        { symbol: '005380', name: '현대차' },
+        { symbol: '000270', name: '기아' },
+        { symbol: '068270', name: '셀트리온' },
+        { symbol: '105560', name: 'KB금융' },
+        { symbol: '005490', name: 'POSCO홀딩스' },
+        { symbol: '035420', name: 'NAVER' },
+        { symbol: '055550', name: '신한지주' },
+        { symbol: '003670', name: '포스코퓨처엠' },
+        { symbol: '006400', name: '삼성SDI' },
+        { symbol: '034020', name: '두산에너빌리티' },
+        { symbol: '012450', name: '한화에어로스페이스' },
+    ];
+    const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
+    const APP_KEY = process.env.KIS_APP_KEY;
+    const APP_SECRET = process.env.KIS_APP_SECRET;
+
+    const results = [];
+    for (const stock of TOP_STOCKS) {
+        try {
+            const res = await fetch(
+                `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${stock.symbol}`, {
+                method: "GET",
+                headers: {
+                    "content-type": "application/json",
+                    "authorization": `Bearer ${token}`,
+                    "appkey": APP_KEY || "",
+                    "appsecret": APP_SECRET || "",
+                    "tr_id": "FHKST01010100",
+                } as Record<string, string>,
+            });
+            if (!res.ok) continue;
+            const d = await res.json();
+            if (d.rt_cd !== "0") continue;
+            const output = d.output;
+            results.push({
+                name: stock.name,
+                code: stock.symbol,
+                marketCap: parseFloat(output.hts_avls || '0')
+            });
+            await new Promise(r => setTimeout(r, 100)); // API Rate Limit 방어
+        } catch (e) {
+            console.error("Fallback error:", e);
+        }
+    }
+
+    results.sort((a, b) => b.marketCap - a.marketCap);
+    const top10 = results.slice(0, 10);
+    const totalTop10MarketCap = top10.reduce((sum, item) => sum + item.marketCap, 0);
+
+    return top10.map(item => {
+        const ratio = totalTop10MarketCap > 0 ? ((item.marketCap / totalTop10MarketCap) * 100).toFixed(2) : '0';
+        return {
+            name: item.name,
+            code: item.code,
+            marketCap: item.marketCap,
+            weight: parseFloat(ratio)
+        };
+    });
+}
+
 /** Get KOSPI Top 10 */
 async function getKospiTop10() {
     const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
@@ -88,7 +155,10 @@ async function getKospiTop10() {
     if (!response.ok) throw new Error("Market Cap HTTP Failed");
     const data = await response.json();
 
-    if (data.rt_cd !== "0" || !data.output) return [];
+    if (data.rt_cd !== "0" || !data.output || data.output.length === 0) {
+        console.log("Using Fallback for KOSPI (Off-hours)");
+        return await getFallbackTop10(token);
+    }
 
     // 비중을 맞추기 위해 상위 10개만 필터링 
     const top10 = data.output.slice(0, 10);
