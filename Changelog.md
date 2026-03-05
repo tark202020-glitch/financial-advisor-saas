@@ -1,4 +1,95 @@
+## [Alpha V1.247] - 2026-03-05 19:28:00
 
+### 🔎 UI: Secondary Category Dropdown Filter Added
+- **Summary**: "내 주식에 메모하기" 최상단 목록 컨트롤 바 영역에 2차 카테고리를 기준으로 카드를 필터링 할 수 있는 기능 추가.
+- **Detail**:
+  - `PortfolioTable` 컴포넌트 우측 정렬박스 옆에 '전체/카테고리' Select UI를 구현.
+  - 현재 입력된 2차 카테고리(Secondary Category) 항목을 중복 제거하여 옵션으로 자동 구성 (예: 대형주, 배당주, 기대주 등).
+  - 전체 카테고리 보기 혹은 특정 카테고리를 선택 가능하도록 분류.
+- **Build Time**: 2026-03-05 19:28:00
+
+
+### 🔄 UI: View Mode Filtering Applied to Dashboard Main Blocks
+- **Summary**: 포트폴리오 요약 대시보드의 전체/국내/해외 선택 버튼 클릭 시 모든 정보가 해당 뷰 모드에 맞춰 필터링 되어 노출되도록 기능 구현
+- **Detail**:
+  - `PortfolioSummaryBlock` 의 상단 전체 계좌 요약 카드, 좌측 도넛 차트 정보, 우측 카테고리별 테마 카드, 하단 완료 수익(실현손익) 블록 전체에 대해 `view===all` 제한을 해제하고 `useMemo` 계산 단계에서 자산을 `view` 값에 맞게 동적 필터링 하도록 리팩토링 구현.
+  - 국내 선택 시 국내 자산만으로 분석 및 차트 구성, 해외 선택 시 해외 자산만 분류되어 표출.
+- **Build Time**: 2026-03-05 19:07:00
+
+
+## [Alpha V1.245] - 2026-03-05 18:59:00
+
+### 🛡️ UX: Background Scroll Lock for Modals
+- **Summary**: 종목 상세창(Modal)이 열려있을 때 브라우저 배경화면이 스크롤되는 현상 방지.
+- **Detail**:
+  - `StockDetailChartModal` 컴포넌트가 활성화(`isOpen={true}`)될 때 `document.body.style.overflow = 'hidden'` 을 적용하여 외부 스크롤 차단 기능 추가.
+- **Build Time**: 2026-03-05 18:59:00
+
+## [Alpha V1.244] - 2026-03-05 18:52:00
+
+### 🔎 UI: Category Valuation Font Size Adjustment
+- **Summary**: 내 주식 분류별 리포트 카드 내 '평가금액'의 폰트 사이즈를 축소.
+- **Detail**:
+  - 천만 원 단위 이상의 큰 숫자가 입력될 경우 화면 크기에 따라 텍스트가 말줄임(truncate) 처리되는 문제를 완화하기 위해 기준 폰트 크기를 `text-3xl` -> `text-2xl` 로 조정.
+- **Build Time**: 2026-03-05 18:52:00
+
+## [Alpha V1.243] - 2026-03-05 18:44:00
+
+### 🎯 UI: Target Price Percentage Display Restored
+- **Summary**: 포트폴리오 카드의 상/하한 목표가 표기 부분에 구매가 대비 등락 비율(%)을 다시 표시하도록 복원.
+- **Detail**:
+  - 카드 UI의 하단 Effect/Target 섹션에서 목표가(Support/Resist) 우측에 괄호로 비율(+/- %) 표기.
+  - 공간 부족 시 텍스트 말줄임표(truncate)가 적용되도록 스타일링 보완.
+- **Build Time**: 2026-03-05 18:44:00
+
+## [Alpha V1.242] - 2026-03-05 18:24:00
+
+### 🎨 UI: Portfolio Pie Chart Refinement
+- **Summary**: 자산 비중을 보여주는 도넛 차트를 기본 원형(Pie) 차트로 변경하고, 내부에 라벨(이름 및 비율)을 노출하도록 수정.
+- **Detail**:
+  - Recharts `Pie` innerRadius를 0으로 설정하여 꽉 찬 원형으로 변경.
+  - 커스텀 라벨 렌더러를 적용하여 그래프 조각 내부에 흰색 텍스트로 카테고리명과 비중(%) 출력.
+- **Build Time**: 2026-03-05 18:24:00
+
+## [Alpha V1.241] - 2026-03-05 18:25:00
+
+### 🎨 UI: Uncategorized Items Display Refinement
+- **Summary**: '미분류' 자산을 일반 테마 카드에서 분리하여 콤팩트한 한 줄 행렬로 별도 표기.
+- **Detail**:
+  - 기존 4종 메인 카드(배당주, 대형주 등)와 함께 표시되던 '미분류' 항목을 그리드에서 제외.
+  - 리포트 카드 하단에 단일 Row 형태의 띠 배너 UI로 추가 구성하여 공간 활용도 및 정보 위계 개선.
+- **Build Time**: 2026-03-05 18:25:00
+
+## [Alpha V1.240] - 2026-03-05 17:35:00
+
+### 🎨 UI: Portfolio Summary Structure Upgrade
+- **Summary**: 포트폴리오 요약 화면의 최상위 그리드 통합 및 2단 분리 레이아웃 적용.
+- **Detail**:
+  - **Top Grid**: 기존 중앙 텍스트였던 총 매입금액/평가금액/손익을 최상위 가로 100% 영역으로 분리 이동, 텍스트 크기에 맞게 그리드 비율 조정(평가손익 칸 와이드 적용).
+  - **Bottom Split**: 상위 그리드 하단 좌측은 도넛 차트 전용, 우측은 카테고리별 테마 카드 전용으로 명확한 2분할(flex 레이아웃) 구조로 전환.
+  - **Typography Fix**: 카드 내 평가금액의 '원' 단위가 줄바꿈되지 않도록 truncate 및 반응형 텍스트 사이징 미세조정.
+- **Build Time**: 2026-03-05 17:35:00
+
+## [Alpha V1.239] - 2026-03-05 16:20:00
+
+### 🎨 UI: Portfolio Summary Refinement
+- **Summary**: 포트폴리오 요약 화면의 도넛 차트 크기 확대 및 카테고리별 단위/문구 조정.
+- **Detail**:
+  - **Donut Chart**: 폭을 확대하여 자산 비중 그래프가 한눈에 더 잘 들어오도록 개선 (최소 1/2 영역 차지).
+  - **Summary Panel**: 국내/해외 요약 그리드를 삭제하고, 총 평가금액을 그래프 최상단에 배치하여 정보의 위계를 간소화.
+  - **Category Cards**: 각 게임형 테마 카드(기대주 등)에서 '평가금액'을 가장 눈에 띄게 큰 폰트로 강조. 하단에 평가손익, 투자금액, 수익률을 재배치하여 가장 중요한 정보가 먼저 보이도록 수정.
+- **Build Time**: 2026-03-05 16:20:00
+
+## [Alpha V1.238] - 2026-03-05 16:11:00
+
+### 🎨 UI: Portfolio Summary Redesign (Trading Card Game & Donut Chart)
+- **Summary**: 포트폴리오 요약 화면의 도넛 차트 도입 및 게임형 테마 분류별 리포트 카드 적용.
+- **Detail**:
+  - **Layout**: 기존 상하 나열형에서 좌우 2단 하이브리드 대시보드 구조(CSS Grid)로 전면 개편.
+  - **Donut Chart**: `recharts` 라이브러리를 활용하여 포트폴리오 내 2차 카테고리 자산 비중을 시각화.
+  - **Category Cards**: 배당주, ETF, 대형주, 기대주 등 2차 카테고리별 리포트를 Trading Card Game(TCG) 게임 랭크(Lv.I ~ Lv.IV) 테마가 들어간 프리미엄 카드 UI로 디자인.
+  - **Naming**: 기존 "도전주" 카테고리를 사용자 요구에 맞춰 "기대주"로 일괄 명칭 수정.
+- **Build Time**: 2026-03-05 16:11:00
 
 ## [Alpha V1.237] - 2026-02-18 14:15:00
 

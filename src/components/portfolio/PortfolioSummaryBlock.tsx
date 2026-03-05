@@ -4,6 +4,7 @@ import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 import { useMemo, useState } from 'react';
 import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2 } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency } from '@/utils/format';
 
 type ViewMode = 'all' | 'kr' | 'us';
@@ -12,6 +13,77 @@ function fmtRate(n: number): string {
     if (isNaN(n) || !isFinite(n)) return '0.00';
     return n.toFixed(2);
 }
+
+// 2차 카테고리에 따른 테마 색상 반환 함수 (PortfolioCard와 동일)
+const getCategoryStyle = (category: string | undefined) => {
+    const rawLabel = category || '미분류';
+    const label = rawLabel.replace(/\(별.*?\)/g, '').trim();
+
+    if (!category || label === '미분류') return {
+        level: '0',
+        label,
+        wrapper: "bg-[#1E1E1E] border border-[#333] relative overflow-hidden",
+        header: "text-gray-400",
+        badgeBg: "bg-gray-700",
+        border: "border-gray-700",
+        chartColor: "#4B5563"
+    };
+
+    if (category.includes('배당주')) {
+        return {
+            level: 'I',
+            label,
+            wrapper: "bg-gradient-to-b from-[#121a16] to-[#0a0f0c] border border-emerald-400/50 shadow-[0_0_15px_rgba(16,185,129,0.1)] relative overflow-hidden",
+            header: "text-emerald-400",
+            badgeBg: "bg-gradient-to-br from-emerald-400 to-teal-700",
+            border: "border-emerald-500/30",
+            chartColor: "#10B981"
+        };
+    }
+    if (category.includes('ETF')) {
+        return {
+            level: 'II',
+            label,
+            wrapper: "bg-gradient-to-b from-[#12151a] to-[#0a0c0f] border border-blue-400/50 shadow-[0_0_15px_rgba(59,130,246,0.1)] relative overflow-hidden",
+            header: "text-blue-400",
+            badgeBg: "bg-gradient-to-br from-blue-400 to-indigo-700",
+            border: "border-blue-500/30",
+            chartColor: "#3B82F6"
+        };
+    }
+    if (category.includes('대형주')) {
+        return {
+            level: 'III',
+            label,
+            wrapper: "bg-gradient-to-b from-[#17121a] to-[#0d0a0f] border border-purple-400/50 shadow-[0_0_15px_rgba(168,85,247,0.1)] relative overflow-hidden",
+            header: "text-purple-400",
+            badgeBg: "bg-gradient-to-br from-fuchsia-500 to-purple-800",
+            border: "border-purple-500/30",
+            chartColor: "#A855F7"
+        };
+    }
+    if (category.includes('기대주')) {
+        return {
+            level: 'IV',
+            label,
+            wrapper: "bg-gradient-to-b from-[#1a1212] to-[#0f0a0a] border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.15)] relative overflow-hidden",
+            header: "text-red-400",
+            badgeBg: "bg-gradient-to-br from-orange-500 to-red-800",
+            border: "border-red-500/40",
+            chartColor: "#EF4444"
+        };
+    }
+
+    return {
+        level: '0',
+        label,
+        wrapper: "bg-[#1E1E1E] border border-[#333] relative overflow-hidden",
+        header: "text-gray-400",
+        badgeBg: "bg-gradient-to-br from-gray-700 to-gray-900",
+        border: "border-gray-700",
+        chartColor: "#4B5563"
+    };
+};
 
 export default function PortfolioSummaryBlock() {
     const { assets } = usePortfolio();
@@ -43,20 +115,36 @@ export default function PortfolioSummaryBlock() {
             all: { purchase: 0, valuation: 0, profit: 0, rate: 0 },
             kr: { purchase: 0, valuation: 0, profit: 0, rate: 0 },
             us: { purchase: 0, valuation: 0, profit: 0, rate: 0 },
+            categories: {} as Record<string, { purchase: number, valuation: number, profit: number, rate: number }>
         };
 
         // Active positions only (quantity > 0)
-        assets.filter(a => a.quantity > 0).forEach(a => {
-            const price = getPrice(a);
-            const purchase = a.pricePerShare * a.quantity;
-            const valuation = price * a.quantity;
-            const cat = a.category === 'KR' ? 'kr' : 'us';
+        assets
+            .filter(a => a.quantity > 0)
+            .filter(a => {
+                if (view === 'all') return true;
+                if (view === 'kr' && a.category === 'KR') return true;
+                if (view === 'us' && a.category === 'US') return true;
+                return false;
+            })
+            .forEach(a => {
+                const price = getPrice(a);
+                const purchase = a.pricePerShare * a.quantity;
+                const valuation = price * a.quantity;
+                const cat = a.category === 'KR' ? 'kr' : 'us';
 
-            result[cat].purchase += purchase;
-            result[cat].valuation += valuation;
-            result.all.purchase += purchase;
-            result.all.valuation += valuation;
-        });
+                result[cat].purchase += purchase;
+                result[cat].valuation += valuation;
+                result.all.purchase += purchase;
+                result.all.valuation += valuation;
+
+                const secCat = a.secondary_category || '미분류';
+                if (!result.categories[secCat]) {
+                    result.categories[secCat] = { purchase: 0, valuation: 0, profit: 0, rate: 0 };
+                }
+                result.categories[secCat].purchase += purchase;
+                result.categories[secCat].valuation += valuation;
+            });
 
         // Calculate profits and rates
         (['all', 'kr', 'us'] as ViewMode[]).forEach(k => {
@@ -64,12 +152,25 @@ export default function PortfolioSummaryBlock() {
             result[k].rate = result[k].purchase === 0 ? 0 : (result[k].profit / result[k].purchase) * 100;
         });
 
+        Object.keys(result.categories).forEach(k => {
+            const c = result.categories[k];
+            c.profit = c.valuation - c.purchase;
+            c.rate = c.purchase === 0 ? 0 : (c.profit / c.purchase) * 100;
+        });
+
         return result;
-    }, [assets, getKrData, getUsData]);
+    }, [assets, getKrData, getUsData, view]);
 
     // ===== Realized Gains (Closed Positions) =====
     const realizedGains = useMemo(() => {
-        const closedAssets = assets.filter(a => a.quantity === 0 && a.trades && a.trades.length > 0);
+        const closedAssets = assets
+            .filter(a => a.quantity === 0 && a.trades && a.trades.length > 0)
+            .filter(a => {
+                if (view === 'all') return true;
+                if (view === 'kr' && a.category === 'KR') return true;
+                if (view === 'us' && a.category === 'US') return true;
+                return false;
+            });
 
         let totalBuy = 0;
         let totalSell = 0;
@@ -113,7 +214,7 @@ export default function PortfolioSummaryBlock() {
             items,
             count: closedAssets.length
         };
-    }, [assets]);
+    }, [assets, view]);
 
     const [isRealizedExpanded, setIsRealizedExpanded] = useState(false);
 
@@ -132,25 +233,39 @@ export default function PortfolioSummaryBlock() {
     const isPositive = current.profit >= 0;
     const isRealizedPositive = realizedGains.totalProfit >= 0;
 
+    // Prepare chart data from categories
+    const chartData = useMemo(() => {
+        return Object.entries(summary.categories)
+            .map(([name, data]) => ({
+                name: getCategoryStyle(name).label,
+                rawName: name,
+                value: data.valuation,
+                color: getCategoryStyle(name).chartColor
+            }))
+            .filter(item => item.value > 0)
+            .sort((a, b) => b.value - a.value);
+    }, [summary, view]);
+
     return (
         <div className="space-y-4">
-            {/* === Main Summary Block === */}
+            {/* === Main Dashboard Board === */}
             <div className="bg-[#1E1E1E] rounded-2xl border border-[#333] p-6 shadow-lg shadow-black/20">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-5">
+
+                {/* Header Strip */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div className="flex items-center gap-2">
                         <Wallet size={20} className="text-[#F7D047]" />
-                        <h2 className="text-lg font-bold text-white">내 주식 종합</h2>
+                        <h2 className="text-xl font-bold text-white">내 주식 종합</h2>
                     </div>
                     {/* View Toggle */}
-                    <div className="flex bg-[#121212] rounded-lg p-0.5 border border-[#333]">
+                    <div className="flex bg-[#121212] rounded-lg p-1 border border-[#333] w-fit">
                         {(['all', 'kr', 'us'] as ViewMode[]).map(v => (
                             <button
                                 key={v}
                                 onClick={() => setView(v)}
-                                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${view === v
-                                    ? 'bg-[#F7D047] text-black'
-                                    : 'text-gray-400 hover:text-white'
+                                className={`px-4 py-1.5 text-xs font-bold rounded flex-1 transition-all ${view === v
+                                    ? 'bg-[#F7D047] text-black shadow-sm'
+                                    : 'text-gray-500 hover:text-white'
                                     }`}
                             >
                                 {v === 'all' ? '전체' : v === 'kr' ? '국내' : '해외'}
@@ -159,70 +274,224 @@ export default function PortfolioSummaryBlock() {
                     </div>
                 </div>
 
-                {/* Main Metrics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* 1. Overall Account Row (Top Full Width) */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     {/* Total Purchase */}
-                    <div className="bg-[#252525] rounded-xl p-4">
-                        <div className="text-xs text-gray-400 mb-1">총 매입금액</div>
-                        <div className="text-xl font-bold text-white">{fmtValue(current.purchase, view)}</div>
+                    <div className="bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1">
+                        <div className="text-xs text-gray-500 mb-1">총 매입금액</div>
+                        <div className="text-sm font-bold text-gray-200">{fmtValue(current.purchase, view)}</div>
                     </div>
 
                     {/* Total Valuation */}
-                    <div className="bg-[#252525] rounded-xl p-4">
-                        <div className="text-xs text-gray-400 mb-1">총 평가금액</div>
-                        <div className="text-xl font-bold text-white">{fmtValue(current.valuation, view)}</div>
+                    <div className="bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1">
+                        <div className="text-xs text-gray-500 mb-1">총 평가금액</div>
+                        <div className="text-sm font-bold text-white">{fmtValue(current.valuation, view)}</div>
                     </div>
 
                     {/* Profit / Return */}
-                    <div className={`rounded-xl p-4 ${isPositive ? 'bg-red-900/20 border border-red-800/30' : 'bg-blue-900/20 border border-blue-800/30'}`}>
-                        <div className="text-xs text-gray-400 mb-1">평가손익 / 수익률</div>
-                        <div className="flex items-center gap-2">
-                            {isPositive ? <TrendingUp size={18} className="text-red-400" /> : <TrendingDown size={18} className="text-blue-400" />}
+                    <div className={`rounded-xl p-5 border md:col-span-2 ${isPositive ? 'bg-gradient-to-br from-red-950/40 to-[#121212] border-red-900/40' : 'bg-gradient-to-br from-blue-950/40 to-[#121212] border-blue-900/40'}`}>
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 h-full">
                             <div>
-                                <span className={`text-xl font-bold ${isPositive ? 'text-red-400' : 'text-blue-400'}`}>
-                                    {isPositive ? '+' : ''}{fmtValue(current.profit, view)}
-                                </span>
-                                <span className={`text-sm ml-2 ${isPositive ? 'text-red-300' : 'text-blue-300'}`}>
-                                    ({isPositive ? '+' : ''}{fmtRate(current.rate)}%)
-                                </span>
+                                <div className="text-[10px] text-gray-400 mb-1">총 평가손익 / 수익률</div>
+                                <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
+                                    <div className={`text-2xl font-black tracking-tighter drop-shadow-sm ${isPositive ? 'text-red-400' : 'text-blue-400'}`}>
+                                        {isPositive ? '+' : ''}{fmtValue(current.profit, view)}
+                                    </div>
+                                    <div className={`text-base font-bold ${isPositive ? 'text-red-400/80' : 'text-blue-400/80'}`}>
+                                        {isPositive ? '▲ ' : '▼ '}{fmtRate(current.rate)}%
+                                    </div>
+                                </div>
                             </div>
+                            {isPositive ? (
+                                <TrendingUp className="hidden md:block w-12 h-12 opacity-30 text-red-400" />
+                            ) : (
+                                <TrendingDown className="hidden md:block w-12 h-12 opacity-30 text-blue-400" />
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Sub Metrics (국내/해외 세부) only when 'all' */}
-                {view === 'all' && (summary.kr.purchase > 0 || summary.us.purchase > 0) && (
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                        {/* KR sub */}
-                        {summary.kr.purchase > 0 && (
-                            <div className="bg-[#1a1a2e] rounded-lg p-3 border border-[#2a2a4e]">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-indigo-300 font-semibold">🇰🇷 국내</span>
-                                    <span className={`text-xs font-bold ${summary.kr.profit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                                        {summary.kr.profit >= 0 ? '+' : ''}{fmtRate(summary.kr.rate)}%
-                                    </span>
+                {/* Dashboard Grid Container (Split Layout) */}
+                <div className="flex flex-col xl:flex-row gap-6">
+
+                    {/* Left Panel: Chart & Overall Stats (Stacked if small, side-by-side if wide) */}
+                    {chartData.length > 0 && (
+                        <div className="xl:w-1/2 flex flex-col gap-6">
+                            {/* Donut Chart Box */}
+                            <div className="bg-[#121212] rounded-xl border border-[#333] p-4 flex flex-col h-full min-h-[300px]">
+                                <div className="flex flex-col mb-4">
+                                    <span className="text-sm font-bold text-gray-300">포트폴리오 자산 비중 & 총 평가금액</span>
+                                    <span className="text-2xl font-black text-white mt-1">{fmtValue(current.valuation, view)}</span>
                                 </div>
-                                <div className="text-sm text-gray-300 mt-1">
-                                    매입 {fmtValue(summary.kr.purchase, 'kr')} → 평가 {fmtValue(summary.kr.valuation, 'kr')}
+                                {/* Using absolute positioning container for recharts ResponsiveContainer bug on flex columns */}
+                                <div className="relative flex-1 w-full min-h-[250px] xl:min-h-[350px]">
+                                    <div className="absolute inset-0">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie
+                                                    data={chartData}
+                                                    cx="50%"
+                                                    cy="50%"
+                                                    innerRadius={0}
+                                                    outerRadius="85%"
+                                                    stroke="none"
+                                                    paddingAngle={3}
+                                                    dataKey="value"
+                                                    labelLine={false}
+                                                    label={(props: any) => {
+                                                        const { cx, cy, midAngle, innerRadius, outerRadius, percent, name } = props;
+                                                        if (midAngle === undefined || percent === undefined || innerRadius === undefined || outerRadius === undefined) return null;
+
+                                                        const radius = Number(innerRadius) + (Number(outerRadius) - Number(innerRadius)) * 0.5;
+                                                        const x = Number(cx) + radius * Math.cos(-midAngle * (Math.PI / 180));
+                                                        const y = Number(cy) + radius * Math.sin(-midAngle * (Math.PI / 180));
+                                                        // Hide label if slice is too small to fit text
+                                                        if (percent < 0.05) return null;
+
+                                                        return (
+                                                            <text
+                                                                x={x}
+                                                                y={y}
+                                                                fill="white"
+                                                                textAnchor="middle"
+                                                                dominantBaseline="central"
+                                                                className="text-[10px] sm:text-xs font-bold pointer-events-none drop-shadow-md"
+                                                            >
+                                                                <tspan x={x} dy="-0.5em">{name}</tspan>
+                                                                <tspan x={x} dy="1.2em">{(percent * 100).toFixed(0)}%</tspan>
+                                                            </text>
+                                                        );
+                                                    }}
+                                                >
+                                                    {chartData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: '#1E1E1E', borderColor: '#333', borderRadius: '8px', zIndex: 50 }}
+                                                    itemStyle={{ color: '#E5E7EB', fontWeight: 'bold' }}
+                                                    formatter={(value: number | undefined | string) => {
+                                                        if (typeof value === 'number') return fmtValue(value, 'kr');
+                                                        return value;
+                                                    }}
+                                                />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                {/* Chart Legend */}
+                                <div className="flex flex-wrap gap-2 justify-center mt-2">
+                                    {chartData.map((item, idx) => (
+                                        <div key={idx} className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></span>
+                                            {item.name} {((item.value / current.valuation) * 100).toFixed(0)}%
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        )}
-                        {/* US sub */}
-                        {summary.us.purchase > 0 && (
-                            <div className="bg-[#1a2e1a] rounded-lg p-3 border border-[#2a4e2a]">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs text-green-300 font-semibold">🇺🇸 해외</span>
-                                    <span className={`text-xs font-bold ${summary.us.profit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                                        {summary.us.profit >= 0 ? '+' : ''}{fmtRate(summary.us.rate)}%
-                                    </span>
+                        </div>
+                    )}
+
+                    {/* Right Panel: Data Grid */}
+                    <div className="flex-1 flex flex-col gap-6">
+
+                        {/* 3. Category Report Cards */}
+                        {Object.keys(summary.categories).length > 0 && (
+                            <div>
+                                <div className="text-sm font-bold text-gray-300 mb-3 border-l-2 border-[#F7D047] pl-3 py-0.5">
+                                    내 주식 분류별 리포트
                                 </div>
-                                <div className="text-sm text-gray-300 mt-1">
-                                    매입 {fmtValue(summary.us.purchase, 'us')} → 평가 {fmtValue(summary.us.valuation, 'us')}
+                                <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-2 gap-4">
+                                    {Object.entries(summary.categories)
+                                        .filter(([catName]) => catName !== '미분류')
+                                        .sort((a, b) => b[1].valuation - a[1].valuation)
+                                        .map(([catName, stats]) => {
+                                            const theme = getCategoryStyle(catName);
+                                            return (
+                                                <div key={catName} className={`${theme.wrapper} rounded-xl p-5 transition-all duration-300 flex flex-col justify-between group h-full`}>
+                                                    {/* Holographic Top Line */}
+                                                    <div className={`absolute top-0 left-0 right-0 h-1 ${theme.badgeBg} opacity-80 z-20`}></div>
+
+                                                    {/* Level Badge (Trading Card Style) */}
+                                                    <div className="absolute top-1 right-1 z-20 shadow-lg pointer-events-none">
+                                                        <div className={`px-3 py-1 rounded-bl-xl rounded-tr-xl ${theme.badgeBg} border-l border-b ${theme.border} flex items-center gap-1.5`}>
+                                                            <span className="font-black italic text-[10px] text-white drop-shadow-md tracking-wider">
+                                                                Lv.{theme.level}
+                                                            </span>
+                                                            <span className="w-px h-2.5 bg-white/30"></span>
+                                                            <span className="text-[9px] font-bold text-white/90">
+                                                                {theme.label}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Background noise */}
+                                                    <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay z-0 pointer-events-none"></div>
+
+                                                    <div className="relative z-10 flex flex-col h-full">
+                                                        <div className="mb-4">
+                                                            <h3 className={`text-xl sm:text-2xl font-black ${theme.header} tracking-tight leading-tight drop-shadow-md`}>
+                                                                {theme.label}
+                                                            </h3>
+                                                        </div>
+                                                        <div className="mb-4 flex-1 flex flex-col justify-center min-w-0">
+                                                            <div className="text-[10px] text-gray-500 mb-0.5 mt-1">평가금액</div>
+                                                            <div className={`text-2xl xl:text-3xl font-black tracking-tighter truncate ${stats.profit >= 0 ? 'text-red-400' : 'text-blue-400'}`} title={fmtValue(stats.valuation, 'kr')}>
+                                                                {fmtValue(stats.valuation, 'kr')}
+                                                            </div>
+                                                            <div className={`text-sm font-bold mt-1 ${stats.profit >= 0 ? 'text-red-400/80' : 'text-blue-400/80'}`}>
+                                                                {stats.profit >= 0 ? '+ ' : '- '}{fmtValue(Math.abs(stats.profit), 'kr')}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-end justify-between pt-3 border-t border-white/10 mt-auto">
+                                                            <div>
+                                                                <div className="text-[9px] text-gray-500 mb-0.5">투자금액</div>
+                                                                <div className="text-sm font-bold text-gray-300">{fmtValue(stats.purchase, 'kr')}</div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="text-[9px] text-gray-500 mb-0.5">수익률</div>
+                                                                <div className={`text-sm font-black ${stats.profit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                                                    {stats.profit >= 0 ? '+' : ''}{fmtRate(stats.rate)}%
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                 </div>
+
+                                {/* Uncategorized (미분류) Single Line Row */}
+                                {summary.categories['미분류'] && summary.categories['미분류'].valuation > 0 && (
+                                    <div className="mt-4 bg-[#1E1E1E] border border-[#333] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-4 bg-gray-600 rounded-full"></div>
+                                            <span className="text-sm font-bold text-gray-400">미분류 기타자산</span>
+                                        </div>
+                                        <div className="flex items-center gap-4 sm:gap-6 justify-between sm:justify-end">
+                                            <div className="text-left sm:text-right">
+                                                <div className="text-[10px] text-gray-500">투자금액</div>
+                                                <div className="text-sm font-bold text-gray-300">{fmtValue(summary.categories['미분류'].purchase, 'kr')}</div>
+                                            </div>
+                                            <div className="text-left sm:text-right">
+                                                <div className="text-[10px] text-gray-500">평가금액</div>
+                                                <div className="text-sm font-bold text-white">{fmtValue(summary.categories['미분류'].valuation, 'kr')}</div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-[10px] text-gray-500">평가손익 / 수익률</div>
+                                                <div className={`text-sm font-bold ${summary.categories['미분류'].profit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                                    {summary.categories['미분류'].profit >= 0 ? '+' : ''}{fmtValue(summary.categories['미분류'].profit, 'kr')}
+                                                    <span className="text-xs ml-1 font-normal opacity-80">({summary.categories['미분류'].profit >= 0 ? '+' : ''}{fmtRate(summary.categories['미분류'].rate)}%)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
-                )}
+                </div>
             </div>
 
             {/* === Realized Gains Block === */}

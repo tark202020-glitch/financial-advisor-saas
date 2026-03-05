@@ -28,6 +28,7 @@ export default function AddAssetForm() {
         targetMemo: '',
         targetLower: '',
         targetUpper: '',
+        secondaryCategory: '', // 2차 카테고리 추가
 
         // Trade Log
         date: new Date().toISOString().split('T')[0],
@@ -102,6 +103,7 @@ export default function AddAssetForm() {
             purchaseIndexValue: kospi,
 
             // New Fields
+            secondary_category: formData.secondaryCategory,
             memo: formData.targetMemo,
             targetPriceLower: formData.targetLower ? Number(formData.targetLower) : undefined,
             targetPriceUpper: formData.targetUpper ? Number(formData.targetUpper) : undefined,
@@ -130,6 +132,7 @@ export default function AddAssetForm() {
             targetMemo: '',
             targetLower: '',
             targetUpper: '',
+            secondaryCategory: '',
             date: new Date().toISOString().split('T')[0],
             type: 'BUY',
             price: '',
@@ -247,6 +250,29 @@ export default function AddAssetForm() {
                                             <div className="flex items-center gap-2 text-gray-300 font-bold border-b border-[#333] pb-2">
                                                 <div className="w-1 h-5 bg-red-500 rounded-full"></div>
                                                 목표 설정 (Target)
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-400 mb-1.5">2차 카테고리 (직접 입력)</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="예: 배당주(별1개)"
+                                                    className="w-full p-3 bg-[#121212] border border-[#333] rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-white placeholder-gray-600 mb-2"
+                                                    value={formData.secondaryCategory}
+                                                    onChange={(e) => setFormData({ ...formData, secondaryCategory: e.target.value })}
+                                                />
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['대형주(별3개)', '배당주(별1개)', 'ETF모음(별2개)', '기대주(별4개)'].map(cat => (
+                                                        <button
+                                                            key={cat}
+                                                            type="button"
+                                                            onClick={() => setFormData({ ...formData, secondaryCategory: cat })}
+                                                            className="px-2 py-1 text-xs border border-[#333] bg-[#252525] text-gray-300 hover:bg-[#333] hover:text-white rounded-md transition"
+                                                        >
+                                                            {cat}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
 
                                             <div>

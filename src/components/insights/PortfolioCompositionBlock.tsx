@@ -67,7 +67,7 @@ export default function PortfolioCompositionBlock() {
         return () => { isMounted = false; };
     }, [assets, subscribe]);
 
-    const [viewMode, setViewMode] = useState<'ASSET' | 'SECTOR'>('ASSET');
+    const [viewMode, setViewMode] = useState<'ASSET' | 'SECTOR' | 'SECONDARY'>('ASSET');
     const [selectedSector, setSelectedSector] = useState<string | null>(null);
 
     // Reset selection when view mode changes
@@ -150,7 +150,7 @@ export default function PortfolioCompositionBlock() {
                 const othersValue = others.reduce((sum, item) => sum + item.totalValue, 0);
                 finalPie.push({ name: '기타 (Others)', value: othersValue, fill: '#4B5563' }); // Darker gray for others
             }
-        } else {
+        } else if (viewMode === 'SECTOR') {
             // SECTOR Mode
             const sectorMap = new Map<string, number>();
             filtered.forEach(item => {
@@ -159,7 +159,6 @@ export default function PortfolioCompositionBlock() {
                 sectorMap.set(sector, current + item.totalValue);
             });
 
-            // Convert to array and sort
             const sectorArray = Array.from(sectorMap.entries()).map(([name, value]) => ({
                 name,
                 value,
@@ -167,8 +166,6 @@ export default function PortfolioCompositionBlock() {
             }));
             sectorArray.sort((a, b) => b.value - a.value);
 
-            // Cap at Top 10 Sectors if too many? usually sectors aren't that many
-            // But let's apply same logic just in case
             if (sectorArray.length > 10) {
                 const topSectors = sectorArray.slice(0, 10);
                 const otherSectors = sectorArray.slice(10);
@@ -180,10 +177,39 @@ export default function PortfolioCompositionBlock() {
                 finalPie = sectorArray;
             }
 
-            // If a sector is selected, filter assets for that sector
             if (selectedSector) {
                 sectorAssetList = filtered.filter(item => (item.sector || '미분류') === selectedSector);
-                // Sort sector assets by total value by default
+                sectorAssetList.sort((a, b) => b.totalValue - a.totalValue);
+            }
+        } else if (viewMode === 'SECONDARY') {
+            // SECONDARY Mode
+            const secMap = new Map<string, number>();
+            filtered.forEach(item => {
+                const sec = item.secondary_category || '미분류';
+                const current = secMap.get(sec) || 0;
+                secMap.set(sec, current + item.totalValue);
+            });
+
+            const secArray = Array.from(secMap.entries()).map(([name, value]) => ({
+                name,
+                value,
+                fill: ''
+            }));
+            secArray.sort((a, b) => b.value - a.value);
+
+            if (secArray.length > 10) {
+                const topSecs = secArray.slice(0, 10);
+                const otherSecs = secArray.slice(10);
+                const othersValue = otherSecs.reduce((sum, item) => sum + item.value, 0);
+
+                finalPie = topSecs;
+                finalPie.push({ name: '기타 (Others)', value: othersValue, fill: '#4B5563' });
+            } else {
+                finalPie = secArray;
+            }
+
+            if (selectedSector) {
+                sectorAssetList = filtered.filter(item => (item.secondary_category || '미분류') === selectedSector);
                 sectorAssetList.sort((a, b) => b.totalValue - a.totalValue);
             }
         }
@@ -202,13 +228,13 @@ export default function PortfolioCompositionBlock() {
 
     // Handlers
     const handlePieClick = (data: any) => {
-        if (viewMode === 'SECTOR' && data && data.name && data.name !== '기타 (Others)') {
+        if ((viewMode === 'SECTOR' || viewMode === 'SECONDARY') && data && data.name && data.name !== '기타 (Others)') {
             setSelectedSector(data.name);
         }
     };
 
     const handleSectorListClick = (sectorName: string) => {
-        if (viewMode === 'SECTOR' && sectorName !== '기타 (Others)') {
+        if ((viewMode === 'SECTOR' || viewMode === 'SECONDARY') && sectorName !== '기타 (Others)') {
             setSelectedSector(sectorName);
         }
     };
@@ -241,6 +267,12 @@ export default function PortfolioCompositionBlock() {
                             className={`px-3 py-1 text-sm rounded-md transition-all ${viewMode === 'SECTOR' ? 'bg-[#F7D047] text-black font-bold shadow-sm' : 'text-gray-400 hover:text-white'}`}
                         >
                             업종별
+                        </button>
+                        <button
+                            onClick={() => setViewMode('SECONDARY')}
+                            className={`px-3 py-1 text-sm rounded-md transition-all ${viewMode === 'SECONDARY' ? 'bg-[#F7D047] text-black font-bold shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            분류별
                         </button>
                     </div>
                 </div>
@@ -295,7 +327,7 @@ export default function PortfolioCompositionBlock() {
                                 dataKey="value"
                                 onClick={handlePieClick}
                                 stroke="none"
-                                style={{ cursor: viewMode === 'SECTOR' ? 'pointer' : 'default' }}
+                                style={{ cursor: (viewMode === 'SECTOR' || viewMode === 'SECONDARY') ? 'pointer' : 'default' }}
                             >
                                 {chartData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={entry.fill || COLORS[index % COLORS.length]} />
@@ -310,7 +342,7 @@ export default function PortfolioCompositionBlock() {
                     </ResponsiveContainer>
                     {/* Center Label */}
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none pb-4">
-                        <div className="text-xs text-gray-500 mb-1">{viewMode === 'ASSET' ? '총 평가금액' : '업종별 비중'}</div>
+                        <div className="text-xs text-gray-500 mb-1">{viewMode === 'ASSET' ? '총 평가금액' : (viewMode === 'SECTOR' ? '업종별 비중' : '분류별 비중')}</div>
                         <div className="text-sm font-bold text-white">
                             {totalPortfolioValue > 100000000
                                 ? `${(totalPortfolioValue / 100000000).toFixed(2)}억`
@@ -330,7 +362,7 @@ export default function PortfolioCompositionBlock() {
                                 className="w-full py-3 px-4 bg-[#252525] hover:bg-[#333] text-gray-300 rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-sm mb-3 group border border-[#333]"
                             >
                                 <span className="group-hover:-translate-x-1 transition-transform">⬅</span>
-                                전체 업종 목록으로 돌아가기
+                                전체 {viewMode === 'SECTOR' ? '업종' : '분류'} 목록으로 돌아가기
                             </button>
                             <div className="flex items-center gap-2 px-1">
                                 <span className="text-[#F7D047] text-xl">📂</span>

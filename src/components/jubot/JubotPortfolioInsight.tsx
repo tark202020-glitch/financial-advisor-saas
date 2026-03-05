@@ -209,6 +209,7 @@ export default function JubotPortfolioInsight() {
                 symbol: a.symbol,
                 category: a.category,
                 sector: a.sector || '',
+                secondary_category: a.secondary_category || '', // 2차 카테고리 합류
                 currentPrice: priceMap[a.symbol] || 0,
                 avgPrice: a.pricePerShare || 0,
                 quantity: a.quantity || 0,

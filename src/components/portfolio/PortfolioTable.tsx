@@ -60,6 +60,7 @@ export default function PortfolioTable() {
         closed: false
     });
     const [sort, setSort] = useState<SortOption>('value');
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
     // Counts
     const counts = useMemo(() => {
@@ -75,14 +76,33 @@ export default function PortfolioTable() {
         }, { kr: 0, us: 0, closed: 0 });
     }, [assets]);
 
+    // Categories List
+    const categories = useMemo(() => {
+        const cats = new Set<string>();
+        assets.forEach(a => {
+            // Only consider categories for active assets, mapping empty/null to '미분류'
+            if (a.quantity > 0) {
+                cats.add(a.secondary_category || '미분류');
+            }
+        });
+        return Array.from(cats).sort();
+    }, [assets]);
+
     // Filter & Sort Logic
     const filteredAndSortedAssets = useMemo(() => {
         let result = assets.filter(asset => {
             const isClosed = asset.quantity === 0;
             if (isClosed) return filter.closed;
-            if (asset.category === 'KR') return filter.kr;
-            if (asset.category === 'US') return filter.us;
-            return false;
+            if (asset.category === 'KR' && !filter.kr) return false;
+            if (asset.category === 'US' && !filter.us) return false;
+
+            // Filter by secondary category if not 'all'
+            if (selectedCategory !== 'all') {
+                const assetCategory = asset.secondary_category || '미분류';
+                if (assetCategory !== selectedCategory) return false;
+            }
+
+            return true;
         });
 
         return result.sort((a, b) => {
@@ -108,7 +128,7 @@ export default function PortfolioTable() {
                     return b.id - a.id;
             }
         });
-    }, [assets, filter, sort, getKrData, getUsData]);
+    }, [assets, filter, sort, selectedCategory, getKrData, getUsData]);
 
     if (isLoading) {
         return (
@@ -119,8 +139,8 @@ export default function PortfolioTable() {
                     <div className="h-8 w-24 bg-[#252525] rounded-lg"></div>
                     <div className="h-8 w-24 bg-[#252525] rounded-lg"></div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {[1, 2, 3].map((i) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[1, 2].map((i) => (
                         <div key={i} className="bg-[#1E1E1E] rounded-3xl border border-[#333] p-6 shadow-sm h-64 animate-pulse">
                             <div className="h-6 bg-[#252525] rounded mb-4 w-1/3"></div>
                             <div className="h-8 bg-[#252525] rounded mb-6 w-1/2"></div>
@@ -180,20 +200,42 @@ export default function PortfolioTable() {
                     </label>
                 </div>
 
-                {/* Sort */}
-                <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 font-medium">정렬</span>
-                    <div className="relative">
-                        <select
-                            value={sort}
-                            onChange={(e) => setSort(e.target.value as SortOption)}
-                            className="appearance-none bg-[#121212] border border-[#333] text-gray-300 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-medium hover:border-gray-600 transition"
-                        >
-                            <option value="newest">최신등록순</option>
-                            <option value="value">평가금액순</option>
-                            <option value="name">가나다순</option>
-                        </select>
-                        <ArrowUpDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                {/* Sort & Category Filter */}
+                <div className="flex items-center gap-2 sm:gap-4 ml-auto">
+                    {/* Category Filter */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 font-medium hidden sm:inline">분류</span>
+                        <div className="relative">
+                            <select
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                className="appearance-none bg-[#121212] border border-[#333] text-indigo-400 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-bold hover:border-indigo-500/50 transition"
+                            >
+                                <option value="all" className="text-gray-300">최상위 단계 (전체해제)</option>
+                                <option disabled className="text-gray-600 bg-[#1a1a1a]">────────────────</option>
+                                {categories.map(cat => (
+                                    <option key={cat} value={cat} className="text-gray-300">{cat}</option>
+                                ))}
+                            </select>
+                            <ArrowUpDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-indigo-500/50 pointer-events-none" />
+                        </div>
+                    </div>
+
+                    {/* Sort */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500 font-medium hidden sm:inline">정렬</span>
+                        <div className="relative">
+                            <select
+                                value={sort}
+                                onChange={(e) => setSort(e.target.value as SortOption)}
+                                className="appearance-none bg-[#121212] border border-[#333] text-gray-300 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-medium hover:border-gray-600 transition"
+                            >
+                                <option value="newest">최신등록순</option>
+                                <option value="value">평가금액순</option>
+                                <option value="name">가나다순</option>
+                            </select>
+                            <ArrowUpDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -204,7 +246,7 @@ export default function PortfolioTable() {
                     <p className="text-gray-500">조건에 맞는 자산이 없습니다.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
                     {filteredAndSortedAssets.map((asset) => {
                         // Prepare Stock Data prop
                         const cleanSymbol = asset.symbol.replace('.KS', '');

@@ -23,6 +23,7 @@ export interface Asset {
     name: string;
     category: 'KR' | 'US';
     sector?: string; // Add sector
+    secondary_category?: string; // User-defined secondary category
     quantity: number;
     pricePerShare: number;
     purchaseDate?: string;
@@ -91,6 +92,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                         name: p.name,
                         category: getMarketType(p.symbol),
                         sector: p.sector, // Map from DB
+                        secondary_category: p.secondary_category,
                         quantity: p.quantity,
                         pricePerShare: p.buy_price || 0,
                         memo: p.memo,
@@ -264,6 +266,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                     // But here insert takes object literal. It works if Supabase ignores unknown or if I only send known.
                     // I'll assume only sector is new.
                     sector: newAsset.sector || null,
+                    secondary_category: newAsset.secondary_category || null,
                     quantity: newAsset.quantity,
                     buy_price: newAsset.pricePerShare,
                     memo: newAsset.memo,
@@ -313,6 +316,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             if (updates.quantity !== undefined) dbUpdates.quantity = updates.quantity;
             if (updates.pricePerShare !== undefined) dbUpdates.buy_price = updates.pricePerShare;
             if (updates.sector !== undefined) dbUpdates.sector = updates.sector;
+            if (updates.secondary_category !== undefined) dbUpdates.secondary_category = updates.secondary_category;
             if (updates.memo !== undefined) dbUpdates.memo = updates.memo;
             if (updates.targetPriceLower !== undefined) dbUpdates.buy_target = updates.targetPriceLower;
             if (updates.targetPriceUpper !== undefined) dbUpdates.sell_target = updates.targetPriceUpper;

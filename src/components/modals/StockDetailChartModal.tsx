@@ -19,6 +19,59 @@ import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import FinancialGrid from '@/components/FinancialGrid';
 import StockLoadError from '@/components/ui/StockLoadError';
 
+// 2차 카테고리에 따른 테마 색상 반환 함수 (PortfolioCard와 동일)
+const getCategoryStyle = (category: string | undefined) => {
+    const rawLabel = category || '미분류';
+    const label = rawLabel.replace(/\(별.*?\)/g, '').trim();
+
+    if (!category) return {
+        level: '0',
+        label,
+        wrapper: "bg-[#1E1E1E] sm:rounded-2xl shadow-2xl shadow-black/50 border border-[#333]",
+        header: "bg-[#252525] border-b border-[#333]"
+    };
+
+    if (category.includes('배당주')) {
+        return {
+            level: 'I',
+            label,
+            wrapper: "bg-[#1E2A22] sm:rounded-2xl shadow-2xl shadow-emerald-900/20 border border-emerald-500/30",
+            header: "bg-gradient-to-r from-emerald-950/40 to-[#252525] border-b border-emerald-500/30"
+        };
+    }
+    if (category.includes('ETF모음')) {
+        return {
+            level: 'II',
+            label,
+            wrapper: "bg-[#1E242A] sm:rounded-2xl shadow-2xl shadow-blue-900/20 border border-blue-500/30",
+            header: "bg-gradient-to-r from-blue-950/40 to-[#252525] border-b border-blue-500/30"
+        };
+    }
+    if (category.includes('대형주')) {
+        return {
+            level: 'III',
+            label,
+            wrapper: "bg-[#2A1E2A] sm:rounded-2xl shadow-2xl shadow-purple-900/20 border border-purple-500/30",
+            header: "bg-gradient-to-r from-purple-950/40 to-[#252525] border-b border-purple-500/30"
+        };
+    }
+    if (category.includes('기대주')) {
+        return {
+            level: 'IV',
+            label,
+            wrapper: "bg-[#2A1E1E] sm:rounded-2xl shadow-2xl shadow-red-900/20 border border-red-500/40",
+            header: "bg-gradient-to-r from-red-950/40 to-[#252525] border-b border-red-500/40"
+        };
+    }
+
+    return {
+        level: '0',
+        label,
+        wrapper: "bg-[#1E1E1E] sm:rounded-2xl shadow-2xl shadow-black/50 border border-[#333]",
+        header: "bg-[#252525] border-b border-[#333]"
+    };
+};
+
 // Color Constants for Consistency
 const COLORS = {
     ma5: '#f97316',   // orange-500
@@ -94,6 +147,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     };
 
     // Local State for Inputs (Goals)
+    const [secondaryCategory, setSecondaryCategory] = useState(asset.secondary_category || '');
     const [memo, setMemo] = useState(asset.memo || '');
     const [targetLower, setTargetLower] = useState(asset.targetPriceLower?.toString() || '');
     const [targetUpper, setTargetUpper] = useState(asset.targetPriceUpper?.toString() || '');
@@ -111,6 +165,20 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     const [editingTradeId, setEditingTradeId] = useState<number | null>(null);
 
     // --- Effects ---
+
+    // 0. Body Scroll Lock
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+
+        // Cleanup on unmount
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isOpen]);
 
     // 1. Fetch Chart Data (with auto-retry)
     const fetchChartData = useCallback(async () => {
@@ -173,6 +241,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
 
         // Sync local state
         if (isOpen && asset.symbol) {
+            setSecondaryCategory(asset.secondary_category || '');
             setMemo(asset.memo || '');
             setTargetLower(asset.targetPriceLower?.toString() || '');
             setTargetUpper(asset.targetPriceUpper?.toString() || '');
@@ -303,12 +372,34 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     }, [newTrade.date, isAddingLog, editingTradeId, asset.category]);
 
     // --- Handlers ---
+    const isDirty = useMemo(() => {
+        return (
+            secondaryCategory !== (asset.secondary_category || '') ||
+            memo !== (asset.memo || '') ||
+            targetLower !== (asset.targetPriceLower?.toString() || '') ||
+            targetUpper !== (asset.targetPriceUpper?.toString() || '')
+        );
+    }, [secondaryCategory, memo, targetLower, targetUpper, asset]);
+
+    const handleClose = () => {
+        if (isDirty) {
+            if (confirm('저장되지 않은 대상 목표/분류 변경사항이 있습니다. 저장하지 않고 닫으시겠습니까?')) {
+                onClose();
+            }
+        } else {
+            onClose();
+        }
+    };
+
     const handleSaveGoals = () => {
+        if (!isDirty) return;
         updateAsset(asset.id, {
+            secondary_category: secondaryCategory || undefined,
             memo,
             targetPriceLower: targetLower ? parseFloat(targetLower.replace(/,/g, '')) : undefined,
             targetPriceUpper: targetUpper ? parseFloat(targetUpper.replace(/,/g, '')) : undefined,
         });
+        alert('저장되었습니다.');
     };
 
     const handleSaveTrade = async () => {
@@ -424,15 +515,17 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
         Math.abs(parseInt(todayInvestor.orgn_ntby_qty) || 0)
     ) : 0;
 
+    const themeStyle = getCategoryStyle(secondaryCategory);
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm sm:p-4 animate-in fade-in duration-200">
-            <div className="bg-[#1E1E1E] sm:rounded-2xl shadow-2xl shadow-black/50 border border-[#333] w-full h-full sm:w-[90%] max-w-5xl sm:h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className={`${themeStyle.wrapper} w-full h-full sm:w-[90%] max-w-5xl sm:h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200`}>
 
                 {/* ======= HEADER ======= */}
-                <div className="p-3 sm:p-6 border-b border-[#333] flex justify-between items-start bg-[#252525] flex-shrink-0">
+                <div className={`p-3 sm:p-6 flex justify-between items-start flex-shrink-0 ${themeStyle.header}`}>
                     <div className="flex items-center gap-3 sm:gap-6">
                         <div>
-                            <div className="hidden sm:flex items-center gap-2 text-gray-500 text-xs mb-0.5">
+                            <div className="hidden sm:flex items-center gap-2 text-gray-400 text-xs mb-0.5 font-medium">
                                 <span>{asset.symbol}</span>
                                 <span className="text-gray-600">|</span>
                                 <span>{asset.category === 'KR' ? 'KOSPI' : 'US'}</span>
@@ -451,11 +544,16 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
                         {!viewOnly && (
-                            <button onClick={handleSaveGoals} className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition" title="저장">
+                            <button
+                                onClick={handleSaveGoals}
+                                disabled={!isDirty}
+                                className={`p-2 rounded-lg transition ${isDirty ? 'bg-indigo-600 hover:bg-indigo-500 text-white' : 'bg-[#333] text-gray-500 cursor-not-allowed'}`}
+                                title="저장"
+                            >
                                 <Save size={20} />
                             </button>
                         )}
-                        <button onClick={onClose} className="p-2 text-gray-500 hover:text-white hover:bg-[#333] rounded-lg transition">
+                        <button onClick={handleClose} className="p-2 text-gray-500 hover:text-white hover:bg-[#333] rounded-lg transition">
                             <X size={20} />
                         </button>
                     </div>
@@ -693,8 +791,23 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
 
                         {/* Goals */}
                         <div className="bg-[#252525] rounded-2xl p-6 border border-[#333]">
-                            <h3 className="text-sm font-bold text-white mb-4">🎯 목표 설정</h3>
+                            <h3 className="text-sm font-bold text-white mb-4">🎯 목표 및 분류</h3>
                             <div className="space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 mb-1">2차 카테고리 (분류/레벨)</label>
+                                    <select
+                                        value={secondaryCategory}
+                                        onChange={(e) => setSecondaryCategory(e.target.value)}
+                                        className="w-full bg-[#121212] border border-[#333] rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none transition appearance-none"
+                                    >
+                                        <option value="">미분류 (Lv.0)</option>
+                                        <option value="배당주(별1개)">배당주 (Lv.1)</option>
+                                        <option value="ETF모음(별2개)">ETF모음 (Lv.2)</option>
+                                        <option value="대형주(별3개)">대형주 (Lv.3)</option>
+                                        <option value="기대주(별4개)">기대주 (Lv.4)</option>
+                                    </select>
+                                    <p className="text-[9px] text-gray-500 mt-1">* 선택한 카테고리에 따라 포트폴리오 카드의 랭크 색상이 변경됩니다.</p>
+                                </div>
                                 <div>
                                     <label className="block text-[10px] font-bold text-gray-500 mb-1">메모</label>
                                     <input
