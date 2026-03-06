@@ -50,6 +50,7 @@ interface MarketExtraData {
         korea: { rate: number; date: string };
         us: { rate: string | number; date: string };
     } | null;
+    us10yTreasury: YahooData | null;
     fetchedAt?: string;
 }
 
@@ -163,6 +164,14 @@ function ExtraMarketBlock() {
                                 flag="🇺🇸"
                             />
                         </>
+                    )}
+                    {extra.us10yTreasury && (
+                        <ExtraRow
+                            label="US 10Y Treasury"
+                            data={extra.us10yTreasury}
+                            flag="🇺🇸"
+                            suffix="%"
+                        />
                     )}
                 </div>
             </div>

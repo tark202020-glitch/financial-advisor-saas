@@ -58,7 +58,7 @@ export async function GET() {
     try {
         // Parallel Fetch
         // symbols: KRW=X (USD/KRW), JPYKRW=X, CNYKRW=X, GC=F (Gold Futures)
-        const [usd, jpy, cny, gold, rates, kospi, kosdaq, sp500, nasdaq] = await Promise.all([
+        const [usd, jpy, cny, gold, rates, kospi, kosdaq, sp500, nasdaq, us10y] = await Promise.all([
             fetchYahooData('KRW=X'),
             fetchYahooData('JPYKRW=X'),
             fetchYahooData('CNYKRW=X'),
@@ -67,7 +67,8 @@ export async function GET() {
             fetchYahooData('^KS11'), // KOSPI
             fetchYahooData('^KQ11'), // KOSDAQ
             fetchYahooData('^GSPC'), // S&P 500
-            fetchYahooData('^IXIC')  // NASDAQ
+            fetchYahooData('^IXIC'), // NASDAQ
+            fetchYahooData('^TNX')   // US 10-Year Treasury Yield
         ]);
 
         // Process Gold to KRW/g
@@ -108,6 +109,7 @@ export async function GET() {
             },
             gold: goldKRW || gold, // Return converted gold if available
             interestRates: rates,
+            us10yTreasury: us10y, // US 10-Year Treasury Yield
             fetchedAt: new Date().toISOString()
         });
     } catch (error: any) {

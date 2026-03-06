@@ -1,3 +1,12 @@
+## [Alpha V1.265] - 2026-03-06 16:45:00
+
+### ✨ Feature: US 10-Year Treasury Yield 지표 추가
+- **Summary**: 일일체크 화면의 금·금리 섹션에 US 10-Year Treasury Yield 실시간 정보를 추가했습니다.
+- **Detail**:
+  - `src/app/api/market-extra/route.ts`: Yahoo Finance `^TNX` 심볼로 미국 10년 국채 수익률 데이터를 병렬 페칭 추가
+  - `src/components/MarketFlowChart.tsx`: 미국 기준금리 하단에 US 10Y Treasury 행을 추가하여 현재 수익률, 전일 대비 변동폭/변동률 표시
+- **Build Time**: 2026-03-06 16:45:00
+
 ## [Alpha V1.264] - 2026-03-06 16:38:00
 
 ### 🐛 Fix: ETF 종목 현재가 로딩 실패 해결 및 새로고침 버튼 복구
