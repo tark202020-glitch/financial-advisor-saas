@@ -534,23 +534,58 @@ export default function JubotPortfolioInsight() {
                                                         <ChevronRight size={14} className="text-gray-600" />
                                                     </div>
                                                 </div>
-                                                <p className="text-gray-400 text-sm mt-1">{insight.reason}</p>
-                                                {insight.financial_highlight && (
-                                                    <p className="text-purple-400 text-sm mt-1">📊 {insight.financial_highlight}</p>
+                                                {/* 주요 요약 (Reason) */}
+                                                <div className="mt-3 mb-3 p-3 bg-[#1A1A1A] rounded-lg border border-[#2a2a2a]">
+                                                    <p className="text-gray-300 text-sm leading-relaxed">{insight.reason}</p>
+                                                </div>
+
+                                                {/* 상세 정보 그리드 */}
+                                                {(insight.financial_highlight || insight.upcoming_events || insight.dividend_info) && (
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                                                        {insight.financial_highlight && (
+                                                            <div className="flex items-start gap-2 bg-[#1A1A1A] p-2.5 rounded-lg border border-[#2a2a2a]">
+                                                                <span className="text-gray-500 shrink-0">📊</span>
+                                                                <p className="text-gray-400 text-xs leading-snug">{insight.financial_highlight}</p>
+                                                            </div>
+                                                        )}
+                                                        {insight.upcoming_events && (
+                                                            <div className="flex items-start gap-2 bg-[#1A1A1A] p-2.5 rounded-lg border border-[#2a2a2a]">
+                                                                <span className="text-gray-500 shrink-0">📅</span>
+                                                                <p className="text-gray-400 text-xs leading-snug">{insight.upcoming_events}</p>
+                                                            </div>
+                                                        )}
+                                                        {insight.dividend_info && (
+                                                            <div className="flex items-start gap-2 bg-[#1A1A1A] p-2.5 rounded-lg border border-[#2a2a2a]">
+                                                                <span className="text-gray-500 shrink-0">💰</span>
+                                                                <p className="text-gray-400 text-xs leading-snug">{insight.dividend_info}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 )}
-                                                {insight.trade_review && (
-                                                    <p className="text-orange-400 text-sm mt-1">📈 {insight.trade_review}</p>
+
+                                                {/* 추가 정보 (뉴스 / 트레이드 리뷰) */}
+                                                {(insight.trade_review || insight.related_news) && (
+                                                    <div className="flex flex-col gap-1.5 mb-3 px-1">
+                                                        {insight.trade_review && (
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="text-gray-500 shrink-0 text-xs mt-0.5">📈</span>
+                                                                <p className="text-gray-400 text-xs">{insight.trade_review}</p>
+                                                            </div>
+                                                        )}
+                                                        {insight.related_news && (
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="text-gray-500 shrink-0 text-xs mt-0.5">📰</span>
+                                                                <p className="text-gray-400 text-xs">{insight.related_news}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 )}
-                                                {insight.related_news && (
-                                                    <p className="text-cyan-400 text-sm mt-1">📰 {insight.related_news}</p>
-                                                )}
-                                                {insight.upcoming_events && (
-                                                    <p className="text-yellow-400 text-sm mt-1">📅 {insight.upcoming_events}</p>
-                                                )}
-                                                {insight.dividend_info && (
-                                                    <p className="text-emerald-400 text-sm mt-1">💰 {insight.dividend_info}</p>
-                                                )}
-                                                <p className="text-gray-300 text-sm mt-1 font-medium">💡 {insight.action}</p>
+
+                                                {/* 액션 플랜 (Action) */}
+                                                <div className="mt-3 pt-3 border-t border-[#333] flex items-start gap-2">
+                                                    <span className="text-[#F7D047] shrink-0">💡</span>
+                                                    <p className="text-gray-200 text-sm font-medium leading-snug">{insight.action}</p>
+                                                </div>
                                             </div>
                                         );
                                     })}
