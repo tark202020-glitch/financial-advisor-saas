@@ -78,30 +78,59 @@ export async function getAccessToken(): Promise<string> {
 export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice | null> {
     const token = await getAccessToken();
 
-    // NXT(넥스트) 시세 사용 - KRX 대비 실시간 가격 정확도 향상
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=NX&FID_INPUT_ISCD=${symbol}`, {
-        method: "GET",
-        headers: {
-            "content-type": "application/json",
-            "authorization": `Bearer ${token}`,
-            "appkey": APP_KEY!,
-            "appsecret": APP_SECRET!,
-            "tr_id": "FHKST01010100", // Current Price Inquiry TR ID
-        },
-    }));
+    // Helper: fetch price with specific market code
+    const fetchWithMarketCode = async (marketCode: string): Promise<KisDomStockPrice | null> => {
+        const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=${marketCode}&FID_INPUT_ISCD=${symbol}`, {
+            method: "GET",
+            headers: {
+                "content-type": "application/json",
+                "authorization": `Bearer ${token}`,
+                "appkey": APP_KEY!,
+                "appsecret": APP_SECRET!,
+                "tr_id": "FHKST01010100",
+            },
+        }));
 
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Failed to fetch DOM price for ${symbol}: ${text}`);
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Failed to fetch DOM price for ${symbol} (market=${marketCode}): ${text}`);
+        }
+
+        const data: KisResponse<KisDomStockPrice> = await response.json();
+        if (data.rt_cd !== "0") {
+            console.error(`KIS API Error (DOM, market=${marketCode}): ${data.msg1}`);
+            return null; // Return null instead of throwing for fallback support
+        }
+
+        return data.output;
+    };
+
+    // 1차 시도: NXT(넥스트) 시세 - 실시간 가격 정확도 향상
+    try {
+        const nxtResult = await fetchWithMarketCode('NX');
+        const nxtPrice = parseFloat(nxtResult?.stck_prpr || '0');
+        if (nxtResult && nxtPrice > 0) {
+            return nxtResult;
+        }
+        // NXT에서 가격이 0이면 (ETF 등 NXT 미지원 종목) KRX로 폴백
+        console.warn(`[KIS] NXT price=0 for ${symbol}, falling back to KRX(J)`);
+    } catch (e) {
+        console.warn(`[KIS] NXT fetch failed for ${symbol}, falling back to KRX(J):`, e);
     }
 
-    const data: KisResponse<KisDomStockPrice> = await response.json();
-    if (data.rt_cd !== "0") {
-        console.error(`KIS API Error (DOM): ${data.msg1}`);
-        throw new Error(`KIS API Error (DOM): ${data.msg1} (Code: ${data.msg_cd})`);
+    // 2차 시도: KRX(J) 폴백 - ETF 등 NXT 미지원 종목 대응
+    try {
+        const krxResult = await fetchWithMarketCode('J');
+        const krxPrice = parseFloat(krxResult?.stck_prpr || '0');
+        if (krxResult && krxPrice > 0) {
+            return krxResult;
+        }
+    } catch (e) {
+        console.error(`[KIS] KRX(J) fallback also failed for ${symbol}:`, e);
     }
 
-    return data.output;
+    // 두 시장 모두 실패
+    throw new Error(`Failed to fetch price for ${symbol} from both NXT and KRX`);
 }
 
 export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice | null> {

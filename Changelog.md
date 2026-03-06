@@ -1,3 +1,13 @@
+## [Alpha V1.264] - 2026-03-06 16:38:00
+
+### 🐛 Fix: ETF 종목 현재가 로딩 실패 해결 및 새로고침 버튼 복구
+- **Summary**: ETF 종목이 NXT 시장에서 가격 조회 불가한 문제를 KRX 자동 폴백으로 해결하고, 새로고침 버튼 가시성 및 기능을 전면 개선했습니다.
+- **Detail**:
+  - `src/lib/kis/client.ts` (`getDomesticPrice`): NXT 시장 코드 조회 후 price=0 또는 에러 시 자동으로 KRX(`J`) 시장 코드로 폴백 재시도하는 2단계 조회 로직 구현
+  - `src/components/portfolio/PortfolioCard.tsx`: 새로고침 버튼 크기 개선(10px→14px), amber 색상 스타일, "새로고침" 텍스트 라벨 추가
+  - `src/components/portfolio/PortfolioTable.tsx`: 필터바에 항상 노출되는 "전체 재계산" 버튼 추가, 에러 시 amber 하이라이트 스타일 적용
+- **Build Time**: 2026-03-06 16:38:00
+
 ## [Alpha V1.263] - 2026-03-06 01:24:21
 
 ### 🔄 Build Update

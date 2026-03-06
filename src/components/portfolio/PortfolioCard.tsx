@@ -210,9 +210,11 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                                     {!stockData && onRefresh && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); onRefresh(); }}
-                                            className="absolute top-2 right-2 flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 text-gray-500 hover:text-gray-300 text-[9px] transition"
+                                            className="absolute top-2 right-2 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-900/30 hover:bg-amber-900/50 text-amber-400 hover:text-amber-300 text-[10px] font-bold transition-all border border-amber-700/30 hover:border-amber-600/50 shadow-sm"
+                                            title="현재가 새로고침"
                                         >
-                                            <RefreshCw size={10} />
+                                            <RefreshCw size={14} />
+                                            <span className="hidden sm:inline">새로고침</span>
                                         </button>
                                     )}
                                 </div>

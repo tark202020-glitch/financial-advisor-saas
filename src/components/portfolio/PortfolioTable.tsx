@@ -3,7 +3,7 @@
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import PortfolioCard from './PortfolioCard';
 import { useState, useMemo } from 'react';
-import { ArrowUpDown, Check } from 'lucide-react';
+import { ArrowUpDown, Check, RefreshCw } from 'lucide-react';
 import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 import StockLoadError from '@/components/ui/StockLoadError';
 
@@ -200,8 +200,21 @@ export default function PortfolioTable() {
                     </label>
                 </div>
 
-                {/* Sort & Category Filter */}
+                {/* Refresh & Sort & Category Filter */}
                 <div className="flex items-center gap-2 sm:gap-4 ml-auto">
+                    {/* Global Refresh Button */}
+                    <button
+                        onClick={handleRefreshAll}
+                        disabled={isRefreshing}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-bold transition-all select-none ${hasAnyError
+                                ? 'bg-amber-900/30 border-amber-700/40 text-amber-400 hover:bg-amber-900/50 hover:border-amber-600/50'
+                                : 'bg-[#121212] border-[#333] text-gray-400 hover:bg-[#252525] hover:text-white'
+                            } disabled:opacity-50`}
+                        title="전체 종목 시세 새로고침"
+                    >
+                        <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+                        <span className="hidden sm:inline">{isRefreshing ? '갱신중...' : '전체 재계산'}</span>
+                    </button>
                     {/* Category Filter */}
                     <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-500 font-medium hidden sm:inline">분류</span>
