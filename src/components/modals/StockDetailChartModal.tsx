@@ -93,7 +93,8 @@ const COLORS = {
     up: '#ef4444',    // red-500
     down: '#3b82f6',  // blue-500
     buyPrice: '#ef4444', // red-500
-    main: '#F7D047'   // Main Chart Color (Yellow)
+    main: '#F7D047',   // Main Chart Color (Yellow)
+    targetLower: '#60a5fa' // blue-400 for lower target
 };
 
 interface StockDetailModalProps {
@@ -535,6 +536,23 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
         isOutOfBounds = true;
     }
 
+    // Lower Target Line
+    let targetLowerLineY = asset.targetPriceLower || 0;
+    let targetLowerLabel = asset.targetPriceLower ? `하한 ${formatPrice(asset.targetPriceLower)}` : '';
+    let isTargetLowerOutOfBounds = false;
+
+    if (asset.targetPriceLower) {
+        if (asset.targetPriceLower > domainMax) {
+            targetLowerLineY = chartMax;
+            targetLowerLabel = `하한 ${formatPrice(asset.targetPriceLower)} (▲)`;
+            isTargetLowerOutOfBounds = true;
+        } else if (asset.targetPriceLower < domainMin) {
+            targetLowerLineY = chartMin;
+            targetLowerLabel = `하한 ${formatPrice(asset.targetPriceLower)} (▼)`;
+            isTargetLowerOutOfBounds = true;
+        }
+    }
+
     // Goal Return Rates
     const getGoalRate = (target: string) => {
         if (!target || !asset.pricePerShare) return null;
@@ -694,6 +712,24 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                                         fontWeight: 'bold',
                                                         position: isOutOfBounds ? 'insideBottomRight' : 'insideRight',
                                                         dy: isOutOfBounds && purchaseLineY === chartMax ? 10 : (isOutOfBounds && purchaseLineY === chartMin ? -10 : -10)
+                                                    }}
+                                                />
+                                            )}
+
+                                            {/* Lower Target Price Line */}
+                                            {asset.targetPriceLower && asset.targetPriceLower > 0 && (
+                                                <ReferenceLine
+                                                    y={targetLowerLineY}
+                                                    stroke={COLORS.targetLower}
+                                                    strokeDasharray="8 4"
+                                                    strokeWidth={1.5}
+                                                    label={{
+                                                        value: targetLowerLabel,
+                                                        fill: COLORS.targetLower,
+                                                        fontSize: 10,
+                                                        fontWeight: 'bold',
+                                                        position: isTargetLowerOutOfBounds ? 'insideBottomRight' : 'insideRight',
+                                                        dy: isTargetLowerOutOfBounds && targetLowerLineY === chartMax ? 20 : (isTargetLowerOutOfBounds && targetLowerLineY === chartMin ? -10 : 5)
                                                     }}
                                                 />
                                             )}
