@@ -7,6 +7,7 @@ interface StockData {
     changePercent: number;
     time: string;
     sector?: string;
+    marketName?: string; // KOSPI / KOSDAQ / US etc.
 }
 
 export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
@@ -70,12 +71,14 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
 
                                 let price = 0, diff = 0, rate = 0;
                                 let sector: string | undefined = undefined;
+                                let marketNameRaw: string = '';
 
                                 if (market === 'KR') {
                                     price = parseFloat(item.stck_prpr || '0');
                                     diff = parseFloat(item.prdy_vrss || '0');
                                     rate = parseFloat(item.prdy_ctrt || '0');
                                     sector = item.bstp_kor_isnm;
+                                    marketNameRaw = item.rprs_mrkt_kor_name || '';
                                 } else {
                                     price = parseFloat(item.last?.replace(/,/g, '') || item.rsym?.last || '0');
                                     diff = parseFloat(item.diff?.replace(/,/g, '') || item.rsym?.diff || '0');
@@ -92,7 +95,8 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
                                         change,
                                         changePercent: rate,
                                         time: timeDisplay,
-                                        sector
+                                        sector,
+                                        marketName: market === 'KR' ? (marketNameRaw || undefined) : undefined
                                     };
                                 } else {
                                     chunkFailed.push(symbol);
@@ -160,7 +164,8 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
                 change: wsItem.change,
                 changePercent: wsItem.rate,
                 time: wsItem.time || 'Realtime',
-                sector: batchData[symbol]?.sector
+                sector: batchData[symbol]?.sector,
+                marketName: batchData[symbol]?.marketName
             };
         }
         // Priority 2: Batch REST
@@ -189,12 +194,14 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
 
             let price = 0, diff = 0, rate = 0;
             let sector: string | undefined = undefined;
+            let retryMarketName: string = '';
 
             if (market === 'KR') {
                 price = parseFloat(item.stck_prpr || '0');
                 diff = parseFloat(item.prdy_vrss || '0');
                 rate = parseFloat(item.prdy_ctrt || '0');
                 sector = item.bstp_kor_isnm;
+                retryMarketName = item.rprs_mrkt_kor_name || '';
             } else {
                 price = parseFloat(item.last?.replace(/,/g, '') || '0');
                 diff = parseFloat(item.diff?.replace(/,/g, '') || '0');
@@ -208,7 +215,7 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
 
                 setBatchData(prev => ({
                     ...prev,
-                    [symbol]: { price, change, changePercent: rate, time: timeDisplay, sector }
+                    [symbol]: { price, change, changePercent: rate, time: timeDisplay, sector, marketName: market === 'KR' ? (retryMarketName || undefined) : undefined }
                 }));
 
                 // Remove from failed list

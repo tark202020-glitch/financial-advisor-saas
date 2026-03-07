@@ -152,6 +152,11 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     const [currentIndex, setCurrentIndex] = useState<number | null>(null);
     const [benchmarkName, setBenchmarkName] = useState<string>('KOSPI');
 
+    // Local State for Market Name (KOSPI / KOSDAQ)
+    const [displayMarketName, setDisplayMarketName] = useState<string>(
+        asset.category === 'KR' ? 'KOSPI' : 'US'
+    );
+
     // Logic for Benchmark
     const getBenchmarkInfo = (category: string) => {
         if (category === 'US') return { symbol: 'SPX', name: 'S&P 500', api: '/api/kis/index/overseas/SPX' };
@@ -261,6 +266,28 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
             setBenchmarkName(benchmark.name);
         }
     }, [isOpen, asset.symbol, asset.category, chartRetryTrigger]);
+
+    // Fetch Market Name (KOSPI/KOSDAQ) on open
+    useEffect(() => {
+        if (!isOpen || !asset.symbol || asset.category !== 'KR') {
+            if (asset.category !== 'KR') setDisplayMarketName('US');
+            return;
+        }
+        const fetchMarketName = async () => {
+            try {
+                const res = await fetch(`/api/kis/price/domestic/${asset.symbol.replace('.KS', '')}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const mktName = data?.rprs_mrkt_kor_name;
+                if (mktName) {
+                    setDisplayMarketName(mktName);
+                }
+            } catch (e) {
+                // Silent fail - keep default
+            }
+        };
+        fetchMarketName();
+    }, [isOpen, asset.symbol, asset.category]);
 
     // 1.5 Fetch Investor Trend Data (with auto-retry)
     const fetchInvestorData = useCallback(async () => {
@@ -540,7 +567,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                             <div className="hidden sm:flex items-center gap-2 text-gray-400 text-xs mb-0.5 font-medium">
                                 <span>{asset.symbol}</span>
                                 <span className="text-gray-600">|</span>
-                                <span>{asset.category === 'KR' ? 'KOSPI' : 'US'}</span>
+                                <span>{displayMarketName}</span>
                                 {asset.sector && (<><span className="text-gray-600">|</span><span>{asset.sector}</span></>)}
                             </div>
                             <h2 className="text-lg sm:text-2xl font-bold text-white tracking-tight leading-tight max-w-[200px] sm:max-w-none truncate">{asset.name || asset.symbol}</h2>

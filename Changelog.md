@@ -1,3 +1,13 @@
+## [Alpha V1.272] - 2026-03-08 02:10:00
+
+### 🔧 Fix: 포트폴리오 종목 시장명(KOSPI/KOSDAQ) 정확 표기 및 형식 통일
+- **Summary**: WONIK IPS(240810) 등 KOSDAQ 종목이 KOSPI로 잘못 표시되던 오류를 수정하고, 카드/모달의 종목 요약 표기를 `240810 · KOSPI · 기계장비` 형식으로 통일했습니다.
+- **Detail**:
+  - `useBatchStockPrice.tsx`: KIS API 응답의 `rprs_mrkt_kor_name` 필드를 `StockData.marketName`으로 추출
+  - `PortfolioCard.tsx`: `marketLabel`을 `stockData?.marketName` 기반으로 변경 (KR 하드코딩 제거)
+  - `StockDetailChartModal.tsx`: 모달 오픈 시 국내 가격 API에서 시장명을 조회하여 KOSPI/KOSDAQ 정확 표시
+- **Build Time**: 2026-03-08 02:10:00
+
 ## [Alpha V1.271] - 2026-03-08 01:40:00
 
 ### 🔧 Fix: 포트폴리오 검색 하이브리드 방식 전환

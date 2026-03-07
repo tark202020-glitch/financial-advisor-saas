@@ -15,6 +15,7 @@ interface PortfolioCardProps {
         changePercent: number;
         time?: string;
         sector?: string;
+        marketName?: string;
     } | null;
     onRefresh?: () => void;
 }
@@ -125,7 +126,8 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
     // Formatting Logic
     const isUS = asset.category !== 'KR';
     const currencyCode = isUS ? 'USD' : 'KRW';
-    const marketLabel = asset.category === 'KR' ? 'KR' : 'US'; // Keep simple or match Watchlist
+    // Market label: prioritize stockData.marketName from KIS API, fallback to category
+    const marketLabel = isUS ? 'US' : (stockData?.marketName || 'KOSPI');
     const sectorDisplay = stockData?.sector || asset.sector; // Priority to live data, fallback to DB
 
     // Specific format for Purchase Price (Average Price)
