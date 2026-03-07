@@ -1,3 +1,14 @@
+## [Alpha V1.276] - 2026-03-08 03:20:00
+
+### ✨ Feature: 데이터 백업/복원 시스템
+- **Summary**: 포트폴리오 데이터를 PC에 백업(JSON 다운로드)하고 복원(JSON 업로드)할 수 있는 기능 추가
+- **Detail**:
+  - `AccountModal.tsx` 신규: 계정정보 + 백업/복원 UI
+  - `/api/portfolio/backup` GET: Supabase에서 전체 포트폴리오&거래내역 JSON 반환
+  - `/api/portfolio/restore` POST: 기존 데이터 삭제 후 백업 JSON으로 전체 교체
+  - `Sidebar.tsx`: '설정' 메뉴 삭제, 계정정보 클릭 시 AccountModal 열기
+- **Build Time**: 2026-03-08 03:20:00
+
 ## [Alpha V1.275] - 2026-03-08 03:10:00
 
 ### 🔧 Fix: 금현물 가격 조회 - 네이버 금시세 스크래핑 적용
