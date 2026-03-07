@@ -277,8 +277,14 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
 
     // Fetch Market Name (KOSPI/KOSDAQ) on open
     useEffect(() => {
-        if (!isOpen || !asset.symbol || asset.category !== 'KR') {
-            if (asset.category !== 'KR') setDisplayMarketName('US');
+        if (!isOpen || !asset.symbol) return;
+        // GOLD: keep 'KRX 금현물' and don't fetch market name
+        if (asset.category === 'GOLD') {
+            setDisplayMarketName('KRX 금현물');
+            return;
+        }
+        if (asset.category !== 'KR') {
+            setDisplayMarketName('US');
             return;
         }
         const fetchMarketName = async () => {

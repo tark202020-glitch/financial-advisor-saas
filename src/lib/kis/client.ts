@@ -134,130 +134,130 @@ export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice
 }
 
 // ---- KRX Gold Spot Price (금현물 시세) ----
-// KIS API는 금현물 시장을 직접 지원하지 않음
-// 1차: KRX 정보데이터시스템에서 직접 스크래핑
-// 2차: 서버 캐시 fallback
+// KIS API와 KRX data.krx.co.kr 모두 서버에서 직접 접근 불가 (403)
+// 1차: 네이버 금융 금시세 페이지 스크래핑 (신한은행 고시 기준)
+// 2차: 네이버 금시세 일별시세 테이블 스크래핑
+// 3차: 서버 캐시 fallback
 
 // Server-side cache for last known gold price
 let lastKnownGoldPrice: KisDomStockPrice | null = null;
 
-export async function getGoldSpotPrice(): Promise<KisDomStockPrice | null> {
-    // 1차: KRX 정보데이터시스템 스크래핑 (금 시세)
-    try {
-        // KRX 금현물 시세 JSON endpoint
-        const today = new Date();
-        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+// Helper: 네이버 금시세 HTML에서 숫자 추출
+// HTML 구조: <em class="no_up"><span class="no1">2</span><span class="no2">4</span><span class="shim">,</span>...>
+function extractNumberFromSpans(emHtml: string): string {
+    // 모든 span 내부 텍스트를 순서대로 추출
+    const spans = emHtml.match(/<span[^>]*>([^<]*)<\/span>/g);
+    if (!spans) return '';
+    return spans
+        .map(s => {
+            const m = s.match(/<span[^>]*>([^<]*)<\/span>/);
+            return m ? m[1] : '';
+        })
+        .join('')
+        .replace(/[^0-9.,]/g, ''); // 숫자, 콤마, 점만 남김
+}
 
-        // KRX 금 시세 조회 (POST request to KRX data system)
-        const krxResponse = await fetch('https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
-            method: 'POST',
+export async function getGoldSpotPrice(): Promise<KisDomStockPrice | null> {
+    // 1차: 네이버 금융 금시세 스크래핑
+    try {
+        const naverRes = await fetch('https://finance.naver.com/marketindex/goldDetail.naver', {
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0012',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml',
+                'Accept-Language': 'ko-KR,ko;q=0.9',
             },
-            body: `bld=dbms/MDC/STAT/standard/MDCSTAT19602&trdDd=${dateStr}`,
-            signal: AbortSignal.timeout(5000),
+            signal: AbortSignal.timeout(8000),
         });
 
-        if (krxResponse.ok) {
-            const krxData = await krxResponse.json();
-            // krxData.output should contain gold price data
-            // Look for "금 99.99" in the list (1g standard)
-            if (krxData?.output && Array.isArray(krxData.output)) {
-                const goldItem = krxData.output.find((item: any) =>
-                    (item.ISU_NM || '').includes('99.99') ||
-                    (item.ISU_ABBRV || '').includes('99.99')
-                );
+        if (naverRes.ok) {
+            const html = await naverRes.text();
 
-                if (goldItem) {
-                    const price = goldItem.TDD_CLSPRC || goldItem.CLSPRC || goldItem.TDD_OPNPRC || '0';
-                    const prevPrice = goldItem.CMPPREVDD_PRC || goldItem.PRV_CLSPRC || '0';
-                    const changeRate = goldItem.FLUC_RT || '0';
+            // 현재가 추출: <p class="no_today"> 안의 <em> 내 span들
+            const todayBlock = html.match(/<p\s+class="no_today">([\s\S]*?)<\/p>/);
+            if (todayBlock) {
+                const emBlock = todayBlock[1].match(/<em[^>]*>([\s\S]*?)<\/em>/);
+                if (emBlock) {
+                    const priceStr = extractNumberFromSpans(emBlock[1]);
+                    const price = priceStr.replace(/,/g, '');
 
-                    const cleanPrice = String(price).replace(/,/g, '');
-                    const cleanPrev = String(prevPrice).replace(/,/g, '');
-                    const cleanRate = String(changeRate).replace(/,/g, '');
+                    // 전일대비 추출: <p class="no_exday"> 안의 em들
+                    let change = '0';
+                    let rate = '0';
+                    const exdayBlock = html.match(/<p\s+class="no_exday">([\s\S]*?)<\/p>/);
+                    if (exdayBlock) {
+                        const ems = exdayBlock[1].match(/<em[^>]*>([\s\S]*?)<\/em>/g);
+                        if (ems && ems.length >= 1) {
+                            change = extractNumberFromSpans(ems[0]).replace(/,/g, '');
+                        }
+                        if (ems && ems.length >= 2) {
+                            rate = extractNumberFromSpans(ems[1]).replace(/,/g, '').replace(/%/g, '');
+                        }
+                    }
 
-                    if (parseFloat(cleanPrice) > 0) {
+                    // 상승/하락 판단
+                    const isDown = html.includes('class="ico down"') || (todayBlock[1].includes('no_down'));
+
+                    if (parseFloat(price) > 50000) {
                         const result: KisDomStockPrice = {
-                            stck_prpr: cleanPrice,
-                            prdy_vrss: cleanPrev,
-                            prdy_ctrt: cleanRate,
-                            stck_bsop_date: dateStr,
+                            stck_prpr: Math.round(parseFloat(price)).toString(),
+                            prdy_vrss: isDown ? `-${change}` : change,
+                            prdy_ctrt: isDown ? `-${rate}` : rate,
+                            stck_bsop_date: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
                             bstp_kor_isnm: 'KRX 금현물',
                         };
                         lastKnownGoldPrice = result;
+                        console.log(`[Gold] Naver price: ${price}`);
                         return result;
                     }
                 }
             }
         }
     } catch (e) {
-        console.warn('[KRX] Gold spot scraping failed:', e);
+        console.warn('[Gold] Naver scraping failed:', e);
     }
 
-    // 1-2차: 전일 날짜로 재시도 (당일 장 마감 전이거나 휴장일)
+    // 2차: 네이버 금시세 일별시세 테이블
     try {
-        for (let daysBack = 1; daysBack <= 5; daysBack++) {
-            const pastDate = new Date();
-            pastDate.setDate(pastDate.getDate() - daysBack);
-            const pastDateStr = pastDate.toISOString().slice(0, 10).replace(/-/g, '');
+        const naverApiRes = await fetch('https://finance.naver.com/marketindex/goldDailyQuote.naver?page=1', {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml',
+                'Accept-Language': 'ko-KR,ko;q=0.9',
+            },
+            signal: AbortSignal.timeout(5000),
+        });
 
-            const krxResponse = await fetch('https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0012',
-                },
-                body: `bld=dbms/MDC/STAT/standard/MDCSTAT19602&trdDd=${pastDateStr}`,
-                signal: AbortSignal.timeout(5000),
-            });
-
-            if (krxResponse.ok) {
-                const krxData = await krxResponse.json();
-                if (krxData?.output && Array.isArray(krxData.output)) {
-                    const goldItem = krxData.output.find((item: any) =>
-                        (item.ISU_NM || '').includes('99.99') ||
-                        (item.ISU_ABBRV || '').includes('99.99')
-                    );
-
-                    if (goldItem) {
-                        const price = goldItem.TDD_CLSPRC || goldItem.CLSPRC || '0';
-                        const prevPrice = goldItem.CMPPREVDD_PRC || '0';
-                        const changeRate = goldItem.FLUC_RT || '0';
-
-                        const cleanPrice = String(price).replace(/,/g, '');
-                        const cleanPrev = String(prevPrice).replace(/,/g, '');
-                        const cleanRate = String(changeRate).replace(/,/g, '');
-
-                        if (parseFloat(cleanPrice) > 0) {
-                            const result: KisDomStockPrice = {
-                                stck_prpr: cleanPrice,
-                                prdy_vrss: cleanPrev,
-                                prdy_ctrt: cleanRate,
-                                stck_bsop_date: pastDateStr,
-                                bstp_kor_isnm: 'KRX 금현물',
-                            };
-                            lastKnownGoldPrice = result;
-                            return result;
-                        }
-                    }
+        if (naverApiRes.ok) {
+            const html = await naverApiRes.text();
+            // 테이블에서 첫 번째 가격 (td class="num") 추출
+            const rowMatch = html.match(/<td\s+class="num">([\d,]+\.?\d*)<\/td>/);
+            if (rowMatch) {
+                const price = rowMatch[1].replace(/,/g, '');
+                if (parseFloat(price) > 50000) {
+                    const result: KisDomStockPrice = {
+                        stck_prpr: Math.round(parseFloat(price)).toString(),
+                        prdy_vrss: '0',
+                        prdy_ctrt: '0',
+                        stck_bsop_date: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+                        bstp_kor_isnm: 'KRX 금현물',
+                    };
+                    lastKnownGoldPrice = result;
+                    console.log(`[Gold] Naver daily quote price: ${price}`);
+                    return result;
                 }
             }
         }
     } catch (e) {
-        console.warn('[KRX] Gold spot historical scraping failed:', e);
+        console.warn('[Gold] Naver daily quote failed:', e);
     }
 
     // 3차: 서버 메모리 캐시
     if (lastKnownGoldPrice) {
-        console.log('[KRX] Using cached gold spot price');
+        console.log('[Gold] Using cached gold spot price');
         return lastKnownGoldPrice;
     }
 
-    console.error('[KRX] All gold spot price methods failed');
+    console.error('[Gold] All gold spot price methods failed');
     return null;
 }
 
