@@ -123,7 +123,7 @@ export default function PortfolioSummaryBlock() {
             .filter(a => a.quantity > 0)
             .filter(a => {
                 if (view === 'all') return true;
-                if (view === 'kr' && a.category === 'KR') return true;
+                if (view === 'kr' && (a.category === 'KR' || a.category === 'GOLD')) return true;
                 if (view === 'us' && a.category === 'US') return true;
                 return false;
             })
@@ -133,7 +133,7 @@ export default function PortfolioSummaryBlock() {
 
                 const purchaseInCurrency = a.pricePerShare * a.quantity;
                 const valuationInCurrency = price * a.quantity;
-                const cat = a.category === 'KR' ? 'kr' : 'us';
+                const cat = (a.category === 'KR' || a.category === 'GOLD') ? 'kr' : 'us';
 
                 const purchaseKRW = cat === 'us' ? purchaseInCurrency * exRate : purchaseInCurrency;
                 const valuationKRW = cat === 'us' ? valuationInCurrency * exRate : valuationInCurrency;

@@ -21,7 +21,7 @@ export interface Asset {
     id: number;
     symbol: string;
     name: string;
-    category: 'KR' | 'US';
+    category: 'KR' | 'US' | 'GOLD';
     sector?: string; // Add sector
     secondary_category?: string; // User-defined secondary category
     quantity: number;

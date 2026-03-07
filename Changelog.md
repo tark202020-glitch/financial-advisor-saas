@@ -1,3 +1,20 @@
+## [Alpha V1.273] - 2026-03-08 02:40:00
+
+### ✨ Feature: KRX 금현물 시장 직접 연동
+- **Summary**: KIS API를 통해 KRX 금현물(종목코드 4020000, 금 1g) 시세를 직접 조회하여 포트폴리오에 등록/관리할 수 있게 되었습니다.
+- **Detail**:
+  - `client.ts`: `getGoldSpotPrice()` 함수 추가 (마켓코드 G, 종목 4020000)
+    - 3단계 fallback: 실시간 → 일별 종가(`inquire-daily-itemchartprice`) → 서버 캐시
+    - 금현물 시장 휴장 시에도 전일 종가 표시
+  - `/api/kis/price/gold/route.ts`: 금현물 전용 API 라우트 신규 생성
+  - `/api/search/stock/route.ts`: '금현물', '금', 'gold' 검색 시 🪙 KRX 금현물 최상단 노출
+  - `PortfolioContext.tsx`: Asset 타입에 GOLD 카테고리 추가
+  - `AddAssetForm.tsx`: 금현물 종목 등록 지원
+  - `PortfolioTable.tsx`: GOLD 종목 별도 가격 API 호출 지원
+  - `PortfolioCard.tsx`: 금현물 🪙 아이콘 및 'KRX 금현물' 라벨 표시
+  - `PortfolioSummaryBlock.tsx`: GOLD를 KR(국내) 자산으로 합산 처리
+- **Build Time**: 2026-03-08 02:40:00
+
 ## [Alpha V1.272] - 2026-03-08 02:10:00
 
 ### 🔧 Fix: 포트폴리오 종목 시장명(KOSPI/KOSDAQ) 정확 표기 및 형식 통일

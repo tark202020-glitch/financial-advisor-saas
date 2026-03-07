@@ -9,7 +9,7 @@ interface StockMaster {
     name: string;
     standard_code?: string;
     group_code?: string;
-    market?: 'KR' | 'US';
+    market?: 'KR' | 'US' | 'GOLD';
     flag?: string;
 }
 
@@ -80,10 +80,11 @@ export default function AddAssetForm() {
         const price = Number(formData.price);
         const kospi = Number(formData.kospiIndex);
         const isUSMarket = selectedStock.market === 'US';
+        const isGold = selectedStock.market === 'GOLD';
 
-        // Fetch sector info (KOSPI Sector Name)
+        // Fetch sector info (KOSPI Sector Name) - skip for gold
         let fetchedSector = '';
-        if (!isUSMarket) {
+        if (!isUSMarket && !isGold) {
             try {
                 const res = await fetch(`/api/kis/price/domestic/${selectedStock.symbol}`);
                 if (res.ok) {
@@ -96,11 +97,12 @@ export default function AddAssetForm() {
                 console.warn("Failed to fetch sector info", e);
             }
         }
+        if (isGold) fetchedSector = 'KRX 금현물';
 
         await addAsset({
-            symbol: selectedStock.symbol,
-            name: selectedStock.name,
-            category: selectedStock.market || 'KR', // Make sure to use correct market
+            symbol: isGold ? 'GOLD_4020000' : selectedStock.symbol,
+            name: isGold ? 'KRX 금현물 (1g)' : selectedStock.name,
+            category: (selectedStock.market || 'KR') as 'KR' | 'US' | 'GOLD',
             sector: fetchedSector, // Save fetched sector
 
             // Asset Summary (Initial Holding)

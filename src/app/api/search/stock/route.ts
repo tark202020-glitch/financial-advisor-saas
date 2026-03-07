@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 interface StockResult {
     symbol: string;
     name: string;
-    market: 'KR' | 'US';
+    market: 'KR' | 'US' | 'GOLD';
     flag: string;
     exchange?: string;
 }
@@ -106,6 +106,19 @@ export async function GET(request: Request) {
 
     const term = q.toLowerCase().replace(/\s/g, '');
 
+    // 0. Gold Spot Special Handling
+    const goldKeywords = ['금현물', '금', 'gold', '골드', 'krx금', '금시세', '4020000'];
+    const goldResults: StockResult[] = [];
+    if (goldKeywords.some(kw => term.includes(kw))) {
+        goldResults.push({
+            symbol: 'GOLD_4020000',
+            name: '🪙 KRX 금현물 (1g)',
+            market: 'GOLD',
+            flag: '🪙',
+            exchange: 'KRX 금현물',
+        });
+    }
+
     // 1. Search local master data (KOSPI, and KOSDAQ/overseas if all_stocks_master.json is available)
     const localData = loadLocalMasterData();
     const localResults: StockResult[] = [];
@@ -136,9 +149,10 @@ export async function GET(request: Request) {
         yahooResults = await searchYahooFinance(q.trim());
     }
 
-    // 3. Merge results: local first, then Yahoo (avoiding duplicates)
+    // 3. Merge results: gold first, then local, then Yahoo (avoiding duplicates)
     const seen = new Set(localResults.map(r => r.symbol));
-    const merged = [...localResults];
+    const merged = [...goldResults, ...localResults];
+    goldResults.forEach(g => seen.add(g.symbol));
 
     for (const yr of yahooResults) {
         if (!seen.has(yr.symbol)) {

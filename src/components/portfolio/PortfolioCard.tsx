@@ -124,11 +124,12 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
     }
 
     // Formatting Logic
-    const isUS = asset.category !== 'KR';
+    const isUS = asset.category === 'US';
+    const isGold = asset.category === 'GOLD';
     const currencyCode = isUS ? 'USD' : 'KRW';
     // Market label: prioritize stockData.marketName from KIS API, fallback to category
-    const marketLabel = isUS ? 'US' : (stockData?.marketName || 'KOSPI');
-    const sectorDisplay = stockData?.sector || asset.sector; // Priority to live data, fallback to DB
+    const marketLabel = isGold ? '🪙 KRX 금현물' : isUS ? 'US' : (stockData?.marketName || 'KOSPI');
+    const sectorDisplay = isGold ? 'KRX 금현물' : (stockData?.sector || asset.sector); // Priority to live data, fallback to DB
 
     // Specific format for Purchase Price (Average Price)
     // US: $ 123.45 (use standard formatCurrency)
