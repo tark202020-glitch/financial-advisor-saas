@@ -35,6 +35,38 @@ async function fetchYahooData(symbol: string) {
     }
 }
 
+// Fetch 1-month daily history and return recent week's data points
+async function fetchYahooHistory(symbol: string) {
+    try {
+        const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1mo`, {
+            next: { revalidate: 300 } // Cache for 5 mins
+        });
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        const result = data?.chart?.result?.[0];
+        if (!result || !result.timestamp || !result.indicators.quote[0].close) return null;
+
+        const timestamps = result.timestamp;
+        const closes = result.indicators.quote[0].close;
+        const opens = result.indicators.quote[0].open;
+
+        // Combine and map valid prices
+        const history = timestamps.map((t: number, i: number) => ({
+            date: new Date(t * 1000).toISOString().slice(0, 10),
+            close: closes[i],
+            open: opens[i]
+        })).filter((item: any) => item.close !== null);
+
+        // Return latest 7 trading days
+        return history.slice(-7);
+
+    } catch (e) {
+        console.error(`[Market Extra History] Failed to fetch ${symbol}:`, e);
+        return null;
+    }
+}
+
 async function fetchInterestRates() {
     // Interest rates are semi-static, using FRED/Static as backup
     // Yahoo Finance Symbols: ^TNX (10 Year Treasury), but for base rates we stick to static or specific API if available.
@@ -58,7 +90,8 @@ export async function GET() {
     try {
         // Parallel Fetch
         // symbols: KRW=X (USD/KRW), JPYKRW=X, CNYKRW=X, GC=F (Gold Futures)
-        const [usd, jpy, cny, gold, rates, kospi, kosdaq, sp500, nasdaq, us10y] = await Promise.all([
+        // futures: NQ=F (Nasdaq 100 Futures), ES=F (S&P 500 Futures)
+        const [usd, jpy, cny, gold, rates, kospi, kosdaq, sp500, nasdaq, us10y, us10yHistory, nq_future, es_future] = await Promise.all([
             fetchYahooData('KRW=X'),
             fetchYahooData('JPYKRW=X'),
             fetchYahooData('CNYKRW=X'),
@@ -68,7 +101,10 @@ export async function GET() {
             fetchYahooData('^KQ11'), // KOSDAQ
             fetchYahooData('^GSPC'), // S&P 500
             fetchYahooData('^IXIC'), // NASDAQ
-            fetchYahooData('^TNX')   // US 10-Year Treasury Yield
+            fetchYahooData('^TNX'),  // US 10-Year Treasury Yield
+            fetchYahooHistory('^TNX'), // US 10-Year Treasury Yield 1W history
+            fetchYahooData('NQ=F'),  // NASDAQ 100 Futures
+            fetchYahooData('ES=F')   // S&P 500 Futures
         ]);
 
         // Process Gold to KRW/g
@@ -110,6 +146,11 @@ export async function GET() {
             gold: goldKRW || gold, // Return converted gold if available
             interestRates: rates,
             us10yTreasury: us10y, // US 10-Year Treasury Yield
+            us10yHistory: us10yHistory, // 1W history array
+            futures: {
+                nasdaq: nq_future,
+                sp500: es_future
+            },
             fetchedAt: new Date().toISOString()
         });
     } catch (error: any) {

@@ -5,7 +5,8 @@ import { ArrowUp, ArrowDown, TrendingUp, DollarSign, Percent, Activity } from 'l
 import { useMarketIndex } from '@/hooks/useMarketIndex';
 import SectorBarChart from './SectorBarChart';
 import {
-    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
+    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+    BarChart, Bar, Cell, ReferenceLine
 } from 'recharts';
 
 // --- Types ---
@@ -51,133 +52,137 @@ interface MarketExtraData {
         us: { rate: string | number; date: string };
     } | null;
     us10yTreasury: YahooData | null;
+    us10yHistory?: Array<{ date: string, close: number, open: number }>;
+    futures?: {
+        nasdaq: YahooData | null;
+        sp500: YahooData | null;
+    };
     fetchedAt?: string;
 }
 
-function ExtraMarketBlock() {
-    const [extra, setExtra] = useState<MarketExtraData | null>(null);
-
-    useEffect(() => {
-        const fetchExtra = async () => {
-            try {
-                const res = await fetch('/api/market-extra');
-                if (!res.ok) return;
-                const data = await res.json();
-                setExtra(data);
-            } catch (e) { }
-        };
-        fetchExtra();
-    }, []);
-
+// ============================================================
+// 1. Overseas Market Block (해외 지수 종합)
+// ============================================================
+function OverseasMarketBlock({ extra }: { extra: MarketExtraData | null }) {
     if (!extra) {
         return (
-            <div className="bg-[#1E1E1E] rounded-xl p-6 border border-[#333] animate-pulse">
-                <div className="h-4 bg-[#252525] rounded w-32 mb-4" />
-                <div className="space-y-3">
-                    {[1, 2, 3].map(i => <div key={i} className="h-8 bg-[#252525] rounded" />)}
-                </div>
+            <div className="bg-[#1E1E1E] rounded-2xl p-6 border border-[#333] mb-6 animate-pulse">
+                <div className="h-6 bg-[#252525] rounded w-1/4 mb-4" />
+                <div className="h-32 bg-[#252525] rounded w-full" />
             </div>
         );
     }
 
-    const fmtIR = (date: string) => {
-        if (!date) return '';
-        const parts = date.split('-');
-        if (parts.length >= 3) return `${parts[0].slice(2)}.${parts[1]}.${parts[2]}`;
-        return date;
-    };
-
-    // Format reference date (fetchedAt or current date if missing)
     const refDate = extra.fetchedAt ? new Date(extra.fetchedAt) : new Date();
-    const refDateStr = `${String(refDate.getMonth() + 1).padStart(2, '0')}.${String(refDate.getDate()).padStart(2, '0')}`;
+    const refDateStr = `${String(refDate.getMonth() + 1).padStart(2, '0')}/${String(refDate.getDate()).padStart(2, '0')} ${String(refDate.getHours()).padStart(2, '0')}:${String(refDate.getMinutes()).padStart(2, '0')}`;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Exchange Rates */}
-            <div className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
-                <h4 className="font-bold text-white text-sm mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                        <DollarSign size={14} className="text-green-400" />
-                        환율
-                    </div>
-                    <span className="text-[10px] text-gray-500 font-normal">{refDateStr} 기준</span>
-                </h4>
-                <div className="space-y-2">
-                    {extra.exchangeRates ? (
-                        <>
-                            <ExtraRow
-                                label="달러/원"
-                                data={extra.exchangeRates.usd_krw}
-                                flag="🇺🇸"
-                                suffix="원"
-                            />
-                            <ExtraRow
-                                label="100엔/원"
-                                data={extra.exchangeRates.jpy_krw}
-                                flag="🇯🇵"
-                                suffix="원"
-                                multiplier={100} // JPY is 1 unit in data, display for 100
-                            />
-                            <ExtraRow
-                                label="위안/원"
-                                data={extra.exchangeRates.cny_krw}
-                                flag="🇨🇳"
-                                suffix="원"
-                            />
-                        </>
-                    ) : (
-                        <span className="text-gray-500 text-sm">데이터 없음</span>
-                    )}
-                </div>
+        <div className="bg-[#1E1E1E] rounded-2xl border border-[#333] shadow-lg shadow-black/20 overflow-hidden mb-6">
+            <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-[#333] flex items-center gap-3">
+                <div className="w-1.5 h-6 bg-[#3b82f6] rounded-full" />
+                <h3 className="text-xl font-bold text-white">해외 지수 종합</h3>
             </div>
 
-            {/* Gold & Interest Rates */}
-            <div className="bg-[#1E1E1E] rounded-xl p-5 border border-[#333]">
-                <h4 className="font-bold text-white text-sm mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                        <Percent size={14} className="text-amber-400" />
-                        금 · 금리
+            <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+                {/* Left Column: Indices & Exchange Rates */}
+                <div className="space-y-6">
+                    {/* Indices */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <IndexCompactCard name="NASDAQ" symbol="COMP" category="US" flag="🇺🇸" />
+                        <IndexCompactCard name="S&P 500" symbol="SPX" category="US" flag="🇺🇸" />
                     </div>
-                    <span className="text-[10px] text-gray-500 font-normal">{refDateStr} 기준</span>
-                </h4>
-                <div className="space-y-2">
-                    {extra.gold && (
-                        <ExtraRow
-                            label="금 (1g)"
-                            data={extra.gold}
-                            flag="🪙"
-                            suffix="원/g"
-                        />
-                    )}
-                    {extra.interestRates && (
-                        <>
-                            <ExtraRowSimple
-                                label="한국 기준금리"
-                                value={`${extra.interestRates.korea.rate}%`}
-                                sub={fmtIR(extra.interestRates.korea.date)}
-                                flag="🇰🇷"
-                            />
-                            <ExtraRowSimple
-                                label="미국 기준금리"
-                                value={typeof extra.interestRates.us.rate === 'string' ? `${extra.interestRates.us.rate}%` : `${extra.interestRates.us.rate}%`}
-                                sub={fmtIR(extra.interestRates.us.date)}
-                                flag="🇺🇸"
-                            />
-                        </>
-                    )}
-                    {extra.us10yTreasury && (
-                        <ExtraRow
-                            label="US 10Y Treasury"
-                            data={extra.us10yTreasury}
-                            flag="🇺🇸"
-                            suffix="%"
-                        />
-                    )}
+
+                    {/* Exchange Rates */}
+                    <div>
+                        <h4 className="font-bold text-gray-300 text-sm mb-3 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5"><DollarSign size={16} className="text-green-400" /> 환율</span>
+                            <span className="text-[11px] text-gray-500 font-normal">{refDateStr} 기준</span>
+                        </h4>
+                        <div className="bg-[#1A1A1A] rounded-xl border border-[#333] p-1">
+                            {extra.exchangeRates ? (
+                                <>
+                                    <ExtraRow label="달러/원" data={extra.exchangeRates.usd_krw} flag="🇺🇸" suffix="원" />
+                                    <ExtraRow label="100엔/원" data={extra.exchangeRates.jpy_krw} flag="🇯🇵" suffix="원" multiplier={100} />
+                                    <ExtraRow label="위안/원" data={extra.exchangeRates.cny_krw} flag="🇨🇳" suffix="원" />
+                                </>
+                            ) : (
+                                <div className="p-3 text-sm text-gray-500 text-center">데이터 없음</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Column: Futures & 10Y Treasury */}
+                <div className="space-y-6">
+                    {/* US 10Y Treasury Graph */}
+                    <div>
+                        <h4 className="font-bold text-gray-300 text-sm mb-3 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5"><Percent size={16} className="text-amber-400" /> 미국 10년물 국채 금리</span>
+                            <span className="text-[11px] text-gray-500 font-normal">{refDateStr} 기준</span>
+                        </h4>
+                        <div className="bg-[#1A1A1A] rounded-xl border border-[#333] p-4 h-[160px] flex flex-col justify-center">
+                            {extra.us10yHistory && extra.us10yHistory.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={extra.us10yHistory} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                        <XAxis dataKey="date" tickFormatter={(v) => v.slice(5).replace('-', '/')} tick={{ fill: '#666', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                        <YAxis domain={['auto', 'auto']} tick={{ fill: '#666', fontSize: 10 }} axisLine={false} tickLine={false} />
+                                        <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #444', borderRadius: '8px' }} formatter={(val: any) => [`${Number(val).toFixed(3)}%`, '국채 금리']} labelFormatter={(v) => v.replace('-', '/')} />
+                                        <ReferenceLine y={4.1} stroke="#F7D047" strokeDasharray="3 3" label={{ position: 'insideTopLeft', value: '4.1%', fill: '#F7D047', fontSize: 10 }} />
+                                        <Bar dataKey="close" radius={[2, 2, 2, 2]}>
+                                            {extra.us10yHistory.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.close >= 4.1 ? '#ef4444' : '#3b82f6'} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="text-center text-sm text-gray-500 py-6 font-bold">데이터 분석중...</div>
+                            )}
+                            {extra.us10yTreasury && (
+                                <div className="mt-2 text-right">
+                                    <span className="text-sm font-bold text-white">{extra.us10yTreasury.price.toFixed(3)}%</span>
+                                    <span className={`text-xs ml-2 ${extra.us10yTreasury.change >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                        {extra.us10yTreasury.change >= 0 ? '▲' : '▼'} {Math.abs(extra.us10yTreasury.change).toFixed(3)} ({Math.abs(extra.us10yTreasury.changePercent).toFixed(2)}%)
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Futures */}
+                    <div>
+                        <h4 className="font-bold text-gray-300 text-sm mb-3 flex items-center gap-1.5">
+                            <Activity size={16} className="text-purple-400" /> 선물 지수
+                        </h4>
+                        <div className="bg-[#1A1A1A] rounded-xl border border-[#333] p-1 grid grid-cols-2 gap-2">
+                            {extra.futures && extra.futures.nasdaq && (
+                                <div className="p-3 border-r border-[#333] last:border-0">
+                                    <div className="text-[11px] text-gray-400 mb-1">NASDAQ 100 선물</div>
+                                    <div className="text-base font-bold text-white">{extra.futures.nasdaq.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                                    <div className={`text-xs mt-0.5 ${extra.futures.nasdaq.change >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                        {extra.futures.nasdaq.change >= 0 ? '+' : ''}{extra.futures.nasdaq.change.toFixed(2)} ({extra.futures.nasdaq.changePercent.toFixed(2)}%)
+                                    </div>
+                                </div>
+                            )}
+                            {extra.futures && extra.futures.sp500 && (
+                                <div className="p-3">
+                                    <div className="text-[11px] text-gray-400 mb-1">S&P 500 선물</div>
+                                    <div className="text-base font-bold text-white">{extra.futures.sp500.price.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+                                    <div className={`text-xs mt-0.5 ${extra.futures.sp500.change >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                        {extra.futures.sp500.change >= 0 ? '+' : ''}{extra.futures.sp500.change.toFixed(2)} ({extra.futures.sp500.changePercent.toFixed(2)}%)
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
+
+
 
 function ExtraRow({ label, data, flag, prefix = '', suffix = '', multiplier = 1 }: { label: string; data: YahooData; flag?: string; prefix?: string; suffix?: string; multiplier?: number }) {
     if (!data) return null;
@@ -231,10 +236,11 @@ function fmtDate(yyyymmdd: string) {
 }
 
 // ============================================================
-// 1. KOSPI Main Block (Chart + Investor Trend)
+// 2. Domestic Market Block (국내 지수 종합)
 // ============================================================
 function KospiMainBlock() {
     const indexData = useMarketIndex('0001', 0, 'KR');
+    const kosdaqData = useMarketIndex('1001', 0, 'KR');
     const [investor, setInvestor] = useState<InvestorData>({ individual: 0, foreign: 0, institution: 0 });
     const [dailyInvestor, setDailyInvestor] = useState<InvestorDailyRecord[]>([]);
     const [chartData, setChartData] = useState<DailyIndexPoint[]>([]);
@@ -310,6 +316,9 @@ function KospiMainBlock() {
     }, []);
 
     const isUp = indexData.change >= 0;
+    const kosdaqIsUp = kosdaqData.change >= 0;
+    const chartColor = isUp ? '#ef4444' : '#3b82f6';
+    const chartGradientId = isUp ? 'kospiUp' : 'kospiDown';
     const investorColor = (n: number) => n > 0 ? 'text-red-500' : n < 0 ? 'text-blue-500' : 'text-gray-400';
 
     // Chart domain (min/max)
@@ -323,25 +332,51 @@ function KospiMainBlock() {
         };
     }, [chartData]);
 
+    // Format Reference Time string
+    let timeStr = '';
+    if (indexData.date && indexData.time) {
+        timeStr = `${indexData.time.slice(0, 2)}:${indexData.time.slice(2, 4)} 기준`;
+    }
+
     return (
-        <div className="bg-[#1E1E1E] rounded-2xl border border-[#333] shadow-lg shadow-black/20 overflow-hidden">
-            {/* Header */}
-            <div className="px-4 py-4 sm:px-6 sm:pt-5 sm:pb-3 border-b border-[#333] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 sm:h-8 bg-[#F7D047] rounded-full" />
-                    <h3 className="text-lg sm:text-xl font-bold text-white">KOSPI</h3>
+        <div className="bg-[#1E1E1E] rounded-2xl border border-[#333] shadow-lg shadow-black/20 overflow-hidden mb-6">
+            {/* Header: KOSPI, Time, KOSDAQ */}
+            <div className="px-4 py-4 sm:px-6 sm:pt-5 sm:pb-4 border-b border-[#333] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center flex-wrap gap-x-4 gap-y-2">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-1.5 h-6 sm:h-8 rounded-full ${isUp ? 'bg-red-500' : 'bg-blue-500'}`} />
+                        <h3 className="text-xl font-bold text-white">국내 지수 종합</h3>
+                    </div>
+                    {/* Small KOSDAQ info */}
+                    <div className="flex items-center pl-4 border-l border-[#333] gap-2">
+                        <span className="text-sm font-bold text-gray-400">KOSDAQ</span>
+                        {kosdaqData.value > 0 ? (
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-base font-bold text-white">{Math.round(kosdaqData.value).toLocaleString()}</span>
+                                <span className={`text-xs font-bold ${kosdaqIsUp ? 'text-red-400' : 'text-blue-400'}`}>
+                                    {kosdaqIsUp ? '▲' : '▼'} {Math.round(Math.abs(kosdaqData.change)).toLocaleString()} ({Math.abs(kosdaqData.changePercent).toFixed(2)}%)
+                                </span>
+                            </div>
+                        ) : (
+                            <span className="text-sm text-gray-500">로딩중...</span>
+                        )}
+                    </div>
                 </div>
-                <div className="flex items-baseline gap-3">
-                    <span className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-                        {indexData.value > 0 ? Math.round(indexData.value).toLocaleString() : '...'}
-                    </span>
-                    {indexData.value > 0 && (
-                        <div className={`flex items-center text-sm sm:text-lg font-bold ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
-                            {isUp ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
-                            <span className="ml-1">{Math.round(Math.abs(indexData.change)).toLocaleString()}</span>
-                            <span className="ml-2 text-xs sm:text-base opacity-90">{isUp ? '+' : '-'}{Math.abs(indexData.changePercent).toFixed(2)}%</span>
-                        </div>
-                    )}
+
+                <div className="flex items-baseline justify-end gap-3 text-right">
+                    {timeStr && <span className="text-xs text-gray-500 mr-2 hidden sm:inline-block">{timeStr}</span>}
+                    <div className="flex items-baseline gap-3">
+                        <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                            {indexData.value > 0 ? Math.round(indexData.value).toLocaleString() : '...'}
+                        </span>
+                        {indexData.value > 0 && (
+                            <div className={`flex items-center text-sm sm:text-lg font-bold ${isUp ? 'text-red-500' : 'text-blue-500'}`}>
+                                {isUp ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+                                <span className="ml-1">{Math.round(Math.abs(indexData.change)).toLocaleString()}</span>
+                                <span className="ml-2 text-xs sm:text-base opacity-90">{isUp ? '+' : '-'}{Math.abs(indexData.changePercent).toFixed(2)}%</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -353,9 +388,13 @@ function KospiMainBlock() {
                         <ResponsiveContainer width="100%" height={300}>
                             <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                 <defs>
-                                    <linearGradient id="kospiGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#F7D047" stopOpacity={0.3} />
-                                        <stop offset="100%" stopColor="#F7D047" stopOpacity={0} />
+                                    <linearGradient id="kospiUp" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.4} />
+                                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+                                    </linearGradient>
+                                    <linearGradient id="kospiDown" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
+                                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#333" />
@@ -382,11 +421,11 @@ function KospiMainBlock() {
                                 <Area
                                     type="monotone"
                                     dataKey="close"
-                                    stroke="#F7D047"
-                                    strokeWidth={2}
-                                    fill="url(#kospiGradient)"
+                                    stroke={chartColor}
+                                    strokeWidth={3}
+                                    fill={`url(#${chartGradientId})`}
                                     dot={false}
-                                    activeDot={{ r: 4, fill: '#F7D047' }}
+                                    activeDot={{ r: 5, fill: chartColor, stroke: '#1E1E1E', strokeWidth: 2 }}
                                 />
                             </AreaChart>
                         </ResponsiveContainer>
@@ -545,37 +584,33 @@ function MarketTrendRow({ name, marketCode }: { name: string; marketCode: string
     );
 }
 
-// ============================================================
-// Main Export
-// ============================================================
 export default function MarketFlowChart() {
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')} ${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')} 기준`;
+    const [extra, setExtra] = useState<MarketExtraData | null>(null);
+
+    useEffect(() => {
+        const fetchExtra = async () => {
+            try {
+                const res = await fetch('/api/market-extra');
+                if (!res.ok) return;
+                const data = await res.json();
+                setExtra(data);
+            } catch (e) { }
+        };
+        fetchExtra();
+    }, []);
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h2 className="text-xl font-bold text-white">지수종합</h2>
-                <p className="text-xs text-gray-500 mt-1">{dateStr}</p>
-            </div>
+        <div className="space-y-2">
+            {/* 1. 해외 관련 지수 종합 */}
+            <OverseasMarketBlock extra={extra} />
 
-            {/* 1. KOSPI Main Block (Chart + Investor) */}
+            {/* 2. 국내 지수 종합 */}
             <KospiMainBlock />
 
-            {/* 2. Other Indices Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <IndexCompactCard name="KOSDAQ" symbol="1001" category="KR" flag="🇰🇷" />
-                <IndexCompactCard name="DOW" symbol=".DJI" category="US" flag="🇺🇸" />
-                <IndexCompactCard name="NASDAQ" symbol="COMP" category="US" flag="🇺🇸" />
-                <IndexCompactCard name="S&P 500" symbol="SPX" category="US" flag="🇺🇸" />
+            {/* 3. KOSPI 업종별 등락률 */}
+            <div className="mt-8">
+                <SectorBarChart />
             </div>
-
-            {/* 3. Exchange Rates, Gold, Interest Rates */}
-            <ExtraMarketBlock />
-
-            {/* 4. Sector Bar Chart */}
-            <SectorBarChart />
         </div>
     );
 }
