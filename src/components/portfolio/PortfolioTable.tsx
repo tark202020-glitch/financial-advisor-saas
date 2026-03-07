@@ -217,78 +217,81 @@ export default function PortfolioTable() {
             )}
 
             {/* Control Bar */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#1E1E1E] p-3 sm:p-4 rounded-2xl border border-[#333] shadow-lg shadow-black/20">
-
-                {/* Filters */}
-                <div className="flex flex-wrap gap-2">
-                    <label className={`cursor-pointer px-4 py-2 rounded-xl border text-sm font-medium transition flex items-center gap-2 select-none
-                        ${filter.kr ? 'bg-indigo-900/30 border-indigo-500/30 text-indigo-400' : 'bg-[#121212] border-[#333] text-gray-500 hover:bg-[#252525] hover:text-gray-300'}`}>
-                        <input type="checkbox" className="hidden" checked={filter.kr} onChange={() => setFilter(p => ({ ...p, kr: !p.kr }))} />
-                        {filter.kr && <Check size={14} strokeWidth={3} />}
-                        국내주식 ({counts.kr})
-                    </label>
-                    <label className={`cursor-pointer px-4 py-2 rounded-xl border text-sm font-medium transition flex items-center gap-2 select-none
-                        ${filter.us ? 'bg-indigo-900/30 border-indigo-500/30 text-indigo-400' : 'bg-[#121212] border-[#333] text-gray-500 hover:bg-[#252525] hover:text-gray-300'}`}>
-                        <input type="checkbox" className="hidden" checked={filter.us} onChange={() => setFilter(p => ({ ...p, us: !p.us }))} />
-                        {filter.us && <Check size={14} strokeWidth={3} />}
-                        해외주식 ({counts.us})
-                    </label>
-                    <label className={`cursor-pointer px-4 py-2 rounded-xl border text-sm font-medium transition flex items-center gap-2 select-none
-                        ${filter.closed ? 'bg-[#333] border-gray-600 text-gray-200' : 'bg-[#121212] border-[#333] text-gray-500 hover:bg-[#252525] hover:text-gray-300'}`}>
-                        <input type="checkbox" className="hidden" checked={filter.closed} onChange={() => setFilter(p => ({ ...p, closed: !p.closed }))} />
-                        {filter.closed && <Check size={14} strokeWidth={3} />}
-                        거래완료 ({counts.closed})
-                    </label>
-                </div>
-
-                {/* Refresh & Sort & Category Filter */}
-                <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-                    {/* Global Refresh Button */}
+            <div className="bg-[#1E1E1E] p-3 sm:p-4 rounded-2xl border border-[#333] shadow-lg shadow-black/20 space-y-3">
+                {/* Row 1: Filters + Refresh */}
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-1.5">
+                        <label className={`cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 select-none whitespace-nowrap
+                            ${filter.kr ? 'bg-indigo-900/30 border-indigo-500/30 text-indigo-400' : 'bg-[#121212] border-[#333] text-gray-500 hover:bg-[#252525] hover:text-gray-300'}`}>
+                            <input type="checkbox" className="hidden" checked={filter.kr} onChange={() => setFilter(p => ({ ...p, kr: !p.kr }))} />
+                            {filter.kr && <Check size={12} strokeWidth={3} />}
+                            국내주식 ({counts.kr})
+                        </label>
+                        <label className={`cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 select-none whitespace-nowrap
+                            ${filter.us ? 'bg-indigo-900/30 border-indigo-500/30 text-indigo-400' : 'bg-[#121212] border-[#333] text-gray-500 hover:bg-[#252525] hover:text-gray-300'}`}>
+                            <input type="checkbox" className="hidden" checked={filter.us} onChange={() => setFilter(p => ({ ...p, us: !p.us }))} />
+                            {filter.us && <Check size={12} strokeWidth={3} />}
+                            해외주식 ({counts.us})
+                        </label>
+                        <label className={`cursor-pointer px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 select-none whitespace-nowrap
+                            ${filter.closed ? 'bg-[#333] border-gray-600 text-gray-200' : 'bg-[#121212] border-[#333] text-gray-500 hover:bg-[#252525] hover:text-gray-300'}`}>
+                            <input type="checkbox" className="hidden" checked={filter.closed} onChange={() => setFilter(p => ({ ...p, closed: !p.closed }))} />
+                            {filter.closed && <Check size={12} strokeWidth={3} />}
+                            거래완료 ({counts.closed})
+                        </label>
+                    </div>
+                    {/* Refresh */}
                     <button
                         onClick={handleRefreshAll}
                         disabled={isRefreshing}
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-bold transition-all select-none ${hasAnyError
-                            ? 'bg-amber-900/30 border-amber-700/40 text-amber-400 hover:bg-amber-900/50 hover:border-amber-600/50'
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all select-none shrink-0 ${hasAnyError
+                            ? 'bg-amber-900/30 border-amber-700/40 text-amber-400 hover:bg-amber-900/50'
                             : 'bg-[#121212] border-[#333] text-gray-400 hover:bg-[#252525] hover:text-white'
                             } disabled:opacity-50`}
                         title="전체 종목 시세 새로고침"
                     >
-                        <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
-                        <span className="hidden sm:inline">{isRefreshing ? '갱신중...' : '전체 재계산'}</span>
+                        <RefreshCw size={13} className={isRefreshing ? 'animate-spin' : ''} />
                     </button>
+                </div>
+
+                {/* Row 2: Category + Sort */}
+                <div className="flex items-center gap-3 border-t border-[#333]/50 pt-2.5">
                     {/* Category Filter */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 font-medium hidden sm:inline">분류</span>
-                        <div className="relative">
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <span className="text-[10px] text-gray-500 font-bold shrink-0">분류</span>
+                        <div className="relative flex-1 min-w-0">
                             <select
                                 value={selectedCategory}
                                 onChange={(e) => setSelectedCategory(e.target.value)}
-                                className="appearance-none bg-[#121212] border border-[#333] text-indigo-400 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-bold hover:border-indigo-500/50 transition"
+                                className="appearance-none w-full bg-[#121212] border border-[#333] text-indigo-400 text-xs rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-bold hover:border-indigo-500/50 transition truncate"
                             >
-                                <option value="all" className="text-gray-300">최상위 단계 (전체해제)</option>
-                                <option disabled className="text-gray-600 bg-[#1a1a1a]">────────────────</option>
+                                <option value="all" className="text-gray-300">전체</option>
+                                <option disabled className="text-gray-600 bg-[#1a1a1a]">──────────</option>
                                 {categories.map(cat => (
                                     <option key={cat} value={cat} className="text-gray-300">{cat}</option>
                                 ))}
                             </select>
-                            <ArrowUpDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-indigo-500/50 pointer-events-none" />
+                            <ArrowUpDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-indigo-500/50 pointer-events-none" />
                         </div>
                     </div>
 
+                    {/* Divider */}
+                    <div className="w-[1px] h-5 bg-[#333]" />
+
                     {/* Sort */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 font-medium hidden sm:inline">정렬</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[10px] text-gray-500 font-bold">정렬</span>
                         <div className="relative">
                             <select
                                 value={sort}
                                 onChange={(e) => setSort(e.target.value as SortOption)}
-                                className="appearance-none bg-[#121212] border border-[#333] text-gray-300 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-medium hover:border-gray-600 transition"
+                                className="appearance-none bg-[#121212] border border-[#333] text-gray-300 text-xs rounded-lg pl-2.5 pr-7 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer font-bold hover:border-gray-600 transition"
                             >
                                 <option value="newest">최신등록순</option>
                                 <option value="value">평가금액순</option>
                                 <option value="name">가나다순</option>
                             </select>
-                            <ArrowUpDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                            <ArrowUpDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                         </div>
                     </div>
                 </div>
