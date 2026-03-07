@@ -1,12 +1,16 @@
 /**
  * Determine market type based on symbol pattern.
  * Rule:
+ * - GOLD_ prefix: GOLD (KRX Gold Spot)
  * - 6 digits: KR (Domestic)
  * - 5 digits + 1 alphabet (length 6): KR (Domestic)
  * - Alphabet (and others without enough digits): US (Overseas)
  */
-export function getMarketType(symbol: string): 'KR' | 'US' {
+export function getMarketType(symbol: string): 'KR' | 'US' | 'GOLD' {
     if (!symbol || typeof symbol !== 'string') return 'US';
+
+    // Gold spot special case
+    if (symbol.startsWith('GOLD_')) return 'GOLD';
 
     // Strip suffix for checking
     const clean = symbol.replace(/\.(KS|KQ|ks|kq)$/, '');

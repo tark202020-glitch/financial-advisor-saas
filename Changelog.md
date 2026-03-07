@@ -1,3 +1,13 @@
+## [Alpha V1.274] - 2026-03-08 02:55:00
+
+### 🔧 Fix: 금현물 저장 실패 및 가격 정확도 수정
+- **Summary**: 금현물 저장이 안 되던 문제와 가격이 ETF 가격(33,830원)으로 표시되던 문제를 수정
+- **Detail**:
+  - `market.ts`: `getMarketType()`에 `GOLD_` 접두사 인식 추가
+  - `client.ts`: KRX data.krx.co.kr에서 금 99.99 1g 종가 직접 스크래핑
+  - 빌드 에러 수정: `PortfolioCompositionBlock.tsx`, `TargetProximityBlock.tsx`
+- **Build Time**: 2026-03-08 02:55:00
+
 ## [Alpha V1.273] - 2026-03-08 02:40:00
 
 ### ✨ Feature: KRX 금현물 시장 직접 연동

@@ -134,39 +134,130 @@ export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice
 }
 
 // ---- KRX Gold Spot Price (금현물 시세) ----
-// KIS API는 금현물 시장(FID_COND_MRKT_DIV_CODE=G)을 직접 지원하지 않음
-// 대안: ACE KRX금현물 ETF (411060) - 금 1g 가격을 정확히 추종하는 ETF
-// 이 ETF의 가격 ≈ 실제 KRX 금현물 1g 가격
+// KIS API는 금현물 시장을 직접 지원하지 않음
+// 1차: KRX 정보데이터시스템에서 직접 스크래핑
+// 2차: 서버 캐시 fallback
 
 // Server-side cache for last known gold price
 let lastKnownGoldPrice: KisDomStockPrice | null = null;
 
 export async function getGoldSpotPrice(): Promise<KisDomStockPrice | null> {
-    const GOLD_ETF_SYMBOL = '411060'; // ACE KRX금현물 ETF
-
-    // 1차: 기존 getDomesticPrice로 ETF 시세 조회 (실시간)
+    // 1차: KRX 정보데이터시스템 스크래핑 (금 시세)
     try {
-        const result = await getDomesticPrice(GOLD_ETF_SYMBOL);
-        if (result) {
-            const price = parseFloat(result.stck_prpr || '0');
-            if (price > 0) {
-                // Override sector name to display as gold
-                result.bstp_kor_isnm = 'KRX 금현물';
-                lastKnownGoldPrice = result;
-                return result;
+        // KRX 금현물 시세 JSON endpoint
+        const today = new Date();
+        const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
+
+        // KRX 금 시세 조회 (POST request to KRX data system)
+        const krxResponse = await fetch('http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0012',
+            },
+            body: `bld=dbms/MDC/STAT/standard/MDCSTAT19602&trdDd=${dateStr}`,
+            signal: AbortSignal.timeout(5000),
+        });
+
+        if (krxResponse.ok) {
+            const krxData = await krxResponse.json();
+            // krxData.output should contain gold price data
+            // Look for "금 99.99" in the list (1g standard)
+            if (krxData?.output && Array.isArray(krxData.output)) {
+                const goldItem = krxData.output.find((item: any) =>
+                    (item.ISU_NM || '').includes('99.99') ||
+                    (item.ISU_ABBRV || '').includes('99.99')
+                );
+
+                if (goldItem) {
+                    const price = goldItem.TDD_CLSPRC || goldItem.CLSPRC || goldItem.TDD_OPNPRC || '0';
+                    const prevPrice = goldItem.CMPPREVDD_PRC || goldItem.PRV_CLSPRC || '0';
+                    const changeRate = goldItem.FLUC_RT || '0';
+
+                    const cleanPrice = String(price).replace(/,/g, '');
+                    const cleanPrev = String(prevPrice).replace(/,/g, '');
+                    const cleanRate = String(changeRate).replace(/,/g, '');
+
+                    if (parseFloat(cleanPrice) > 0) {
+                        const result: KisDomStockPrice = {
+                            stck_prpr: cleanPrice,
+                            prdy_vrss: cleanPrev,
+                            prdy_ctrt: cleanRate,
+                            stck_bsop_date: dateStr,
+                            bstp_kor_isnm: 'KRX 금현물',
+                        };
+                        lastKnownGoldPrice = result;
+                        return result;
+                    }
+                }
             }
         }
     } catch (e) {
-        console.warn('[KIS] Gold ETF live price failed:', e);
+        console.warn('[KRX] Gold spot scraping failed:', e);
     }
 
-    // 2차: 서버 메모리 캐시 (마지막으로 성공한 가격)
+    // 1-2차: 전일 날짜로 재시도 (당일 장 마감 전이거나 휴장일)
+    try {
+        for (let daysBack = 1; daysBack <= 5; daysBack++) {
+            const pastDate = new Date();
+            pastDate.setDate(pastDate.getDate() - daysBack);
+            const pastDateStr = pastDate.toISOString().slice(0, 10).replace(/-/g, '');
+
+            const krxResponse = await fetch('http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0012',
+                },
+                body: `bld=dbms/MDC/STAT/standard/MDCSTAT19602&trdDd=${pastDateStr}`,
+                signal: AbortSignal.timeout(5000),
+            });
+
+            if (krxResponse.ok) {
+                const krxData = await krxResponse.json();
+                if (krxData?.output && Array.isArray(krxData.output)) {
+                    const goldItem = krxData.output.find((item: any) =>
+                        (item.ISU_NM || '').includes('99.99') ||
+                        (item.ISU_ABBRV || '').includes('99.99')
+                    );
+
+                    if (goldItem) {
+                        const price = goldItem.TDD_CLSPRC || goldItem.CLSPRC || '0';
+                        const prevPrice = goldItem.CMPPREVDD_PRC || '0';
+                        const changeRate = goldItem.FLUC_RT || '0';
+
+                        const cleanPrice = String(price).replace(/,/g, '');
+                        const cleanPrev = String(prevPrice).replace(/,/g, '');
+                        const cleanRate = String(changeRate).replace(/,/g, '');
+
+                        if (parseFloat(cleanPrice) > 0) {
+                            const result: KisDomStockPrice = {
+                                stck_prpr: cleanPrice,
+                                prdy_vrss: cleanPrev,
+                                prdy_ctrt: cleanRate,
+                                stck_bsop_date: pastDateStr,
+                                bstp_kor_isnm: 'KRX 금현물',
+                            };
+                            lastKnownGoldPrice = result;
+                            return result;
+                        }
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('[KRX] Gold spot historical scraping failed:', e);
+    }
+
+    // 3차: 서버 메모리 캐시
     if (lastKnownGoldPrice) {
-        console.log('[KIS] Using cached gold spot price');
+        console.log('[KRX] Using cached gold spot price');
         return lastKnownGoldPrice;
     }
 
-    console.error('[KIS] All gold spot price methods failed');
+    console.error('[KRX] All gold spot price methods failed');
     return null;
 }
 
