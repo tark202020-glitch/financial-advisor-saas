@@ -36,7 +36,7 @@ export default function TargetProximityBlock() {
 
             // Subscribe to WS for future updates
             assets.forEach(asset => {
-                if (asset.symbol) subscribe(asset.symbol, asset.category);
+                if (asset.symbol && asset.category !== 'GOLD') subscribe(asset.symbol, asset.category as 'KR' | 'US');
             });
 
             // Iterate sequentially with filtering
@@ -59,9 +59,14 @@ export default function TargetProximityBlock() {
                         cleanSymbol = asset.symbol.split('.')[0];
                     }
 
-                    const endpoint = asset.category === 'US'
-                        ? `/api/kis/price/overseas/${cleanSymbol}`
-                        : `/api/kis/price/domestic/${cleanSymbol}`;
+                    let endpoint: string;
+                    if (asset.category === 'GOLD') {
+                        endpoint = '/api/kis/price/gold';
+                    } else if (asset.category === 'US') {
+                        endpoint = `/api/kis/price/overseas/${cleanSymbol}`;
+                    } else {
+                        endpoint = `/api/kis/price/domestic/${cleanSymbol}`;
+                    }
 
                     const res = await fetch(endpoint);
                     const data = await res.json();

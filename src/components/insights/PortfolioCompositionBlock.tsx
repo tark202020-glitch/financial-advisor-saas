@@ -30,15 +30,23 @@ export default function PortfolioCompositionBlock() {
             // Subscribe & Fetch
             for (const asset of assets) {
                 if (!asset.symbol || asset.quantity <= 0) continue;
-                subscribe(asset.symbol, asset.category);
+                // GOLD uses separate API, skip WebSocket subscribe
+                if (asset.category !== 'GOLD') {
+                    subscribe(asset.symbol, asset.category as 'KR' | 'US');
+                }
 
                 try {
                     let cleanSymbol = asset.symbol;
                     if (asset.symbol.includes('.')) cleanSymbol = asset.symbol.split('.')[0];
 
-                    const endpoint = asset.category === 'US'
-                        ? `/api/kis/price/overseas/${cleanSymbol}`
-                        : `/api/kis/price/domestic/${cleanSymbol}`;
+                    let endpoint: string;
+                    if (asset.category === 'GOLD') {
+                        endpoint = '/api/kis/price/gold';
+                    } else if (asset.category === 'US') {
+                        endpoint = `/api/kis/price/overseas/${cleanSymbol}`;
+                    } else {
+                        endpoint = `/api/kis/price/domestic/${cleanSymbol}`;
+                    }
 
                     const res = await fetch(endpoint);
                     const data = await res.json();

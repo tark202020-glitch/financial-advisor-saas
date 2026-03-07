@@ -134,95 +134,33 @@ export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice
 }
 
 // ---- KRX Gold Spot Price (금현물 시세) ----
-// KRX 금현물 시장: FID_COND_MRKT_DIV_CODE = 'G', FID_INPUT_ISCD = '4020000' (금 1g)
+// KIS API는 금현물 시장(FID_COND_MRKT_DIV_CODE=G)을 직접 지원하지 않음
+// 대안: ACE KRX금현물 ETF (411060) - 금 1g 가격을 정확히 추종하는 ETF
+// 이 ETF의 가격 ≈ 실제 KRX 금현물 1g 가격
 
 // Server-side cache for last known gold price
 let lastKnownGoldPrice: KisDomStockPrice | null = null;
 
 export async function getGoldSpotPrice(): Promise<KisDomStockPrice | null> {
-    const token = await getAccessToken();
+    const GOLD_ETF_SYMBOL = '411060'; // ACE KRX금현물 ETF
 
-    // 1차: 실시간 현재가 조회
+    // 1차: 기존 getDomesticPrice로 ETF 시세 조회 (실시간)
     try {
-        const response = await kisRateLimiter.add(() => fetch(
-            `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=G&FID_INPUT_ISCD=4020000`,
-            {
-                method: "GET",
-                headers: {
-                    "content-type": "application/json",
-                    "authorization": `Bearer ${token}`,
-                    "appkey": APP_KEY!,
-                    "appsecret": APP_SECRET!,
-                    "tr_id": "FHKST01010100",
-                },
-            }
-        ));
-
-        if (response.ok) {
-            const data: KisResponse<KisDomStockPrice> = await response.json();
-            if (data.rt_cd === "0" && data.output) {
-                const price = parseFloat(data.output.stck_prpr || '0');
-                if (price > 0) {
-                    lastKnownGoldPrice = data.output; // Cache successful result
-                    return data.output;
-                }
+        const result = await getDomesticPrice(GOLD_ETF_SYMBOL);
+        if (result) {
+            const price = parseFloat(result.stck_prpr || '0');
+            if (price > 0) {
+                // Override sector name to display as gold
+                result.bstp_kor_isnm = 'KRX 금현물';
+                lastKnownGoldPrice = result;
+                return result;
             }
         }
     } catch (e) {
-        console.warn('[KIS] Gold spot live price failed, trying daily fallback:', e);
+        console.warn('[KIS] Gold ETF live price failed:', e);
     }
 
-    // 2차: 일별 시세(전일 종가) 조회 - 휴장 시 fallback
-    try {
-        const today = new Date();
-        const endDate = today.toISOString().slice(0, 10).replace(/-/g, '');
-        // 7일 전 시작 (주말/공휴일 고려)
-        const startDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-            .toISOString().slice(0, 10).replace(/-/g, '');
-
-        const dailyResponse = await kisRateLimiter.add(() => fetch(
-            `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?` +
-            `FID_COND_MRKT_DIV_CODE=G&FID_INPUT_ISCD=4020000&FID_INPUT_DATE_1=${startDate}&FID_INPUT_DATE_2=${endDate}&FID_PERIOD_DIV_CODE=D&FID_ORG_ADJ_PRC=0`,
-            {
-                method: "GET",
-                headers: {
-                    "content-type": "application/json",
-                    "authorization": `Bearer ${token}`,
-                    "appkey": APP_KEY!,
-                    "appsecret": APP_SECRET!,
-                    "tr_id": "FHKST03010100",
-                },
-            }
-        ));
-
-        if (dailyResponse.ok) {
-            const dailyData = await dailyResponse.json();
-            if (dailyData.rt_cd === "0" && dailyData.output2 && dailyData.output2.length > 0) {
-                // output2[0] = 가장 최근 거래일 데이터
-                const latestDay = dailyData.output2[0];
-                const closingPrice = latestDay.stck_clpr || latestDay.stck_prpr || '0';
-                const prevClose = latestDay.stck_oprc || closingPrice;
-
-                // 일별 데이터를 현재가 형태로 변환
-                const result: KisDomStockPrice = {
-                    stck_prpr: closingPrice,
-                    prdy_vrss: latestDay.prdy_vrss || '0',
-                    prdy_ctrt: latestDay.prdy_ctrt || '0',
-                    stck_bsop_date: latestDay.stck_bsop_date,
-                    bstp_kor_isnm: 'KRX 금현물',
-                };
-
-                if (parseFloat(closingPrice) > 0) {
-                    lastKnownGoldPrice = result; // Cache
-                    return result;
-                }
-            }
-        }
-    } catch (e) {
-        console.warn('[KIS] Gold spot daily price fallback failed:', e);
-    }
-
-    // 3차: 서버 메모리 캐시 (마지막으로 성공한 가격)
+    // 2차: 서버 메모리 캐시 (마지막으로 성공한 가격)
     if (lastKnownGoldPrice) {
         console.log('[KIS] Using cached gold spot price');
         return lastKnownGoldPrice;
