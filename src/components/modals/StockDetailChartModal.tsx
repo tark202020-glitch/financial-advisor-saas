@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Calendar, Edit3, Trash2, Save, Plus } from 'lucide-react';
+import { X, Calendar, Edit3, Trash2, Save, Plus, HelpCircle } from 'lucide-react';
 import { formatCurrency } from '@/utils/format';
 import {
     ComposedChart,
@@ -909,24 +909,41 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                     <p className="text-[9px] text-gray-500 mt-1">* 선택한 카테고리에 따라 포트폴리오 카드의 랭크 색상이 변경됩니다.</p>
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-bold text-gray-500 mb-1">메모</label>
+                                    <label className="block text-[10px] font-bold text-gray-500 mb-1">목표</label>
                                     <input
                                         type="text"
                                         value={memo}
                                         onChange={(e) => setMemo(e.target.value)}
                                         className="w-full bg-[#121212] border border-[#333] rounded-lg p-3 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none transition placeholder-gray-600"
-                                        placeholder="투자 메모 입력..."
+                                        placeholder="투자 목표 입력..."
                                     />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-[10px] font-bold text-gray-500 mb-1 flex items-center gap-2">
-                                            하한 목표
-                                            {lowerRate !== null && (
-                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${lowerRate >= 0 ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>
-                                                    {lowerRate > 0 ? '+' : ''}{lowerRate.toFixed(1)}%
-                                                </span>
-                                            )}
+                                        <label className="block text-[10px] font-bold text-gray-500 mb-1 flex items-center gap-1">
+                                            {(() => {
+                                                const tl = targetLower ? parseFloat(targetLower.replace(/,/g, '')) : 0;
+                                                const dist = currentPrice > 0 && tl > 0 ? ((currentPrice - tl) / currentPrice) * 100 : null;
+                                                const isDanger = dist !== null && dist <= 0;
+                                                const isWarning = dist !== null && dist > 0 && dist <= 3;
+                                                return (
+                                                    <>
+                                                        <span className={isDanger ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-gray-500'}>
+                                                            {isDanger ? '⚠️ 하한 목표 (SUPPORT)' : isWarning ? '⚡ 하한 목표 (SUPPORT)' : '하한 목표 (SUPPORT)'}
+                                                        </span>
+                                                        <span className="group/help relative inline-flex">
+                                                            <HelpCircle size={10} className="text-blue-400/50 cursor-help" />
+                                                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded text-[10px] bg-[#333] text-gray-200 whitespace-nowrap opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none z-50">최고가 대비 비율</span>
+                                                        </span>
+                                                        {dist !== null && (
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${isDanger ? 'bg-red-900/30 text-red-400' : isWarning ? 'bg-amber-900/30 text-amber-400' : 'bg-blue-900/30 text-blue-400'
+                                                                }`}>
+                                                                ({dist > 0 ? '-' : '+'}{Math.abs(dist).toFixed(1)}%)
+                                                            </span>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
                                         </label>
                                         <input
                                             type="number"
@@ -937,10 +954,14 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-bold text-gray-500 mb-1 flex items-center gap-2">
-                                            상한 목표
+                                        <label className="block text-[10px] font-bold text-gray-500 mb-1 flex items-center gap-1 justify-end">
+                                            <span className="group/help relative inline-flex">
+                                                <HelpCircle size={10} className="text-red-400/50 cursor-help" />
+                                                <span className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] bg-[#333] text-gray-200 whitespace-nowrap opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none z-50">AVG대비 비율</span>
+                                            </span>
+                                            상한 목표 (RESIST)
                                             {upperRate !== null && (
-                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${upperRate >= 0 ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${upperRate >= 0 ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>
                                                     {upperRate > 0 ? '+' : ''}{upperRate.toFixed(1)}%
                                                 </span>
                                             )}
