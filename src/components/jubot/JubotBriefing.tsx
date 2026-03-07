@@ -4,10 +4,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Newspaper, RefreshCw, TrendingUp, TrendingDown, Minus, AlertTriangle, Sparkles } from 'lucide-react';
 
 interface BriefingData {
-    headline: string;
-    market_overview: string;
-    key_indices?: Array<{ name: string; value: string; change: string; comment: string }>;
-    expert_opinions?: Array<{ expert_name: string; title: string; summary: string; source: string }>;
     top_stories?: Array<{ title: string; summary: string; impact: string; related_stocks?: string[] }>;
     watchpoints?: string[];
     jubot_opinion?: string;
@@ -96,25 +92,28 @@ export default function JubotBriefing() {
     return (
         <div className="bg-[#1e1e1e] rounded-2xl border border-[#333] overflow-hidden">
             {/* Header */}
-            <div className="px-3 py-4 sm:px-6 border-b border-[#333] flex flex-col gap-4">
+            <div className="px-3 py-4 sm:px-6 border-b border-[#333] flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F7D047] to-[#F59E0B] flex items-center justify-center flex-shrink-0">
                         <Newspaper size={20} className="text-black" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold text-white">📰 JUBOT의 오늘 시장 브리핑</h2>
-                        <p className="text-sm text-gray-500">
-                            {lastUpdated ? `분석 시간: ${lastUpdated}` : '뉴스를 수집하여 AI가 분석합니다'}
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                            📰 JUBOT의 오늘 시장 브리핑
+                            {lastUpdated && <span className="text-xs font-normal text-gray-500 bg-[#333] px-2 py-0.5 rounded-full">업데이트 {lastUpdated}</span>}
+                        </h2>
+                        <p className="text-sm text-gray-400 mt-0.5">
+                            시장의 큰 흐름과 핵심 뉴스를 AI가 입체적으로 분석합니다
                         </p>
                     </div>
                 </div>
                 <button
                     onClick={() => fetchBriefing(true)}
                     disabled={loading}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#F7D047] text-black font-bold text-base hover:bg-[#f5c518] transition-colors disabled:opacity-50"
+                    className="flex items-center justify-center w-10 h-10 rounded-full bg-[#252525] border border-[#333] text-gray-400 hover:text-white hover:bg-[#333] transition-colors disabled:opacity-50"
+                    title="브리핑 새로고침"
                 >
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    {loading ? '분석 중...' : briefing ? '새로고침' : '브리핑 생성'}
                 </button>
             </div>
 
@@ -153,107 +152,86 @@ export default function JubotBriefing() {
 
                 {briefing && (
                     <div className="space-y-6">
-                        {/* Headline */}
-                        <div className="bg-gradient-to-r from-[#F7D047]/10 to-transparent p-4 rounded-xl border border-[#F7D047]/20">
-                            <h3 className="text-2xl font-black text-[#F7D047]">{briefing.headline}</h3>
-                            <p className="text-gray-300 mt-2 text-base leading-relaxed">{briefing.market_overview}</p>
-                        </div>
-
-                        {/* Key Indices */}
-                        {briefing.key_indices && briefing.key_indices.length > 0 && (
-                            <div>
-                                <h4 className="text-base font-bold text-gray-400 mb-3">📊 주요 지수</h4>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                    {briefing.key_indices.map((idx, i) => {
-                                        const isUp = idx.change?.includes('+');
-                                        const isDown = idx.change?.includes('-');
-                                        return (
-                                            <div key={i} className="bg-[#252525] p-3 rounded-xl border border-[#333]">
-                                                <div className="text-sm text-gray-500">{idx.name}</div>
-                                                <div className="text-xl font-bold text-white">{idx.value || '-'}</div>
-                                                <div className={`text-base font-bold ${isUp ? 'text-red-400' : isDown ? 'text-blue-400' : 'text-gray-400'}`}>
-                                                    {idx.change || '-'}
-                                                </div>
-                                                {idx.comment && (
-                                                    <div className="text-sm text-gray-500 mt-1 truncate">{idx.comment}</div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                        {/* Jubot Opinion (통합 요약) */}
+                        {briefing.jubot_opinion && (
+                            <div className="bg-gradient-to-r from-[#2a2a1e] to-[#1e1e1e] p-5 rounded-2xl border border-[#F7D047]/30 shadow-lg mb-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Sparkles size={20} className="text-[#F7D047]" />
+                                    <h3 className="text-lg font-black text-[#F7D047]">🤖 주봇 종합 의견</h3>
+                                </div>
+                                <div className="text-gray-200 text-base leading-relaxed whitespace-pre-wrap">
+                                    {briefing.jubot_opinion}
                                 </div>
                             </div>
                         )}
 
-                        {/* Expert Opinions (주봇 1.0) */}
-                        {briefing.expert_opinions && briefing.expert_opinions.length > 0 && (
-                            <div>
-                                <h4 className="text-base font-bold text-gray-400 mb-3">🎤 전문가 의견</h4>
-                                <div className="space-y-2">
-                                    {briefing.expert_opinions.map((expert, i) => (
-                                        <div key={i} className="p-4 rounded-xl border border-orange-900/30 bg-orange-900/10">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-base font-bold text-orange-300">{expert.expert_name}</span>
-                                                <span className="text-xs text-gray-500">({expert.source})</span>
-                                            </div>
-                                            <div className="font-medium text-white text-sm">{expert.title}</div>
-                                            <div className="text-gray-400 text-sm mt-1">{expert.summary}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Top Stories */}
+                        {/* Top Stories (3단 분리 그리드) */}
                         {briefing.top_stories && briefing.top_stories.length > 0 && (
-                            <div>
-                                <h4 className="text-base font-bold text-gray-400 mb-3">📰 핵심 뉴스</h4>
-                                <div className="space-y-2">
-                                    {briefing.top_stories.map((story, i) => (
-                                        <div key={i} className={`p-4 rounded-xl border ${getImpactBg(story.impact)}`}>
-                                            <div className="flex items-start gap-2">
-                                                {getImpactIcon(story.impact)}
-                                                <div className="flex-1">
-                                                    <div className="font-bold text-white text-base">{story.title}</div>
-                                                    <div className="text-gray-400 text-sm mt-1">{story.summary}</div>
-                                                    {story.related_stocks && story.related_stocks.length > 0 && (
-                                                        <div className="flex gap-1 mt-2 flex-wrap">
-                                                            {story.related_stocks.map((s, j) => (
-                                                                <span key={j} className="text-sm px-2 py-0.5 rounded-full bg-[#333] text-gray-300">
-                                                                    {s}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
+                            <div className="mb-6">
+                                <h4 className="flex items-center gap-2 text-lg font-bold text-white mb-4">
+                                    📰 핵심 뉴스 요약
+                                </h4>
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                    {/* 1. 불안 뉴스 (Negative) */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#333]">
+                                            <TrendingDown size={16} className="text-blue-400" />
+                                            <span className="font-bold text-blue-400 text-sm">불안 뉴스</span>
                                         </div>
-                                    ))}
+                                        {briefing.top_stories.filter(s => s.impact === 'negative').map((story, i) => (
+                                            <div key={i} className="p-4 rounded-xl border border-blue-900/30 bg-blue-900/10">
+                                                <div className="font-bold text-white text-[15px] leading-tight mb-2">{story.title}</div>
+                                                <div className="text-gray-400 text-[13px] leading-snug">{story.summary}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* 2. 일반 뉴스 (Neutral) */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#333]">
+                                            <Minus size={16} className="text-gray-400" />
+                                            <span className="font-bold text-gray-400 text-sm">일반 뉴스</span>
+                                        </div>
+                                        {briefing.top_stories.filter(s => s.impact === 'neutral').map((story, i) => (
+                                            <div key={i} className="p-4 rounded-xl border border-[#333] bg-[#252525]">
+                                                <div className="font-bold text-white text-[15px] leading-tight mb-2">{story.title}</div>
+                                                <div className="text-gray-400 text-[13px] leading-snug">{story.summary}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* 3. 좋은 소식 (Positive) */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#333]">
+                                            <TrendingUp size={16} className="text-red-400" />
+                                            <span className="font-bold text-red-400 text-sm">좋은 소식</span>
+                                        </div>
+                                        {briefing.top_stories.filter(s => s.impact === 'positive').map((story, i) => (
+                                            <div key={i} className="p-4 rounded-xl border border-red-900/30 bg-red-900/10">
+                                                <div className="font-bold text-white text-[15px] leading-tight mb-2">{story.title}</div>
+                                                <div className="text-gray-400 text-[13px] leading-snug">{story.summary}</div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
 
                         {/* Watchpoints */}
                         {briefing.watchpoints && briefing.watchpoints.length > 0 && (
-                            <div>
-                                <h4 className="text-base font-bold text-gray-400 mb-3">⚡ 오늘의 주목 포인트</h4>
-                                <ul className="space-y-1.5">
+                            <div className="bg-[#1A1A1A] rounded-xl p-5 border border-[#333]">
+                                <h4 className="flex items-center gap-2 text-base font-bold text-gray-300 mb-3">
+                                    <AlertTriangle size={16} className="text-yellow-500" />
+                                    오늘의 주목 포인트
+                                </h4>
+                                <ul className="space-y-2">
                                     {briefing.watchpoints.map((point, i) => (
-                                        <li key={i} className="flex items-start gap-2 text-base text-gray-300">
+                                        <li key={i} className="flex items-start gap-2 text-[15px] text-gray-300">
                                             <span className="text-[#F7D047] font-bold mt-0.5">•</span>
-                                            <span>{point}</span>
+                                            <span className="leading-snug">{point}</span>
                                         </li>
                                     ))}
                                 </ul>
-                            </div>
-                        )}
-
-                        {/* Jubot Opinion */}
-                        {briefing.jubot_opinion && (
-                            <div className="bg-gradient-to-r from-[#2a2a1e] to-[#1e1e1e] p-4 rounded-xl border border-[#F7D047]/20">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="text-base font-bold text-[#F7D047]">🤖 주봇 의견</span>
-                                </div>
-                                <p className="text-gray-300 text-base leading-relaxed">{briefing.jubot_opinion}</p>
                             </div>
                         )}
                     </div>

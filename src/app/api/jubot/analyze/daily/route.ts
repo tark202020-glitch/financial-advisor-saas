@@ -127,40 +127,26 @@ export async function GET(request: NextRequest) {
         {
             "briefing_date": "${dateStr}",
             "time_of_day": "${timeOfDay}",
-            "headline": "한줄 헤드라인 (20자 이내)",
-            "market_overview": "시장 전반 동향 요약 (3-4문장)",
-            "key_indices": [
-                { "name": "KOSPI", "value": "숫자", "change": "+0.8%", "comment": "한마디 코멘트" }
-            ],
-            "expert_opinions": [
-                {
-                    "expert_name": "전문가 이름",
-                    "title": "기사/칼럼 제목",
-                    "summary": "전문가 의견 요약 (1-2문장)",
-                    "source": "출처"
-                }
-            ],
+            "jubot_opinion": "시장 전반 동향, 주요 지수 흐름, 전문가 의견(제공된 경우)을 모두 깊이 있게 종합한 주봇의 핵심 의견 (3~4문장, 굵은 글씨 등 마크다운 약간 사용 가능)",
             "top_stories": [
                 {
                     "title": "핵심 뉴스 제목",
-                    "summary": "1-2문장",
-                    "impact": "positive/negative/neutral",
+                    "summary": "1-2문장 요약",
+                    "impact": "positive/negative/neutral (택1)",
                     "related_stocks": ["종목명(코드)"]
                 }
             ],
             "watchpoints": [
                 "오늘 주목해야 할 포인트 1",
                 "포인트 2"
-            ],
-            "jubot_opinion": "주봇의 종합 의견 (2-3문장, 전문가답게)"
+            ]
         }
 
         규칙:
-        - top_stories는 3~5개
-        - key_indices에서 실제 숫자가 없으면 추정하지 마세요
-        - ⭐ 전문가(박시동, 이광수) 기사가 있으면 expert_opinions에 반드시 포함하고 top_stories에도 우선 배치
-        - 전문가 기사가 없으면 expert_opinions는 빈 배열 []
-        - 모든 텍스트는 한국어
+        - top_stories는 3~5개를 작성하되, 반드시 impact가 'negative'(불안), 'neutral'(일반), 'positive'(호재) 인 뉴스를 각각 최소 1개 이상 골고루 포함하세요.
+        - jubot_opinion은 개별 뉴스의 나열이 아닌, 오늘 시장의 큰 흐름을 읽어주는 "통합 브리핑" 형태여야 합니다.
+        - ⭐ 전문가(박시동, 이광수) 기사가 제공된 경우, 반드시 jubot_opinion에 그 핵심 의견을 녹여내고, top_stories에도 하나 이상 포함하세요.
+        - 모든 텍스트는 한국어만 사용.
         - JSON만 출력하세요 (마크다운 코드블록 없이)
         `;
 
