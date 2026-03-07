@@ -1,3 +1,14 @@
+## [Alpha V1.270] - 2026-03-08 01:35:00
+
+### ✨ Feature: 포트폴리오 KOSDAQ 및 해외 주식 통합 검색 지원
+- **Summary**: `내 주식 기록하기` 및 `관심목록 조회` 시 KOSDAQ 종목과 미국/해외주식(NASDAQ, NYSE, AMEX)에 대한 통합 종목 검색이 지원됩니다.
+- **Detail**:
+  - `백엔드 (API)`: 기존 KOSPI 마스터뿐만 아니라 KIS에서 KOSDAQ 및 미주 마스터 파일 압축본까지 일괄 수집하여 통합 JSON(`all_stocks_master.json`)을 구축하는 파이썬 스크립트(`scripts/generate_master_json.py`)를 개발 및 확장했습니다.
+  - `자체 검색 API 신설`: 브라우저가 직접 무거운 원시 마스터 데이터를 관리하지 않도록, 빠르고 가벼운 자체 서버사이드 검색 API(`api/search/stock`)를 구축했습니다.
+  - `프론트 모달 연동`: `AddAssetForm` 및 `StockSearchModal`에서 사용자가 텍스트를 입력할 때마다 신규 API로 실시간(Debounced) 검색 요청을 쏘도록 개선했습니다.
+  - `마켓 타입 식별 로직 보완`: 사용자가 모달에서 검색한 종목이 KOSPI/KOSDAQ인지 미주(US)인지 판별하여 자산 및 관심목록 DB에 정확한 `market` (KR, US) 값으로 저장되도록 개편했습니다. 
+- **Build Time**: 2026-03-08 01:35:00
+
 ## [Alpha V1.269] - 2026-03-07 23:25:00
 
 ### 🚀 Feature: 대시보드 지수 종합 3분할 전면 개편

@@ -7,8 +7,8 @@ import { useWatchlist } from '@/context/WatchlistContext';
 interface StockMaster {
     symbol: string;
     name: string;
-    standard_code: string;
-    group_code: string;
+    market?: 'KR' | 'US';
+    flag?: string;
 }
 
 interface StockSearchModalProps {
@@ -19,68 +19,64 @@ interface StockSearchModalProps {
 
 export default function StockSearchModal({ isOpen, onClose, targetWatchlistId }: StockSearchModalProps) {
     const [searchTerm, setSearchTerm] = useState('');
-    const [masterData, setMasterData] = useState<StockMaster[]>([]);
     const [results, setResults] = useState<StockMaster[]>([]);
     const [loading, setLoading] = useState(false);
     const { addItem, watchlists } = useWatchlist();
 
     useEffect(() => {
-        if (isOpen && masterData.length === 0) {
-            setLoading(true);
-            fetch('/data/kospi_master.json')
-                .then(res => res.json())
-                .then(data => {
-                    setMasterData(data);
-                    setLoading(false);
-                })
-                .catch(err => {
-                    console.error("Failed to load master data", err);
-                    setLoading(false);
-                });
-        }
-    }, [isOpen, masterData]);
-
-    useEffect(() => {
-        if (!searchTerm) {
+        if (!searchTerm.trim()) {
             setResults([]);
+            setLoading(false);
             return;
         }
 
-        const term = searchTerm.toLowerCase();
-        // Filter: Limit to 20 results for performance
-        const filtered = masterData.filter(item =>
-            item.name.toLowerCase().includes(term) ||
-            item.symbol.includes(term)
-        ).slice(0, 20);
+        setLoading(true);
+        const timeoutId = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/search/stock?q=${encodeURIComponent(searchTerm)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setResults(data);
+                }
+            } catch (err) {
+                console.error("Search API failed", err);
+            } finally {
+                setLoading(false);
+            }
+        }, 300); // 300ms debounce
 
-        setResults(filtered);
-    }, [searchTerm, masterData]);
+        return () => clearTimeout(timeoutId);
+    }, [searchTerm]);
 
     if (!isOpen) return null;
 
     const handleAdd = async (stock: StockMaster) => {
         if (!targetWatchlistId) return;
 
-        // Fetch sector info (KOSPI Sector Name)
+        const isUSMarket = stock.market === 'US';
         let sector = '';
-        try {
-            // Only try to fetch if it looks like a stock code (6 digits usually, fund codes differ)
-            // But API handles most.
-            const res = await fetch(`/api/kis/price/domestic/${stock.symbol}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.bstp_kor_isnm) {
-                    sector = data.bstp_kor_isnm;
+
+        // Fetch sector info (KOSPI Sector Name) only for domestic
+        if (!isUSMarket) {
+            try {
+                // Only try to fetch if it looks like a stock code (6 digits usually, fund codes differ)
+                // But API handles most.
+                const res = await fetch(`/api/kis/price/domestic/${stock.symbol}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.bstp_kor_isnm) {
+                        sector = data.bstp_kor_isnm;
+                    }
                 }
+            } catch (e) {
+                console.warn("Failed to fetch sector info for", stock.symbol, e);
             }
-        } catch (e) {
-            console.warn("Failed to fetch sector info for", stock.symbol, e);
         }
 
         await addItem(targetWatchlistId, {
             symbol: stock.symbol,
             name: stock.name,
-            market: 'KR', // Defaulting to KR as master data is KOSPI
+            market: stock.market || 'KR', // Use exact market or fallback to KR
             sector: sector // Save the fetched sector (or empty if not found)
         });
     };

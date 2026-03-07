@@ -7,8 +7,10 @@ import { PlusCircle, Search, ArrowLeft, Calendar, DollarSign, BarChart3, Edit3, 
 interface StockMaster {
     symbol: string;
     name: string;
-    standard_code: string;
-    group_code: string;
+    standard_code?: string;
+    group_code?: string;
+    market?: 'KR' | 'US';
+    flag?: string;
 }
 
 export default function AddAssetForm() {
@@ -18,9 +20,9 @@ export default function AddAssetForm() {
 
     // Search State
     const [searchTerm, setSearchTerm] = useState('');
-    const [masterData, setMasterData] = useState<StockMaster[]>([]);
     const [searchResults, setSearchResults] = useState<StockMaster[]>([]);
     const [selectedStock, setSelectedStock] = useState<StockMaster | null>(null);
+    const [isSearching, setIsSearching] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -39,28 +41,31 @@ export default function AddAssetForm() {
         logMemo: ''
     });
 
-    // Load Master Data on Open
+    // Real-time API Search with Debounce
     useEffect(() => {
-        if (isOpen && masterData.length === 0) {
-            fetch('/data/kospi_master.json')
-                .then(res => res.json())
-                .then(data => setMasterData(data))
-                .catch(err => console.error(err));
-        }
-    }, [isOpen, masterData]);
-
-    // Filter Search
-    useEffect(() => {
-        if (!searchTerm) {
+        if (!searchTerm.trim()) {
             setSearchResults([]);
+            setIsSearching(false);
             return;
         }
-        const term = searchTerm.toLowerCase();
-        const filtered = masterData.filter(item =>
-            item.name.toLowerCase().includes(term) || item.symbol.includes(term)
-        ).slice(0, 10);
-        setSearchResults(filtered);
-    }, [searchTerm, masterData]);
+
+        setIsSearching(true);
+        const timeoutId = setTimeout(async () => {
+            try {
+                const res = await fetch(`/api/search/stock?q=${encodeURIComponent(searchTerm)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setSearchResults(data);
+                }
+            } catch (err) {
+                console.error("Search API failed", err);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300); // 300ms debounce
+
+        return () => clearTimeout(timeoutId);
+    }, [searchTerm]);
 
     const handleSelectStock = (stock: StockMaster) => {
         setSelectedStock(stock);
@@ -74,25 +79,28 @@ export default function AddAssetForm() {
         const qty = Number(formData.quantity);
         const price = Number(formData.price);
         const kospi = Number(formData.kospiIndex);
+        const isUSMarket = selectedStock.market === 'US';
 
         // Fetch sector info (KOSPI Sector Name)
         let fetchedSector = '';
-        try {
-            const res = await fetch(`/api/kis/price/domestic/${selectedStock.symbol}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.bstp_kor_isnm) {
-                    fetchedSector = data.bstp_kor_isnm;
+        if (!isUSMarket) {
+            try {
+                const res = await fetch(`/api/kis/price/domestic/${selectedStock.symbol}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.bstp_kor_isnm) {
+                        fetchedSector = data.bstp_kor_isnm;
+                    }
                 }
+            } catch (e) {
+                console.warn("Failed to fetch sector info", e);
             }
-        } catch (e) {
-            console.warn("Failed to fetch sector info", e);
         }
 
         await addAsset({
             symbol: selectedStock.symbol,
             name: selectedStock.name,
-            category: 'KR', // Default to KR for KIS Master
+            category: selectedStock.market || 'KR', // Make sure to use correct market
             sector: fetchedSector, // Save fetched sector
 
             // Asset Summary (Initial Holding)
