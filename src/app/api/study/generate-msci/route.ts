@@ -101,11 +101,19 @@ async function getPreviousData(docsDir: string) {
         }
 
         const lines = content.split('\n');
+
+        // "신규 통합 산출 테이블"이 있는 경우, 해당 섹션의 테이블(가장 최신)을 파싱
+        let targetStartIndex = 0;
+        const newTableIndex = lines.findIndex(l => l.includes("신규 통합 산출 테이블"));
+        if (newTableIndex !== -1) {
+            targetStartIndex = newTableIndex;
+        }
+
         let inTable = false;
         let items: { name: string, diff: number }[] = [];
         let tableLines = [];
 
-        for (let i = 0; i < lines.length; i++) {
+        for (let i = targetStartIndex; i < lines.length; i++) {
             const line = lines[i].trim();
             if (line.includes("| MSCI TOP10 |") || line.includes("| 종목명")) {
                 inTable = true;
