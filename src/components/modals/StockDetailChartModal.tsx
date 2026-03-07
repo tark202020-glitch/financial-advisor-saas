@@ -128,8 +128,9 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     const stockLive = useStockPrice(asset.symbol, 0, asset.category);
 
     const formatPrice = (val: number) => {
-        const formatted = formatCurrency(val, asset.category === 'KR' ? 'KRW' : 'USD');
-        return asset.category === 'KR' ? `${formatted}원` : formatted;
+        const isKRW = asset.category === 'KR' || asset.category === 'GOLD';
+        const formatted = formatCurrency(val, isKRW ? 'KRW' : 'USD');
+        return isKRW ? `${formatted}원` : formatted;
     };
 
     // Local State for Chart
@@ -154,7 +155,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
 
     // Local State for Market Name (KOSPI / KOSDAQ)
     const [displayMarketName, setDisplayMarketName] = useState<string>(
-        asset.category === 'KR' ? 'KOSPI' : 'US'
+        asset.category === 'GOLD' ? 'KRX 금현물' : asset.category === 'KR' ? 'KOSPI' : 'US'
     );
 
     // Logic for Benchmark
@@ -212,6 +213,13 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+                // GOLD: no chart data available from KRX scraping
+                if (asset.category === 'GOLD') {
+                    setHistory([]);
+                    setChartLoading(false);
+                    return;
+                }
 
                 const res = await fetch(`/api/kis/chart/daily/${asset.symbol}?market=${asset.category}`, {
                     signal: controller.signal

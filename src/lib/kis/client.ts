@@ -149,7 +149,7 @@ export async function getGoldSpotPrice(): Promise<KisDomStockPrice | null> {
         const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
 
         // KRX 금 시세 조회 (POST request to KRX data system)
-        const krxResponse = await fetch('http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
+        const krxResponse = await fetch('https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -204,7 +204,7 @@ export async function getGoldSpotPrice(): Promise<KisDomStockPrice | null> {
             pastDate.setDate(pastDate.getDate() - daysBack);
             const pastDateStr = pastDate.toISOString().slice(0, 10).replace(/-/g, '');
 
-            const krxResponse = await fetch('http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
+            const krxResponse = await fetch('https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',

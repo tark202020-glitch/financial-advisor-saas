@@ -28,9 +28,14 @@ export function useStockPrice(symbol: string, initialPrice: number, category: st
             if (lastData.get(symbol)) return;
 
             try {
-                const endpoint = category === 'KR'
-                    ? `/api/kis/price/domestic/${symbol}`
-                    : `/api/kis/price/overseas/${symbol}`;
+                let endpoint: string;
+                if (category === 'GOLD') {
+                    endpoint = '/api/kis/price/gold';
+                } else if (category === 'KR') {
+                    endpoint = `/api/kis/price/domestic/${symbol}`;
+                } else {
+                    endpoint = `/api/kis/price/overseas/${symbol}`;
+                }
 
                 const res = await fetch(endpoint);
                 if (!res.ok) return; // Silent fail
