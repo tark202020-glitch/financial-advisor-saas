@@ -3,7 +3,7 @@
 // import { useStockPrice } from '@/hooks/useStockPrice';
 import { Asset, usePortfolio } from '@/context/PortfolioContext';
 import { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, HelpCircle } from 'lucide-react';
 import StockDetailChartModal from '../modals/StockDetailChartModal';
 import { formatCurrency } from '@/utils/format';
 
@@ -148,13 +148,25 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
         });
     };
 
-    // Calculate Goal Rate
+    // Calculate Goal Rate (AVG 대비 비율 - 상한목표용)
     const getGoalRate = (target: string) => {
         if (!target || !asset.pricePerShare) return null;
         const t = parseFloat(target.replace(/,/g, ''));
         if (isNaN(t)) return null;
         const r = ((t - asset.pricePerShare) / asset.pricePerShare) * 100;
         return r;
+    };
+
+    // 하한목표: 현재가가 하한목표에 얼마나 가까운지 비율 계산
+    const getLowerTargetInfo = () => {
+        if (!asset.targetPriceLower || !currentPrice || currentPrice <= 0) return null;
+        // 현재가가 하한목표 대비 얼마나 위에 있는지 (양수 = 아직 여유 있음)
+        const distanceRate = ((currentPrice - asset.targetPriceLower) / currentPrice) * 100;
+        // 경고: 3% 이내 접근
+        const isWarning = distanceRate <= 3;
+        // 위험: 하한목표 이하로 하락
+        const isDanger = currentPrice <= asset.targetPriceLower;
+        return { distanceRate, isWarning, isDanger };
     };
 
     return (
@@ -279,14 +291,35 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                         {(asset.targetPriceLower || asset.targetPriceUpper) ? (
                             <div className="flex gap-4 border-t border-white/10 pt-3 mt-auto">
                                 {asset.targetPriceLower ? (() => {
-                                    const rate = getGoalRate(asset.targetPriceLower.toString());
+                                    const lowerInfo = getLowerTargetInfo();
+                                    const isWarning = lowerInfo?.isWarning || false;
+                                    const isDanger = lowerInfo?.isDanger || false;
                                     return (
-                                        <div className="flex-1 bg-blue-900/20 rounded border border-blue-500/20 p-2 min-w-0">
-                                            <span className="text-[9px] text-blue-400/80 uppercase mb-0.5 block truncate">하한 목표 (Support)</span>
-                                            <div className="flex items-baseline gap-1 truncate">
-                                                <span className="text-sm font-black text-blue-300 tracking-tight">{asset.targetPriceLower.toLocaleString()}</span>
-                                                {rate !== null && (
-                                                    <span className="text-[10px] text-blue-400/70">({rate > 0 ? '+' : ''}{rate.toFixed(2)}%)</span>
+                                        <div className={`flex-1 rounded border p-2 min-w-0 relative overflow-hidden ${isDanger
+                                                ? 'bg-red-600/30 border-red-400/60 animate-pulse'
+                                                : isWarning
+                                                    ? 'bg-amber-900/30 border-amber-400/50'
+                                                    : 'bg-blue-900/20 border-blue-500/20'
+                                            }`}>
+                                            {(isWarning || isDanger) && (
+                                                <div className={`absolute inset-0 ${isDanger ? 'bg-red-500/10' : 'bg-amber-500/5'}`} />
+                                            )}
+                                            <div className="flex items-center gap-1 mb-0.5 relative z-10">
+                                                <span className={`text-[9px] uppercase truncate ${isDanger ? 'text-red-300 font-bold' : isWarning ? 'text-amber-400 font-bold' : 'text-blue-400/80'
+                                                    }`}>
+                                                    {isDanger ? '⚠️ 하한 돌파!' : isWarning ? '⚡ 하한 근접' : '하한 목표 (Support)'}
+                                                </span>
+                                                <span className="group/help relative inline-flex">
+                                                    <HelpCircle size={10} className="text-blue-400/50 cursor-help" />
+                                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded text-[10px] bg-[#333] text-gray-200 whitespace-nowrap opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none z-50">최고가 대비 비율</span>
+                                                </span>
+                                            </div>
+                                            <div className="flex items-baseline gap-1 truncate relative z-10">
+                                                <span className={`text-sm font-black tracking-tight ${isDanger ? 'text-red-300' : isWarning ? 'text-amber-300' : 'text-blue-300'
+                                                    }`}>{asset.targetPriceLower.toLocaleString()}</span>
+                                                {lowerInfo && (
+                                                    <span className={`text-[10px] font-bold ${isDanger ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-blue-400/70'
+                                                        }`}>({lowerInfo.distanceRate > 0 ? '-' : '+'}{Math.abs(lowerInfo.distanceRate).toFixed(1)}%)</span>
                                                 )}
                                             </div>
                                         </div>
@@ -296,7 +329,13 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                                     const rate = getGoalRate(asset.targetPriceUpper.toString());
                                     return (
                                         <div className="flex-1 bg-red-900/20 rounded border border-red-500/20 p-2 text-right min-w-0">
-                                            <span className="text-[9px] text-red-400/80 uppercase mb-0.5 block truncate">상한 목표 (Resist)</span>
+                                            <div className="flex items-center justify-end gap-1 mb-0.5">
+                                                <span className="group/help relative inline-flex">
+                                                    <HelpCircle size={10} className="text-red-400/50 cursor-help" />
+                                                    <span className="absolute bottom-full right-0 mb-1 px-2 py-1 rounded text-[10px] bg-[#333] text-gray-200 whitespace-nowrap opacity-0 group-hover/help:opacity-100 transition-opacity pointer-events-none z-50">AVG대비 비율</span>
+                                                </span>
+                                                <span className="text-[9px] text-red-400/80 uppercase truncate">상한 목표 (Resist)</span>
+                                            </div>
                                             <div className="flex items-baseline justify-end gap-1 truncate">
                                                 {rate !== null && (
                                                     <span className="text-[10px] text-red-400/70">({rate > 0 ? '+' : ''}{rate.toFixed(2)}%)</span>

@@ -3,14 +3,14 @@
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import PortfolioCard from './PortfolioCard';
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { ArrowUpDown, Check, RefreshCw, Target, Loader2 } from 'lucide-react';
+import { ArrowUpDown, Check, RefreshCw } from 'lucide-react';
 import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 import StockLoadError from '@/components/ui/StockLoadError';
 
 type SortOption = 'newest' | 'value' | 'name';
 
 export default function PortfolioTable() {
-    const { assets, isLoading, error, updateAsset } = usePortfolio();
+    const { assets, isLoading, error } = usePortfolio();
 
     if (error) {
         return (
@@ -93,91 +93,6 @@ export default function PortfolioTable() {
         refetchKr();
         refetchUs();
     };
-
-    // ---- 하한목표 자동설정 로직 ----
-    const [autoTargetRunning, setAutoTargetRunning] = useState(false);
-    const [autoTargetProgress, setAutoTargetProgress] = useState({ current: 0, total: 0 });
-    const [autoTargetFailed, setAutoTargetFailed] = useState<{ id: number; symbol: string; name: string }[]>([]);
-    const [autoTargetDone, setAutoTargetDone] = useState(false);
-    const [autoTargetSuccessCount, setAutoTargetSuccessCount] = useState(0);
-
-    const calcTargetForAsset = useCallback(async (asset: Asset): Promise<boolean> => {
-        if (asset.category === 'GOLD' || asset.quantity === 0) return true; // skip
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
-            const res = await fetch(`/api/kis/chart/daily/${asset.symbol.replace('.KS', '')}?market=${asset.category}`, {
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            if (!res.ok) return false;
-            const data = await res.json();
-            if (!Array.isArray(data) || data.length === 0) return false;
-
-            // 최근 45일 데이터에서 최고가 추출
-            const recent45 = data.slice(0, 45);
-            const maxHigh = Math.max(...recent45.map((d: any) => parseFloat(d.stck_hgpr || d.high || '0')));
-            if (maxHigh <= 0) return false;
-
-            // 하한목표 = 최고가 × 0.9 (10% 할인)
-            const targetLower = Math.round(maxHigh * 0.9);
-            await updateAsset(asset.id, { targetPriceLower: targetLower });
-            return true;
-        } catch (e) {
-            console.warn(`[AutoTarget] Failed for ${asset.symbol}:`, e);
-            return false;
-        }
-    }, [updateAsset]);
-
-    const handleAutoTarget = useCallback(async () => {
-        const eligible = assets.filter(a => a.category !== 'GOLD' && a.quantity > 0);
-        if (eligible.length === 0) return;
-
-        setAutoTargetRunning(true);
-        setAutoTargetDone(false);
-        setAutoTargetFailed([]);
-        setAutoTargetSuccessCount(0);
-        setAutoTargetProgress({ current: 0, total: eligible.length });
-
-        const failed: typeof autoTargetFailed = [];
-        let success = 0;
-
-        for (let i = 0; i < eligible.length; i++) {
-            const asset = eligible[i];
-            setAutoTargetProgress({ current: i + 1, total: eligible.length });
-
-            const ok = await calcTargetForAsset(asset);
-            if (ok) {
-                success++;
-            } else {
-                failed.push({ id: asset.id, symbol: asset.symbol, name: asset.name });
-            }
-
-            // Rate limit: 1초 대기 (마지막 항목 제외)
-            if (i < eligible.length - 1) {
-                await new Promise(r => setTimeout(r, 1000));
-            }
-        }
-
-        setAutoTargetFailed(failed);
-        setAutoTargetSuccessCount(success);
-        setAutoTargetRunning(false);
-        setAutoTargetDone(true);
-
-        // 5초 후 완료 상태 초기화
-        setTimeout(() => setAutoTargetDone(false), 8000);
-    }, [assets, calcTargetForAsset]);
-
-    const handleRetryTarget = useCallback(async (asset: { id: number; symbol: string; name: string }) => {
-        const fullAsset = assets.find(a => a.id === asset.id);
-        if (!fullAsset) return;
-
-        const ok = await calcTargetForAsset(fullAsset);
-        if (ok) {
-            setAutoTargetFailed(prev => prev.filter(f => f.id !== asset.id));
-            setAutoTargetSuccessCount(prev => prev + 1);
-        }
-    }, [assets, calcTargetForAsset]);
 
     // State
     const [filter, setFilter] = useState({
@@ -328,16 +243,6 @@ export default function PortfolioTable() {
 
                 {/* Refresh & Sort & Category Filter */}
                 <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-                    {/* Auto Target Button */}
-                    <button
-                        onClick={handleAutoTarget}
-                        disabled={autoTargetRunning}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-bold transition-all select-none bg-[#121212] border-[#333] text-[#F7D047] hover:bg-yellow-900/20 hover:border-yellow-700/40 disabled:opacity-50"
-                        title="모든 종목의 하한목표를 최근 45일 최고가의 -10%로 자동 설정"
-                    >
-                        {autoTargetRunning ? <Loader2 size={14} className="animate-spin" /> : <Target size={14} />}
-                        <span className="hidden sm:inline">{autoTargetRunning ? `${autoTargetProgress.current}/${autoTargetProgress.total}` : '하한목표 자동설정'}</span>
-                    </button>
                     {/* Global Refresh Button */}
                     <button
                         onClick={handleRefreshAll}
@@ -389,51 +294,7 @@ export default function PortfolioTable() {
                 </div>
             </div>
 
-            {/* Auto Target Progress / Result */}
-            {(autoTargetRunning || autoTargetDone) && (
-                <div className="bg-[#1E1E1E] p-4 rounded-2xl border border-[#333] shadow-lg shadow-black/20">
-                    {autoTargetRunning && (
-                        <div>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-bold text-[#F7D047]">🎯 하한목표 자동설정 진행 중...</span>
-                                <span className="text-xs text-gray-400">{autoTargetProgress.current} / {autoTargetProgress.total}</span>
-                            </div>
-                            <div className="w-full bg-[#333] rounded-full h-2">
-                                <div
-                                    className="bg-[#F7D047] h-2 rounded-full transition-all duration-300"
-                                    style={{ width: `${autoTargetProgress.total > 0 ? (autoTargetProgress.current / autoTargetProgress.total) * 100 : 0}%` }}
-                                />
-                            </div>
-                        </div>
-                    )}
-                    {autoTargetDone && !autoTargetRunning && (
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <Check size={16} className="text-green-400" />
-                                <span className="text-sm font-bold text-green-400">완료: {autoTargetSuccessCount}개 종목 설정됨</span>
-                                {autoTargetFailed.length > 0 && (
-                                    <span className="text-sm text-red-400">/ {autoTargetFailed.length}개 실패</span>
-                                )}
-                            </div>
-                            {autoTargetFailed.length > 0 && (
-                                <div className="space-y-1 mt-2">
-                                    {autoTargetFailed.map(f => (
-                                        <div key={f.id} className="flex items-center justify-between bg-red-900/10 border border-red-900/20 rounded-lg px-3 py-2">
-                                            <span className="text-sm text-red-300">{f.name} ({f.symbol})</span>
-                                            <button
-                                                onClick={() => handleRetryTarget(f)}
-                                                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-900/20 text-red-400 hover:bg-red-900/40 text-xs font-bold transition"
-                                            >
-                                                <RefreshCw size={12} /> 새로고침
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            )}
+
 
             {/* List */}
             {filteredAndSortedAssets.length === 0 ? (
