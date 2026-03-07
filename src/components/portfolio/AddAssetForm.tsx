@@ -198,7 +198,7 @@ export default function AddAssetForm() {
                                     <div className="relative mb-6">
                                         <input
                                             type="text"
-                                            placeholder="종목명 또는 코드 (예: 삼성전자)"
+                                            placeholder="종목명 또는 코드 (예: 삼성전자, SPY)"
                                             className="w-full p-4 pl-12 bg-[#121212] border border-[#333] rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-lg shadow-sm text-white placeholder-gray-600"
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -209,16 +209,29 @@ export default function AddAssetForm() {
 
                                     {/* Results List */}
                                     <div className="space-y-2">
-                                        {searchResults.length > 0 ? (
+                                        {isSearching ? (
+                                            <div className="text-center text-gray-400 py-8 flex flex-col items-center animate-pulse">
+                                                <Search size={32} className="mb-3 text-indigo-400" />
+                                                <span>검색 중...</span>
+                                            </div>
+                                        ) : searchResults.length > 0 ? (
                                             searchResults.map(stock => (
                                                 <button
-                                                    key={stock.symbol}
+                                                    key={`${stock.symbol}-${stock.market}`}
                                                     onClick={() => handleSelectStock(stock)}
                                                     className="w-full text-left p-4 hover:bg-[#252525] border border-transparent hover:border-[#333] rounded-xl flex justify-between items-center group transition"
                                                 >
                                                     <div>
-                                                        <div className="font-bold text-gray-200 text-lg">{stock.name}</div>
-                                                        <div className="text-sm text-gray-500 font-mono">{stock.symbol}</div>
+                                                        <div className="font-bold text-gray-200 text-lg flex items-center gap-2">
+                                                            <span>{stock.flag || '🇰🇷'}</span>
+                                                            {stock.name}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500 font-mono flex items-center gap-2">
+                                                            {stock.symbol}
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${stock.market === 'US' ? 'bg-blue-900/40 text-blue-400' : 'bg-gray-800 text-gray-500'}`}>
+                                                                {stock.market === 'US' ? 'US' : 'KR'}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                     <div className="text-indigo-400 opacity-0 group-hover:opacity-100 transition flex items-center gap-1 font-medium bg-indigo-900/30 px-3 py-1 rounded-full text-sm border border-indigo-500/20">
                                                         선택 <ArrowLeft className="rotate-180" size={14} />

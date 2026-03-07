@@ -4,49 +4,93 @@ import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
-interface StockMaster {
+interface StockResult {
+    symbol: string;
+    name: string;
+    market: 'KR' | 'US';
+    flag: string;
+    exchange?: string;
+}
+
+interface StockMasterLocal {
     symbol: string;
     name: string;
     standard_code?: string;
     group_code?: string;
-    market?: 'KR' | 'US';
-    exchange?: string;
+    market?: string;
 }
 
-let cachedMasterData: StockMaster[] | null = null;
+// ---- Local Master Data Cache ----
+let cachedLocalData: StockMasterLocal[] | null = null;
 let lastCacheTime = 0;
 
-function loadMasterData() {
-    // Reload cache if it's older than 1 hour or null
-    const CACHE_TTL = 3600 * 1000;
+function loadLocalMasterData(): StockMasterLocal[] {
+    const CACHE_TTL = 3600 * 1000; // 1 hour
     const now = Date.now();
 
-    if (cachedMasterData && (now - lastCacheTime < CACHE_TTL)) {
-        return cachedMasterData;
+    if (cachedLocalData && (now - lastCacheTime < CACHE_TTL)) {
+        return cachedLocalData;
     }
 
     try {
+        // Try unified file first, then fallback to kospi only
         const unifiedPath = path.join(process.cwd(), 'public', 'data', 'all_stocks_master.json');
-        const fallbackKospiPath = path.join(process.cwd(), 'public', 'data', 'kospi_master.json');
+        const kospiPath = path.join(process.cwd(), 'public', 'data', 'kospi_master.json');
 
         let rawData = '';
         if (fs.existsSync(unifiedPath)) {
             rawData = fs.readFileSync(unifiedPath, 'utf-8');
-        } else if (fs.existsSync(fallbackKospiPath)) {
-            // Un-updated setup fallback
-            rawData = fs.readFileSync(fallbackKospiPath, 'utf-8');
+        } else if (fs.existsSync(kospiPath)) {
+            rawData = fs.readFileSync(kospiPath, 'utf-8');
         } else {
-            console.warn("No stock master data found!");
             return [];
         }
 
-        const data = JSON.parse(rawData);
-        cachedMasterData = data;
+        cachedLocalData = JSON.parse(rawData);
         lastCacheTime = now;
-        return cachedMasterData;
-
+        return cachedLocalData || [];
     } catch (e) {
-        console.error("Failed to load / parse stock master data:", e);
+        console.error('Failed to load local master data:', e);
+        return [];
+    }
+}
+
+// ---- Yahoo Finance Server-Side Search ----
+async function searchYahooFinance(query: string): Promise<StockResult[]> {
+    try {
+        const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&listsCount=0`;
+        const res = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            },
+            signal: AbortSignal.timeout(3000), // 3 second timeout
+        });
+
+        if (!res.ok) return [];
+
+        const data = await res.json();
+        if (!data.quotes || !Array.isArray(data.quotes)) return [];
+
+        return data.quotes
+            .filter((q: any) => q.quoteType === 'EQUITY' || q.quoteType === 'ETF')
+            .map((q: any) => {
+                const symbol = q.symbol || '';
+                // Determine market
+                const exchange = q.exchange || '';
+                const isKR = symbol.endsWith('.KS') || symbol.endsWith('.KQ');
+                const cleanSymbol = isKR ? symbol.replace(/\.(KS|KQ)$/, '') : symbol;
+
+                return {
+                    symbol: cleanSymbol,
+                    name: q.shortname || q.longname || cleanSymbol,
+                    market: isKR ? 'KR' : 'US',
+                    flag: isKR ? '🇰🇷' : '🇺🇸',
+                    exchange: exchange,
+                } as StockResult;
+            });
+    } catch (e) {
+        // Silent failure - Yahoo may be rate limited or unreachable
+        console.warn('Yahoo Finance search failed:', e);
         return [];
     }
 }
@@ -60,34 +104,49 @@ export async function GET(request: Request) {
         return NextResponse.json([]);
     }
 
-    const term = q.toLowerCase().replace(/\s/g, ''); // ignore spaces
+    const term = q.toLowerCase().replace(/\s/g, '');
 
-    const masterData = loadMasterData();
-    if (!masterData || masterData.length === 0) {
-        return NextResponse.json({ error: "Master data not available" }, { status: 500 });
-    }
+    // 1. Search local master data (KOSPI, and KOSDAQ/overseas if all_stocks_master.json is available)
+    const localData = loadLocalMasterData();
+    const localResults: StockResult[] = [];
 
-    const results = [];
-
-    for (const stock of masterData) {
-        // Simple search matching string logic
-        const stockName = stock.name.toLowerCase().replace(/\s/g, '');
-        const stockSymbol = stock.symbol.toLowerCase();
+    for (const stock of localData) {
+        const stockName = (stock.name || '').toLowerCase().replace(/\s/g, '');
+        const stockSymbol = (stock.symbol || '').toLowerCase();
 
         if (stockName.includes(term) || stockSymbol.includes(term)) {
-            // Ensure default market is KR if not set in old files
-            const isKR = !stock.market || stock.market === 'KR';
-            results.push({
-                ...stock,
-                market: stock.market || 'KR',
-                flag: isKR ? '🇰🇷' : '🇺🇸'
+            const mkt = (stock.market === 'US') ? 'US' : 'KR';
+            localResults.push({
+                symbol: stock.symbol,
+                name: stock.name,
+                market: mkt as 'KR' | 'US',
+                flag: mkt === 'US' ? '🇺🇸' : '🇰🇷',
             });
-
-            if (results.length >= limit) {
-                break;
-            }
+            if (localResults.length >= limit) break;
         }
     }
 
-    return NextResponse.json(results);
+    // 2. If local results are limited (especially for overseas), fetch from Yahoo Finance
+    let yahooResults: StockResult[] = [];
+    const hasEnoughLocal = localResults.length >= 5;
+    const isAlphabetic = /^[a-zA-Z]/.test(q.trim());
+
+    // Search Yahoo if: not enough local results, or query looks English (likely overseas ticker)
+    if (!hasEnoughLocal || isAlphabetic) {
+        yahooResults = await searchYahooFinance(q.trim());
+    }
+
+    // 3. Merge results: local first, then Yahoo (avoiding duplicates)
+    const seen = new Set(localResults.map(r => r.symbol));
+    const merged = [...localResults];
+
+    for (const yr of yahooResults) {
+        if (!seen.has(yr.symbol)) {
+            seen.add(yr.symbol);
+            merged.push(yr);
+        }
+        if (merged.length >= limit) break;
+    }
+
+    return NextResponse.json(merged);
 }

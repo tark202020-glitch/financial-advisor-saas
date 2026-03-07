@@ -1,3 +1,13 @@
+## [Alpha V1.271] - 2026-03-08 01:40:00
+
+### 🔧 Fix: 포트폴리오 검색 하이브리드 방식 전환
+- **Summary**: 종목 검색이 작동하지 않는 이슈를 해결했습니다. 로컬 마스터(KOSPI) + Yahoo Finance 서버사이드 실시간 검색을 병합하는 하이브리드 방식으로 API를 재구현했습니다.
+- **Detail**:
+  - `api/search/stock/route.ts`: 기존 파일(kospi_master.json)으로 국내 주식 검색 + Yahoo Finance API(서버사이드 호출)로 해외 주식/ETF 실시간 검색 → 결과 병합 후 반환.
+  - `AddAssetForm.tsx`: 검색 결과에 시장 플래그(🇰🇷/🇺🇸), 마켓 태그(KR/US), 로딩 인디케이터 추가.
+  - `all_stocks_master.json` 미생성 환경에서도 해외 검색이 정상 작동.
+- **Build Time**: 2026-03-08 01:40:00
+
 ## [Alpha V1.270] - 2026-03-08 01:35:00
 
 ### ✨ Feature: 포트폴리오 KOSDAQ 및 해외 주식 통합 검색 지원
