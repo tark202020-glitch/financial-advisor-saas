@@ -1,10 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookOpen, Edit, Save, X, FileText } from "lucide-react";
+import { BookOpen, Edit, Save, X, FileText, CheckCircle2, TrendingUp, BarChart3, ShieldCheck } from "lucide-react";
 import SidebarLayout from "@/components/SidebarLayout";
 import JubotPageGuide from "@/components/common/JubotPageGuide";
+import { createClient } from "@/utils/supabase/client";
 import React from "react";
+
+type Topic = "msci" | "dividend" | "etf";
+
+const TOPIC_CONFIG = {
+    msci: { title: "MSCI 스터디", icon: <BookOpen size={20} className="text-[#F7D047]" />, guide: "MSCI 관련 문서를 열람하고 수정(저장) 할 수 있습니다. '정보 만들기'로 최신 데이터를 구성하세요." },
+    dividend: { title: "배당주 분석", icon: <TrendingUp size={20} className="text-[#F7D047]" />, guide: "배당주 관련 분석 자료를 열람하는 공간입니다." },
+    etf: { title: "ETF 분석기", icon: <BarChart3 size={20} className="text-[#F7D047]" />, guide: "ETF 관련 인사이트와 시뮬레이션 자료를 확인하세요." }
+};
+
+type StudyBoard = {
+    id: string;
+    title: string;
+    content: string;
+    created_at: string;
+};
 
 const renderMarkdown = (text: string) => {
     const lines = text.split('\n');
@@ -105,25 +121,44 @@ const renderMarkdown = (text: string) => {
 };
 
 export default function StudyPage() {
-    const [fileList, setFileList] = useState<string[]>([]);
-    const [selectedFile, setSelectedFile] = useState<string | null>(null);
+    const [topic, setTopic] = useState<Topic>("msci");
+    const [fileList, setFileList] = useState<StudyBoard[]>([]);
+    const [selectedFile, setSelectedFile] = useState<StudyBoard | null>(null);
     const [content, setContent] = useState<string>("");
     const [isEditing, setIsEditing] = useState<boolean>(false);
     const [editedContent, setEditedContent] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(true);
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
+    // Auth state
+    const [isAdmin, setIsAdmin] = useState<boolean>(false);
+    const supabase = createClient();
+
     useEffect(() => {
-        fetchFiles();
+        checkAdmin();
     }, []);
 
-    const fetchFiles = async () => {
+    useEffect(() => {
+        fetchFiles(topic);
+    }, [topic]);
+
+    const checkAdmin = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user && session.user.email === 'tark202020@gmail.com') {
+            setIsAdmin(true);
+        }
+    };
+
+    const fetchFiles = async (currentTopic: Topic) => {
         setLoading(true);
+        setSelectedFile(null);
+        setContent("");
+        setIsEditing(false);
         try {
-            const res = await fetch("/api/study");
+            const res = await fetch(`/api/study-boards?topic=${currentTopic}`);
             if (res.ok) {
                 const data = await res.json();
-                setFileList(data.files || []);
+                setFileList(data.boards || []);
             }
         } catch (error) {
             console.error("Failed to fetch files:", error);
@@ -132,35 +167,30 @@ export default function StudyPage() {
         }
     };
 
-    const handleSelectFile = async (path: string) => {
-        setSelectedFile(path);
+    const handleSelectFile = (board: StudyBoard) => {
+        setSelectedFile(board);
         setIsEditing(false);
-        try {
-            const res = await fetch(`/api/study?path=${encodeURIComponent(path)}`);
-            if (res.ok) {
-                const data = await res.json();
-                setContent(data.content || "");
-                setEditedContent(data.content || "");
-            }
-        } catch (error) {
-            console.error("Failed to fetch file content:", error);
-        }
+        setContent(board.content || "");
+        setEditedContent(board.content || "");
     };
 
-    const handleGenerateMsci = async () => {
+    const handleGenerateInfo = async () => {
+        if (topic !== "msci") {
+            alert("해당 주제의 생성 기능은 현재 준비 중입니다.");
+            return;
+        }
+
         setIsGenerating(true);
         try {
             const res = await fetch("/api/study/generate-msci", { method: "POST" });
             if (res.ok) {
-                alert("MSCI KOREA INDEX 문서를 성공적으로 생성/업데이트 했습니다.");
-                await fetchFiles();
-                // 자동 선택
-                handleSelectFile("MSCI KOREA INDEX.md");
+                alert(`${TOPIC_CONFIG[topic].title} 문서를 성공적으로 생성(업데이트) 했습니다.`);
+                await fetchFiles(topic);
             } else {
                 alert("문서 생성에 실패했습니다.");
             }
         } catch (error) {
-            console.error("Failed to generate MSCI:", error);
+            console.error(`Failed to generate ${topic}:`, error);
             alert("문서 생성 중 오류가 발생했습니다.");
         } finally {
             setIsGenerating(false);
@@ -171,13 +201,13 @@ export default function StudyPage() {
         if (!selectedFile) return;
 
         try {
-            const res = await fetch("/api/study", {
+            const res = await fetch("/api/study-boards", {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                    path: selectedFile,
+                    id: selectedFile.id,
                     content: editedContent,
                 }),
             });
@@ -197,45 +227,71 @@ export default function StudyPage() {
     return (
         <SidebarLayout>
             <div className="flex bg-[#121212] h-[calc(100vh-4rem)] text-white w-full">
-                {/* 왼쪽 트리/목록 영역 */}
-                <div className="w-80 border-r border-[#333] bg-[#1E1E1E] flex flex-col h-full rounded-tl-2xl overflow-hidden">
+
+                {/* 제일 왼쪽: 카테고리 탭 영역 */}
+                <div className="w-48 border-r border-[#333] bg-[#1A1A1A] flex flex-col p-4 rounded-tl-2xl">
+                    <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest px-2">주식 스터디 영역</h2>
+                    <ul className="space-y-2">
+                        {(Object.keys(TOPIC_CONFIG) as Topic[]).map((t) => (
+                            <li key={t}>
+                                <button
+                                    onClick={() => setTopic(t)}
+                                    className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors flex items-center gap-3 font-medium
+                                        ${topic === t ? "bg-[#333] text-white border-l-2 border-[#F7D047]" : "text-gray-400 hover:bg-[#252525] hover:text-gray-200"}`}
+                                >
+                                    {TOPIC_CONFIG[t].icon}
+                                    {TOPIC_CONFIG[t].title}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                {/* 중간: 파일 목록 영역 */}
+                <div className="w-80 border-r border-[#333] bg-[#1E1E1E] flex flex-col h-full overflow-hidden">
                     <div className="p-4 border-b border-[#333] flex flex-col gap-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <BookOpen size={20} className="text-[#F7D047]" />
-                                <h2 className="font-bold text-lg">MSCI 스터디</h2>
+                                {TOPIC_CONFIG[topic].icon}
+                                <h2 className="font-bold text-lg">{TOPIC_CONFIG[topic].title}</h2>
                             </div>
-                            <JubotPageGuide guideText="MSCI 관련 문서를 열람하고 수정(저장) 할 수 있습니다. '정보 만들기'로 최신 데이터를 구성하세요." />
+                            <JubotPageGuide guideText={TOPIC_CONFIG[topic].guide} />
                         </div>
-                        <button
-                            onClick={handleGenerateMsci}
-                            disabled={isGenerating}
-                            className="w-full text-sm bg-[#2A2A2A] border border-[#444] hover:bg-[#333] text-gray-200 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium shadow-sm"
-                        >
-                            {isGenerating ? '데이터 수집 및 문서 생성 중...' : '정보 만들기 (업데이트)'}
-                        </button>
+                        {isAdmin && (
+                            <button
+                                onClick={handleGenerateInfo}
+                                disabled={isGenerating}
+                                className="w-full mt-2 text-sm bg-blue-600 hover:bg-blue-500 border border-blue-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
+                            >
+                                <ShieldCheck size={16} />
+                                {isGenerating ? '정보 만들기 생성 중...' : '정보 만들기 (서버 업로드)'}
+                            </button>
+                        )}
                     </div>
                     <div className="flex-1 overflow-y-auto p-2">
                         {loading ? (
-                            <p className="text-gray-400 text-sm p-2">로딩 중...</p>
+                            <p className="text-gray-400 text-sm p-4 text-center">불러오는 중...</p>
                         ) : fileList.length > 0 ? (
                             <ul className="space-y-1">
                                 {fileList.map((file) => (
-                                    <li key={file}>
+                                    <li key={file.id}>
                                         <button
                                             onClick={() => handleSelectFile(file)}
-                                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2
-                                            ${selectedFile === file ? "bg-[#333] text-white border-l-2 border-[#F7D047]" : "text-gray-400 hover:bg-[#2A2A2A] hover:text-white"}
+                                            className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-colors flex flex-col gap-1
+                                            ${selectedFile?.id === file.id ? "bg-[#333] text-white border-l-2 border-[#F7D047]" : "text-gray-400 hover:bg-[#2A2A2A] hover:text-white"}
                                         `}
                                         >
-                                            <FileText size={16} />
-                                            <span className="truncate">{file}</span>
+                                            <div className="flex items-center gap-2">
+                                                <FileText size={16} className="shrink-0" />
+                                                <span className="truncate font-semibold text-gray-200">{file.title}</span>
+                                            </div>
+                                            <span className="text-[11px] text-gray-500 pl-6">{new Date(file.created_at).toLocaleDateString()}</span>
                                         </button>
                                     </li>
                                 ))}
                             </ul>
                         ) : (
-                            <p className="text-gray-400 text-sm p-2">문서가 없습니다.</p>
+                            <p className="text-gray-500 text-sm p-4 text-center bg-[#1A1A1A] rounded-lg border border-[#333] m-2">아직 생성된 자료가 없습니다.</p>
                         )}
                     </div>
                 </div>
@@ -248,7 +304,7 @@ export default function StudyPage() {
                             <div className="h-14 border-b border-[#333] flex items-center justify-between px-6 bg-[#1A1A1A]">
                                 <h3 className="font-bold text-gray-200 flex items-center gap-2">
                                     <FileText size={18} className="text-gray-400" />
-                                    {selectedFile}
+                                    {selectedFile.title}
                                 </h3>
                                 <div className="flex gap-2">
                                     {isEditing ? (

@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { exec } from "child_process";
-import fs from 'fs/promises';
-import path from 'path';
+import { createClient } from "@supabase/supabase-js";
 
 // 영문 -> 국문 종목명 및 티커 매핑 (Top 20 대응)
 const STOCK_MAPPING: Record<string, { name: string; code: string; sector: string }> = {
@@ -258,26 +256,19 @@ export async function GET() {
             md += `| ${idx + 1} | **${item.name}** | ${item.code} | ${item.sector} | ~${mCapTrillion} | ~${item.kospiWeight > 0 ? item.kospiWeight.toFixed(1) : '-'}% | ${item.msciWeight > 0 ? item.msciWeight.toFixed(1) : '-'}% | **${diffStr}** |\n`;
         });
 
-        // 4. 로컬/서버리스 환경 디스크 쓰기
-        // Vercel 환경에서는 /tmp 경로 외 쓰기가 제한되므로,
-        // 이 파일을 사용자에게 전달하여 커밋하도록 하거나
-        // 로컬에서는 dev 모드이므로 직접 doc 폴더에 씁니다.
-        const writePath = path.join(process.cwd(), 'doc', 'MSCI', 'MSCI KOREA INDEX.md');
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
 
-        if (process.env.NODE_ENV !== 'production') {
-            // 상위 디렉터리 확인/생성
-            try { await fs.mkdir(path.dirname(writePath), { recursive: true }); } catch (e) { }
-            await fs.writeFile(writePath, md, 'utf-8');
-            console.log(`Successfully generated at ${writePath}`);
-        } else {
-            console.log("Running in Production: Using /tmp logic or skipping local write");
-            // Production Vercel에서는 Supabase로 백업하거나 렌더링에 직접 쓰도록 보완해야 하지만
-            // 사용자 요구사항이 로컬(옵시디언 연동)이므로, 로컬 환경에서 npm run dev 중일 때 Cron API를 호출한다고 가정합니다.
-            try { await fs.mkdir(path.dirname(writePath), { recursive: true }); } catch (e) { }
-            await fs.writeFile(writePath, md, 'utf-8');
-        }
+        await supabaseAdmin.from('study_boards').insert({
+            topic: 'msci',
+            title: `MSCI KOREA INDEX (${dateStr}) - Cron Auto`,
+            content: md,
+        });
 
-        return NextResponse.json({ success: true, message: "MSCI Index updated.", result: integratedArray });
+        console.log("Successfully generated and saved to Supabase study_boards.");
+        return NextResponse.json({ success: true, message: "MSCI Index updated on DB.", result: integratedArray });
 
     } catch (err: any) {
         console.error("MSCI Cron Update Error:", err);

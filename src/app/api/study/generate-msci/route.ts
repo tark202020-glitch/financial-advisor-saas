@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from 'fs/promises';
-import path from 'path';
+import { createClient } from "@/utils/supabase/server";
 
 const MSCI_TOP10 = [
     { name: '삼성전자', code: '005930', msciWeight: 29.75 },
@@ -89,10 +88,19 @@ async function getStockMarketCap(token: string, symbol: string) {
     return parseFloat(d.output.hts_avls || '0');
 }
 
-async function getPreviousData(docsDir: string) {
+async function getPreviousData() {
     try {
-        const filePath = path.join(docsDir, "MSCI KOREA INDEX.md");
-        const content = await fs.readFile(filePath, "utf-8");
+        const supabase = await createClient();
+        const { data: boards } = await supabase
+            .from('study_boards')
+            .select('content')
+            .eq('topic', 'msci')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (!boards || boards.length === 0 || !boards[0].content) return null;
+
+        const content = boards[0].content;
 
         let date = "이전 생성일 알 수 없음";
         const dateMatch = content.match(/데이터 생성 일시:\s*([0-9: \-]+(\(KST\))?)/);
@@ -102,9 +110,8 @@ async function getPreviousData(docsDir: string) {
 
         const lines = content.split('\n');
 
-        // "신규 통합 산출 테이블"이 있는 경우, 해당 섹션의 테이블(가장 최신)을 파싱
         let targetStartIndex = 0;
-        const newTableIndex = lines.findIndex(l => l.includes("신규 통합 산출 테이블"));
+        const newTableIndex = lines.findIndex((l: string) => l.includes("신규 통합 산출 테이블"));
         if (newTableIndex !== -1) {
             targetStartIndex = newTableIndex;
         }
@@ -125,7 +132,7 @@ async function getPreviousData(docsDir: string) {
                 continue;
             }
             if (inTable && line.startsWith('|')) {
-                const parts = line.split('|').map(s => s.trim().replace(/\*\*/g, '').replace(/~~/g, ''));
+                const parts = line.split('|').map((s: string) => s.trim().replace(/\*\*/g, '').replace(/~~/g, ''));
                 if (parts.length >= 5) {
                     let rawName = parts[1];
                     if (rawName.includes('---')) {
@@ -137,7 +144,6 @@ async function getPreviousData(docsDir: string) {
                         continue;
                     }
 
-                    // 구버전 파일에서 넘어온 번역체 이름을 표준 이름으로 매핑 처리
                     const nameMapping: Record<string, string> = {
                         "현대자동차 주식회사": "현대차",
                         "SK 스퀘어 주식회사": "SK스퀘어",
@@ -149,7 +155,7 @@ async function getPreviousData(docsDir: string) {
                     };
                     rawName = nameMapping[rawName] || rawName;
 
-                    const diffWtStr = parts[parts.length - 2].replace(/\+/g, ''); // 마지막 셀 여백 고려
+                    const diffWtStr = parts[parts.length - 2].replace(/\+/g, '');
                     const diffWt = parseFloat(diffWtStr);
 
                     if (rawName) {
@@ -167,21 +173,14 @@ async function getPreviousData(docsDir: string) {
             return { date, items, rawTable: tableLines.join('\n') };
         }
     } catch (e) {
-        // 기존 파일 없음 
+        console.error("Failed to parse previous MSCI data from DB", e);
     }
     return null;
 }
 
 export async function POST(request: NextRequest) {
-    if (process.env.NODE_ENV === "production") {
-        return NextResponse.json({
-            error: "운영 서버(Vercel) 환경에서는 파일 생성이 제한되어 있습니다. 로컬 환경에서 실행하여 생성한 뒤 Github으로 배포(업데이트)해주세요."
-        }, { status: 403 });
-    }
-
     try {
-        const DOCS_DIR = path.join(process.cwd(), "doc", "MSCI");
-        const previousData = await getPreviousData(DOCS_DIR);
+        const previousData = await getPreviousData();
 
         const token = await getAccessToken();
         const ESTIMATED_KOSPI_TOTAL_CAP = await getKospiTotalMarketCap(token);
@@ -321,10 +320,12 @@ export async function POST(request: NextRequest) {
             if (!notRecFound) md += `- 이번 조사에서는 뚜렷하게 밸류에이션 부담이 커져 급격한 매도가 우려되는 비추천 종목은 관찰되지 않았습니다.\n`;
         }
 
-        const writePath = path.join(DOCS_DIR, "MSCI KOREA INDEX.md");
-
-        try { await fs.mkdir(DOCS_DIR, { recursive: true }); } catch (e) { }
-        await fs.writeFile(writePath, md, "utf-8");
+        const supabase = await createClient();
+        await supabase.from('study_boards').insert({
+            topic: 'msci',
+            title: `MSCI KOREA INDEX (${kst.toISOString().slice(0, 10)})`,
+            content: md,
+        });
 
         return NextResponse.json({ success: true, message: "Generated successfully." });
 
