@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { BookOpen, Edit, Save, X, FileText, CheckCircle2, TrendingUp, BarChart3, ShieldCheck } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { BookOpen, Edit, Save, X, FileText, CheckCircle2, TrendingUp, BarChart3, ShieldCheck, Upload } from "lucide-react";
 import SidebarLayout from "@/components/SidebarLayout";
 import JubotPageGuide from "@/components/common/JubotPageGuide";
 import { createClient } from "@/utils/supabase/client";
@@ -129,6 +129,8 @@ export default function StudyPage() {
     const [editedContent, setEditedContent] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(true);
     const [isGenerating, setIsGenerating] = useState<boolean>(false);
+    const [isUploading, setIsUploading] = useState<boolean>(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Auth state
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -197,6 +199,59 @@ export default function StudyPage() {
         }
     };
 
+    const handleFileUploadClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileUploadChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.name.endsWith('.md')) {
+            alert("MD (.md) 파일만 업로드 가능합니다.");
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const text = await file.text();
+
+            // 파일명에서 확장자 제거하여 제목으로 사용
+            const title = file.name.replace(/\.md$/, '');
+
+            const res = await fetch("/api/study-boards", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    topic,
+                    title,
+                    content: text
+                }),
+            });
+
+            if (res.ok) {
+                alert(`'${title}' 파일이 성공적으로 업로드되었습니다.`);
+                await fetchFiles(topic);
+            } else {
+                const errData = await res.json();
+                alert(`업로드 실패: ${errData.error || '알 수 없는 오류'}`);
+            }
+        } catch (error) {
+            console.error("File upload error:", error);
+            alert("업로드 중 오류가 발생했습니다.");
+        } finally {
+            setIsUploading(false);
+            // reset file input
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+        }
+    };
+
     const handleSave = async () => {
         if (!selectedFile) return;
 
@@ -258,14 +313,35 @@ export default function StudyPage() {
                             <JubotPageGuide guideText={TOPIC_CONFIG[topic].guide} />
                         </div>
                         {isAdmin && (
-                            <button
-                                onClick={handleGenerateInfo}
-                                disabled={isGenerating}
-                                className="w-full mt-2 text-sm bg-blue-600 hover:bg-blue-500 border border-blue-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
-                            >
-                                <ShieldCheck size={16} />
-                                {isGenerating ? '정보 만들기 생성 중...' : '정보 만들기 (서버 업로드)'}
-                            </button>
+                            <div className="flex flex-col gap-2 mt-2">
+                                {topic === "msci" && (
+                                    <button
+                                        onClick={handleGenerateInfo}
+                                        disabled={isGenerating || isUploading}
+                                        className="w-full text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 border border-blue-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
+                                    >
+                                        <ShieldCheck size={16} />
+                                        {isGenerating ? '정보 만들기 생성 중...' : '정보 만들기 (키움/자동)'}
+                                    </button>
+                                )}
+
+                                {/* MD 파일 업로드 버튼 */}
+                                <input
+                                    type="file"
+                                    accept=".md"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    onChange={handleFileUploadChange}
+                                />
+                                <button
+                                    onClick={handleFileUploadClick}
+                                    disabled={isGenerating || isUploading}
+                                    className="w-full text-sm bg-[#2A2A2A] hover:bg-[#333] disabled:opacity-50 border border-[#444] text-gray-200 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium shadow-sm"
+                                >
+                                    <Upload size={16} />
+                                    {isUploading ? '업로드 중...' : 'MD 파일 업로드'}
+                                </button>
+                            </div>
                         )}
                     </div>
                     <div className="flex-1 overflow-y-auto p-2">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 const MSCI_TOP10 = [
     { name: '삼성전자', code: '005930', msciWeight: 29.75 },
@@ -320,12 +321,28 @@ export async function POST(request: NextRequest) {
             if (!notRecFound) md += `- 이번 조사에서는 뚜렷하게 밸류에이션 부담이 커져 급격한 매도가 우려되는 비추천 종목은 관찰되지 않았습니다.\n`;
         }
 
-        const supabase = await createClient();
-        await supabase.from('study_boards').insert({
+        // 보안: 호출자가 올바른 관리자인지 확인
+        const supabaseAuth = await createClient();
+        const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+        if (authError || !user || user.email !== 'tark202020@gmail.com') {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const supabaseAdmin = createSupabaseClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
+        const { error: insertError } = await supabaseAdmin.from('study_boards').insert({
             topic: 'msci',
             title: `MSCI KOREA INDEX (${kst.toISOString().slice(0, 10)})`,
             content: md,
         });
+
+        if (insertError) {
+            console.error("Failed to insert MSCI into study_boards: ", insertError);
+            throw new Error(insertError.message);
+        }
 
         return NextResponse.json({ success: true, message: "Generated successfully." });
 

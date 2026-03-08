@@ -68,3 +68,41 @@ export async function PUT(request: Request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+export async function POST(request: Request) {
+    try {
+        const supabase = await createClient();
+
+        // Authorization check: Must be admin
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user || user.email !== 'tark202020@gmail.com') {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const { topic, title, content } = body;
+
+        if (!topic || !title || typeof content !== 'string') {
+            return NextResponse.json({ error: "Invalid topic, title, or content" }, { status: 400 });
+        }
+
+        const { error: insertError } = await supabase
+            .from('study_boards')
+            .insert({
+                topic,
+                title,
+                content
+            });
+
+        if (insertError) {
+            console.error("API /study-boards insert error:", insertError);
+            return NextResponse.json({ error: insertError.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, message: "File uploaded successfully" });
+
+    } catch (error: any) {
+        console.error("API /study-boards POST error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
