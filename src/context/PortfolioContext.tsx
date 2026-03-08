@@ -23,7 +23,7 @@ export interface Asset {
     name: string;
     category: 'KR' | 'US' | 'GOLD';
     sector?: string; // Add sector
-    secondary_category?: string; // User-defined secondary category
+    secondary_category?: string | null; // User-defined secondary category
     quantity: number;
     pricePerShare: number;
     purchaseDate?: string;

@@ -2,7 +2,7 @@
 
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency } from '@/utils/format';
@@ -103,7 +103,30 @@ export default function PortfolioSummaryBlock() {
     const { getStockData: getKrData } = useBatchStockPrice(krSymbols, 'KR');
     const { getStockData: getUsData } = useBatchStockPrice(usSymbols, 'US');
 
+    // Fetch Gold Spot Price separately for overall calculation
+    const [goldPrice, setGoldPrice] = useState<number>(0);
+    const hasGold = assets.some(a => a.category === 'GOLD');
+
+    useEffect(() => {
+        if (!hasGold) return;
+        const fetchGoldPrice = async () => {
+            try {
+                const res = await fetch('/api/kis/price/gold');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.stck_prpr) {
+                        setGoldPrice(parseFloat(data.stck_prpr));
+                    }
+                }
+            } catch (e) {
+                console.warn('[Gold] Summary block gold fetch failed', e);
+            }
+        };
+        fetchGoldPrice();
+    }, [hasGold]);
+
     const getPrice = (asset: Asset) => {
+        if (asset.category === 'GOLD') return goldPrice > 0 ? goldPrice : asset.pricePerShare;
         const clean = asset.symbol.replace('.KS', '');
         const data = asset.category === 'KR' ? getKrData(clean) : getUsData(asset.symbol);
         return data?.price || asset.pricePerShare;

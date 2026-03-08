@@ -142,7 +142,7 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
     const handleSave = () => {
         updateAsset(asset.id, {
             memo,
-            secondary_category: secondaryCategory || undefined, // 저장 로직 추가
+            secondary_category: secondaryCategory === '' ? null : secondaryCategory, // 저장 로직 수정 (미분류 시 명시적 null)
             targetPriceLower: targetLower ? parseFloat(targetLower.replace(/,/g, '')) : undefined,
             targetPriceUpper: targetUpper ? parseFloat(targetUpper.replace(/,/g, '')) : undefined,
         });
@@ -296,10 +296,10 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                                     const isDanger = lowerInfo?.isDanger || false;
                                     return (
                                         <div className={`flex-1 rounded border p-2 min-w-0 relative overflow-hidden ${isDanger
-                                                ? 'bg-red-600/30 border-red-400/60 animate-pulse'
-                                                : isWarning
-                                                    ? 'bg-amber-900/30 border-amber-400/50'
-                                                    : 'bg-blue-900/20 border-blue-500/20'
+                                            ? 'bg-red-600/30 border-red-400/60 animate-pulse'
+                                            : isWarning
+                                                ? 'bg-amber-900/30 border-amber-400/50'
+                                                : 'bg-blue-900/20 border-blue-500/20'
                                             }`}>
                                             {(isWarning || isDanger) && (
                                                 <div className={`absolute inset-0 ${isDanger ? 'bg-red-500/10' : 'bg-amber-500/5'}`} />

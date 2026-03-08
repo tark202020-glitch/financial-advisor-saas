@@ -149,6 +149,7 @@ export default function PortfolioTable() {
         return result.sort((a, b) => {
             // Helper to get price
             const getPrice = (asset: Asset) => {
+                if (asset.category === 'GOLD') return goldData?.price || asset.pricePerShare;
                 const cleanSymbol = asset.symbol.replace('.KS', '');
                 const data = asset.category === 'KR'
                     ? getKrData(cleanSymbol)

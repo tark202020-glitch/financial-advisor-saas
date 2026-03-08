@@ -448,7 +448,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     const handleSaveGoals = () => {
         if (!isDirty) return;
         updateAsset(asset.id, {
-            secondary_category: secondaryCategory || undefined,
+            secondary_category: secondaryCategory === '' ? null : secondaryCategory,
             memo,
             targetPriceLower: targetLower ? parseFloat(targetLower.replace(/,/g, '')) : undefined,
             targetPriceUpper: targetUpper ? parseFloat(targetUpper.replace(/,/g, '')) : undefined,
