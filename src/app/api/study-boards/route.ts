@@ -69,6 +69,41 @@ export async function PUT(request: Request) {
     }
 }
 
+export async function DELETE(request: Request) {
+    try {
+        const supabase = await createClient();
+
+        // Authorization check: Must be admin
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        if (authError || !user || user.email !== 'tark202020@gmail.com') {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const { id } = body;
+
+        if (!id) {
+            return NextResponse.json({ error: "Invalid document ID" }, { status: 400 });
+        }
+
+        const { error: deleteError } = await supabase
+            .from('study_boards')
+            .delete()
+            .eq('id', id);
+
+        if (deleteError) {
+            console.error("API /study-boards delete error:", deleteError);
+            return NextResponse.json({ error: deleteError.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, message: "File deleted successfully" });
+
+    } catch (error: any) {
+        console.error("API /study-boards delete error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
 export async function POST(request: Request) {
     try {
         const supabase = await createClient();

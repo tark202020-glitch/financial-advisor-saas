@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { BookOpen, Edit, Save, X, FileText, CheckCircle2, TrendingUp, BarChart3, ShieldCheck, Upload } from "lucide-react";
+import { BookOpen, Edit, Save, X, FileText, CheckCircle2, TrendingUp, BarChart3, ShieldCheck, Upload, Trash2 } from "lucide-react";
 import SidebarLayout from "@/components/SidebarLayout";
 import JubotPageGuide from "@/components/common/JubotPageGuide";
 import { createClient } from "@/utils/supabase/client";
@@ -38,12 +38,12 @@ const renderMarkdown = (text: string) => {
     const flushTable = () => {
         if (inTable) {
             elements.push(
-                <div key={`table-${elements.length}`} className="w-full overflow-x-auto my-6 rounded-lg border border-[#333] shadow-lg">
-                    <table className="w-full text-left border-collapse">
+                <div key={`table-${elements.length}`} className="w-full max-w-full overflow-x-auto my-6 rounded-lg border border-[#333] shadow-lg pb-2">
+                    <table className="min-w-full text-left border-collapse whitespace-nowrap">
                         <thead className="bg-[#1E1E1E]">
                             <tr>
                                 {tableHeaders.map((h, i) => (
-                                    <th key={i} className="border-b border-r border-[#333] px-4 py-3 text-sm font-semibold text-gray-200 last:border-r-0 whitespace-nowrap">{h}</th>
+                                    <th key={i} className="border-b border-r border-[#333] px-4 py-3 text-sm font-semibold text-gray-200 last:border-r-0">{h}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -123,7 +123,7 @@ const renderMarkdown = (text: string) => {
         i++;
     }
     flushTable();
-    return <div className="markdown-body font-sans max-w-5xl pl-4 py-4">{elements}</div>;
+    return <div className="markdown-body font-sans max-w-none w-full pb-10">{elements}</div>;
 };
 
 export default function StudyPage() {
@@ -208,6 +208,33 @@ export default function StudyPage() {
             alert("문서 생성 중 오류가 발생했습니다.");
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!selectedFile) return;
+        if (!confirm(`'${selectedFile.title}' 문서를 정말 삭제하시겠습니까?\n삭제된 문서는 복구할 수 없으며 시스템에서 영구히 지워집니다.`)) return;
+
+        try {
+            const res = await fetch("/api/study-boards", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: selectedFile.id })
+            });
+
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || "문서 삭제에 실패했습니다.");
+            }
+
+            alert("삭제되었습니다.");
+            setSelectedFile(null);
+            setContent("");
+            setEditedContent("");
+            setIsEditing(false);
+            fetchFiles(topic);
+        } catch (err: any) {
+            alert(err.message);
         }
     };
 
@@ -522,12 +549,22 @@ export default function StudyPage() {
                                             </button>
                                         </>
                                     ) : (
-                                        <button
-                                            onClick={() => setIsEditing(true)}
-                                            className="px-3 py-1.5 text-sm bg-[#333] hover:bg-[#444] rounded flex items-center gap-1 transition-colors"
-                                        >
-                                            <Edit size={16} /> 직접 에디터 수정
-                                        </button>
+                                        <>
+                                            {isAdmin && selectedFile && (
+                                                <button
+                                                    onClick={handleDelete}
+                                                    className="px-3 py-1.5 text-sm bg-red-900/60 hover:bg-red-800 text-red-200 rounded flex items-center gap-1 transition-colors"
+                                                >
+                                                    <Trash2 size={16} /> 삭제
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setIsEditing(true)}
+                                                className="px-3 py-1.5 text-sm bg-[#333] hover:bg-[#444] rounded flex items-center gap-1 transition-colors"
+                                            >
+                                                <Edit size={16} /> 직접 에디터 수정
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                             </div>

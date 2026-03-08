@@ -1,3 +1,13 @@
+## [Alpha V1.288] - 2026-03-08 22:45:00
+
+### 🔄 Build Update
+- **Summary**: 배당주 AI 분석기 신뢰도 향상 및 문서 관리 UI 고도화
+- **Detail**:
+  - AI 배당주 분석기 응답에 Google Search API 환경 변수(`googleSearch`) 연동, 프롬프트 실시간 기준일 주입으로 환각(Hallucination) 억제 개선
+  - 주식 스터디 마크다운 문서 뷰어 컴포넌트(`StudyPage`) CSS 레이아웃 구조 전면 개선 (테이블 짤림 방지 및 가로 스크롤 적용)
+  - 서버 DB(`study_boards`) 권한 연동 및 관리자 전용 '서버 문서 삭제' API(`DELETE /api/study-boards`)와 휴지통(Trash) 아이콘 버튼 컴포넌트 추가
+- **Build Time**: 2026-03-08 22:45:00
+
 ## [Alpha V1.287] - 2026-03-08 20:53:00
 
 ### 🔄 Build Update
