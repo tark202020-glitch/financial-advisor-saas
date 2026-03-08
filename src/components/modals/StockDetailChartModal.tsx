@@ -174,7 +174,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     // Local State for New Trade Log
     const [newTrade, setNewTrade] = useState({
         date: new Date().toISOString().split('T')[0],
-        type: 'BUY' as 'BUY' | 'SELL',
+        type: 'BUY' as 'BUY' | 'SELL' | 'DIVIDEND',
         price: '',
         quantity: '',
         kospiIndex: '',
@@ -515,6 +515,10 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     const profitLoss = currentValuation - totalPurchase;
     const returnRate = totalPurchase > 0 ? (profitLoss / totalPurchase) * 100 : 0;
     const isPositive = profitLoss >= 0;
+
+    const totalDividend = (asset.trades || [])
+        .filter(t => t.type === 'DIVIDEND')
+        .reduce((sum, t) => sum + (t.price * t.quantity), 0);
 
     // Out of bounds Logic for ReferenceLine
     const chartMax = displayData.length > 0 ? Math.max(...displayData.map(d => d.high)) : 0;
@@ -879,13 +883,22 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                     </div>
                                     <div className="text-[10px] text-gray-500 mt-2 mb-0.5">평가총액</div>
                                     <div className="text-lg font-bold text-white">{formatPrice(currentValuation)}</div>
+
+                                    {totalDividend > 0 && (
+                                        <>
+                                            <div className="text-[10px] text-gray-500 mt-2 mb-0.5">배당금 합계</div>
+                                            <div className="text-lg font-bold text-yellow-400">{formatPrice(totalDividend)}</div>
+                                        </>
+                                    )}
                                 </div>
-                                <button
-                                    onClick={() => setShowIndexComparison(true)}
-                                    className="bg-[#333] hover:bg-[#444] text-gray-300 font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition text-xs"
-                                >
-                                    📊 지수비교
-                                </button>
+                                <div className="flex flex-col gap-2">
+                                    <button
+                                        onClick={() => setShowIndexComparison(true)}
+                                        className="bg-[#333] hover:bg-[#444] text-gray-300 font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition text-xs"
+                                    >
+                                        📊 지수비교
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -1000,9 +1013,10 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                 </div>
                                 <div>
                                     <label className="text-[10px] text-gray-500 mb-1 block">구분</label>
-                                    <select value={newTrade.type} onChange={e => setNewTrade({ ...newTrade, type: e.target.value as 'BUY' | 'SELL' })} className="w-full h-9 px-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs">
+                                    <select value={newTrade.type} onChange={e => setNewTrade({ ...newTrade, type: e.target.value as 'BUY' | 'SELL' | 'DIVIDEND' })} className="w-full h-9 px-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs">
                                         <option value="BUY">매수</option>
                                         <option value="SELL">매도</option>
+                                        <option value="DIVIDEND">배당금</option>
                                     </select>
                                 </div>
                                 <div>
@@ -1059,8 +1073,8 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                             <div className="sm:hidden flex flex-col gap-3">
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${trade.type === 'BUY' ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>
-                                                            {trade.type === 'BUY' ? '매수' : '매도'}
+                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${trade.type === 'BUY' ? 'bg-red-900/30 text-red-400' : trade.type === 'SELL' ? 'bg-blue-900/30 text-blue-400' : 'bg-yellow-900/30 text-yellow-500'}`}>
+                                                            {trade.type === 'BUY' ? '매수' : trade.type === 'SELL' ? '매도' : '배당'}
                                                         </span>
                                                         <span className="font-mono text-gray-400 text-[10px]">{trade.date}</span>
                                                     </div>
@@ -1086,8 +1100,8 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                             <div className="hidden sm:contents">
                                                 <div className="font-mono text-gray-400">{trade.date}</div>
                                                 <div>
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${trade.type === 'BUY' ? 'bg-red-900/30 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>
-                                                        {trade.type === 'BUY' ? '매수' : '매도'}
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${trade.type === 'BUY' ? 'bg-red-900/30 text-red-400' : trade.type === 'SELL' ? 'bg-blue-900/30 text-blue-400' : 'bg-yellow-900/30 text-yellow-500'}`}>
+                                                        {trade.type === 'BUY' ? '매수' : trade.type === 'SELL' ? '매도' : '배당'}
                                                     </span>
                                                 </div>
                                                 <div className="font-medium text-white">{formatPrice(trade.price)}</div>

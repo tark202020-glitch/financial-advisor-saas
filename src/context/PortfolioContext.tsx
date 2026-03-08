@@ -10,7 +10,7 @@ import FullPageLoader from '@/components/ui/FullPageLoader';
 export interface TradeRecord {
     id: number;
     date: string;
-    type: 'BUY' | 'SELL';
+    type: 'BUY' | 'SELL' | 'DIVIDEND';
     price: number;
     quantity: number;
     kospiIndex?: number;

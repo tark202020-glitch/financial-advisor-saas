@@ -135,10 +135,10 @@ export default function PortfolioSummaryBlock() {
     // ===== Summary Calculations =====
     const summary = useMemo(() => {
         const result = {
-            all: { purchase: 0, valuation: 0, profit: 0, rate: 0 },
-            kr: { purchase: 0, valuation: 0, profit: 0, rate: 0 },
-            us: { purchase: 0, valuation: 0, profit: 0, rate: 0 },
-            categories: {} as Record<string, { purchase: number, valuation: number, profit: number, rate: number }>
+            all: { purchase: 0, valuation: 0, profit: 0, rate: 0, dividend: 0 },
+            kr: { purchase: 0, valuation: 0, profit: 0, rate: 0, dividend: 0 },
+            us: { purchase: 0, valuation: 0, profit: 0, rate: 0, dividend: 0 },
+            categories: {} as Record<string, { purchase: number, valuation: number, profit: number, rate: number, dividend: number }>
         };
 
         // Active positions only (quantity > 0)
@@ -161,21 +161,29 @@ export default function PortfolioSummaryBlock() {
                 const purchaseKRW = cat === 'us' ? purchaseInCurrency * exRate : purchaseInCurrency;
                 const valuationKRW = cat === 'us' ? valuationInCurrency * exRate : valuationInCurrency;
 
+                const tDividend = (a.trades || [])
+                    .filter(t => t.type === 'DIVIDEND')
+                    .reduce((sum, t) => sum + (t.price * t.quantity), 0);
+                const dividendKRW = cat === 'us' ? tDividend * exRate : tDividend;
+
                 // Add to 'kr' or 'us' specific totals (Always in KRW as per user request to unify)
                 result[cat].purchase += purchaseKRW;
                 result[cat].valuation += valuationKRW;
+                result[cat].dividend += dividendKRW;
 
                 // Add to 'all' total (Always in KRW)
                 result.all.purchase += purchaseKRW;
                 result.all.valuation += valuationKRW;
+                result.all.dividend += dividendKRW;
 
                 // Add to category buckets (Always in KRW)
                 const secCat = a.secondary_category || '미분류';
                 if (!result.categories[secCat]) {
-                    result.categories[secCat] = { purchase: 0, valuation: 0, profit: 0, rate: 0 };
+                    result.categories[secCat] = { purchase: 0, valuation: 0, profit: 0, rate: 0, dividend: 0 };
                 }
                 result.categories[secCat].purchase += purchaseKRW;
                 result.categories[secCat].valuation += valuationKRW;
+                result.categories[secCat].dividend += dividendKRW;
             });
 
         // Calculate profits and rates
@@ -346,6 +354,11 @@ export default function PortfolioSummaryBlock() {
                                         {isPositive ? '▲ ' : '▼ '}{fmtRate(current.rate)}%
                                     </div>
                                 </div>
+                                {current.dividend > 0 && (
+                                    <div className="text-xs sm:text-sm font-bold text-yellow-500 mt-2">
+                                        배당금 합계 : 총 {fmtValue(current.dividend, view)}
+                                    </div>
+                                )}
                             </div>
                             {isPositive ? (
                                 <TrendingUp className="hidden md:block w-12 h-12 opacity-30 text-red-400" />
@@ -488,6 +501,11 @@ export default function PortfolioSummaryBlock() {
                                                             <div className={`text-sm font-bold mt-1 ${stats.profit >= 0 ? 'text-red-400/80' : 'text-blue-400/80'}`}>
                                                                 {stats.profit >= 0 ? '+ ' : '- '}{fmtValue(Math.abs(stats.profit), 'kr')}
                                                             </div>
+                                                            {stats.dividend > 0 && (
+                                                                <div className="text-[10px] sm:text-xs font-bold text-yellow-500 mt-1 truncate" title={`배당금 합계 : ${fmtValue(stats.dividend, 'kr')}`}>
+                                                                    배당금 합계 : {fmtValue(stats.dividend, 'kr')}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div className="flex items-end justify-between pt-3 border-t border-white/10 mt-auto">
                                                             <div>

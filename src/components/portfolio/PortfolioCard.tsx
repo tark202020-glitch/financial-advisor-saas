@@ -169,6 +169,10 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
         return { distanceRate, isWarning, isDanger };
     };
 
+    const totalDividend = (asset.trades || [])
+        .filter(t => t.type === 'DIVIDEND')
+        .reduce((sum, t) => sum + (t.price * t.quantity), 0);
+
     return (
         <>
             <div
@@ -256,6 +260,11 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                                 <div className="text-[10px] sm:text-[11px] font-bold text-gray-400 truncate mt-auto w-full text-right" title={`평가액: ${formatPrice(currentPrice * asset.quantity)}`}>
                                     평가액: {formatPrice(currentPrice * asset.quantity)}
                                 </div>
+                                {totalDividend > 0 && (
+                                    <div className="text-[10px] sm:text-[11px] font-bold text-yellow-500 truncate mt-1 w-full text-right" title={`배당금: ${formatPrice(totalDividend)}`}>
+                                        배당금: {formatPrice(totalDividend)}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
