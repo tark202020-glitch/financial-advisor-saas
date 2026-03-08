@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Calendar, Edit3, Trash2, Save, Plus, HelpCircle } from 'lucide-react';
+import { X, Calendar, Edit3, Trash2, Save, Plus, HelpCircle, Coins } from 'lucide-react';
 import { formatCurrency } from '@/utils/format';
 import {
     ComposedChart,
@@ -893,7 +893,9 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
 
                                     {totalDividend > 0 && (
                                         <>
-                                            <div className="text-[10px] text-gray-500 mt-2 mb-0.5">배당금 합계</div>
+                                            <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-2 mb-0.5" title="누적 배당금">
+                                                <Coins size={12} className="text-yellow-500 opacity-80" />
+                                            </div>
                                             <div className="text-lg font-bold text-yellow-400">{formatPrice(totalDividend)}</div>
                                         </>
                                     )}

@@ -3,7 +3,7 @@
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 import { useMemo, useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2, Coins } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency } from '@/utils/format';
 
@@ -355,8 +355,9 @@ export default function PortfolioSummaryBlock() {
                                     </div>
                                 </div>
                                 {current.dividend > 0 && (
-                                    <div className="text-xs sm:text-sm font-bold text-yellow-500 mt-2">
-                                        배당금 합계 : 총 {fmtValue(current.dividend, view)}
+                                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-yellow-500 mt-2">
+                                        <Coins size={14} className="opacity-80" />
+                                        <span>총 {fmtValue(current.dividend, view)}</span>
                                     </div>
                                 )}
                             </div>
@@ -502,8 +503,9 @@ export default function PortfolioSummaryBlock() {
                                                                 {stats.profit >= 0 ? '+ ' : '- '}{fmtValue(Math.abs(stats.profit), 'kr')}
                                                             </div>
                                                             {stats.dividend > 0 && (
-                                                                <div className="text-[10px] sm:text-xs font-bold text-yellow-500 mt-1 truncate" title={`배당금 합계 : ${fmtValue(stats.dividend, 'kr')}`}>
-                                                                    배당금 합계 : {fmtValue(stats.dividend, 'kr')}
+                                                                <div className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-yellow-500 mt-1 truncate" title={`누적 배당금: ${fmtValue(stats.dividend, 'kr')}`}>
+                                                                    <Coins size={12} className="opacity-80" />
+                                                                    <span>{fmtValue(stats.dividend, 'kr')}</span>
                                                                 </div>
                                                             )}
                                                         </div>

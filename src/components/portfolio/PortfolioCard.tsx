@@ -3,7 +3,7 @@
 // import { useStockPrice } from '@/hooks/useStockPrice';
 import { Asset, usePortfolio } from '@/context/PortfolioContext';
 import { useState, useEffect } from 'react';
-import { RefreshCw, HelpCircle } from 'lucide-react';
+import { RefreshCw, HelpCircle, Coins } from 'lucide-react';
 import StockDetailChartModal from '../modals/StockDetailChartModal';
 import { formatCurrency } from '@/utils/format';
 
@@ -261,8 +261,11 @@ export default function PortfolioCard({ asset, stockData, onRefresh }: Portfolio
                                     평가액: {formatPrice(currentPrice * asset.quantity)}
                                 </div>
                                 {totalDividend > 0 && (
-                                    <div className="text-[10px] sm:text-[11px] font-bold text-yellow-500 truncate mt-1 w-full text-right" title={`배당금: ${formatPrice(totalDividend)}`}>
-                                        배당금: {formatPrice(totalDividend)}
+                                    <div className="flex items-center justify-end gap-1 mt-1 text-yellow-500" title={`누적 배당금: ${formatPrice(totalDividend)}`}>
+                                        <Coins size={12} className="opacity-80 drop-shadow-sm" />
+                                        <span className="text-[10px] sm:text-[11px] font-bold truncate">
+                                            {formatPrice(totalDividend)}
+                                        </span>
                                     </div>
                                 )}
                             </div>
