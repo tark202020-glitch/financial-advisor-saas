@@ -38,20 +38,22 @@ const renderMarkdown = (text: string) => {
     const flushTable = () => {
         if (inTable) {
             elements.push(
-                <div key={`table-${elements.length}`} className="w-full max-w-full overflow-x-auto my-6 rounded-lg border border-[#333] shadow-lg pb-2">
-                    <table className="min-w-full text-left border-collapse whitespace-nowrap">
-                        <thead className="bg-[#1E1E1E]">
+                <div key={`table-${elements.length}`} className="w-full overflow-x-auto my-8 rounded-xl border border-[#333] shadow-2xl bg-[#1A1A1A]">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-[#222]">
                             <tr>
                                 {tableHeaders.map((h, i) => (
-                                    <th key={i} className="border-b border-r border-[#333] px-4 py-3 text-sm font-semibold text-gray-200 last:border-r-0">{h}</th>
+                                    <th key={i} className="border-b border-r border-[#333] px-4 py-3 text-sm font-bold text-gray-200 last:border-r-0 break-keep align-middle">
+                                        {h}
+                                    </th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody>
                             {tableRows.map((row, i) => (
-                                <tr key={i} className="border-b border-[#333] last:border-b-0 hover:bg-[#252525] transition-colors">
+                                <tr key={i} className="border-b border-[#333] last:border-b-0 hover:bg-[#2A2A2A] transition-colors group">
                                     {row.map((cell, j) => (
-                                        <td key={j} className="border-r border-[#333] px-4 py-3 text-sm text-gray-300 last:border-r-0" dangerouslySetInnerHTML={{ __html: parseInline(cell) }}></td>
+                                        <td key={j} className="border-r border-[#333] px-4 py-3 text-sm text-gray-400 group-hover:text-gray-200 last:border-r-0 break-words align-top leading-relaxed min-w-[100px]" dangerouslySetInnerHTML={{ __html: parseInline(cell) }}></td>
                                     ))}
                                 </tr>
                             ))}
@@ -123,7 +125,7 @@ const renderMarkdown = (text: string) => {
         i++;
     }
     flushTable();
-    return <div className="markdown-body font-sans max-w-none w-full pb-10">{elements}</div>;
+    return <div className="markdown-body font-sans max-w-5xl mx-auto w-full pb-10 px-6 pt-4">{elements}</div>;
 };
 
 export default function StudyPage() {
