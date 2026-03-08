@@ -11,9 +11,15 @@ type Topic = "msci" | "dividend" | "etf";
 
 const TOPIC_CONFIG = {
     msci: { title: "MSCI 스터디", icon: <BookOpen size={20} className="text-[#F7D047]" />, guide: "MSCI 관련 문서를 열람하고 수정(저장) 할 수 있습니다. '정보 만들기'로 최신 데이터를 구성하세요." },
-    dividend: { title: "배당주 분석", icon: <TrendingUp size={20} className="text-[#F7D047]" />, guide: "배당주 관련 분석 자료를 열람하는 공간입니다." },
-    etf: { title: "ETF 분석기", icon: <BarChart3 size={20} className="text-[#F7D047]" />, guide: "ETF 관련 인사이트와 시뮬레이션 자료를 확인하세요." }
+    dividend: { title: "배당주 분석", icon: <TrendingUp size={20} className="text-[#F7D047]" />, guide: "배당주 투자 방향과 시가배당률 랭킹, 그리고 안정적인 배당 파이프라인 구축을 위한 심층 리포트가 수록됩니다. 프롬프트를 통해 커스텀 분석 요청이 가능합니다." },
+    etf: { title: "ETF 분석기", icon: <BarChart3 size={20} className="text-[#F7D047]" />, guide: "우량주 기반의 ETF 및 산업별 핵심 ETF의 퍼포먼스 리뷰와 추세 추종 전략 시뮬레이션 결과를 열람합니다." }
 };
+
+const DEFAULT_DIVIDEND_PROMPT = `[목적] 국내 시장의 배당주/배당ETF 전체를 조사 후 시가배당률 기준 상위 30%를 선별하여 리포트 작성
+[제외 대상] 옵션 매도 전략을 쓰는 커버드콜(Covered Call) 종목 전면 제외
+[포함 대상] 일반 패시브 배당 ETF, 리츠 및 액티브형 고배당 ETF 포함
+[출력 양식] 아래 컬럼을 포함하는 마크다운 테이블과 분석 코멘트
+| 종목 | 현재주식시세 | 주당배당금 | 지급횟수(연간) | 시가배당률 | 최근 배당기준일 | 1700만원으로 살수 있는 주식수 | 1700만원으로 받을 수 있는 배당금(연기준) |`;
 
 type StudyBoard = {
     id: string;
@@ -132,6 +138,10 @@ export default function StudyPage() {
     const [isUploading, setIsUploading] = useState<boolean>(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // AI Generation state
+    const [isPromptMode, setIsPromptMode] = useState<boolean>(false);
+    const [dividendPrompt, setDividendPrompt] = useState<string>(DEFAULT_DIVIDEND_PROMPT);
+
     // Auth state
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
     const supabase = createClient();
@@ -156,6 +166,7 @@ export default function StudyPage() {
         setSelectedFile(null);
         setContent("");
         setIsEditing(false);
+        setIsPromptMode(false);
         try {
             const res = await fetch(`/api/study-boards?topic=${currentTopic}`);
             if (res.ok) {
@@ -172,6 +183,7 @@ export default function StudyPage() {
     const handleSelectFile = (board: StudyBoard) => {
         setSelectedFile(board);
         setIsEditing(false);
+        setIsPromptMode(false);
         setContent(board.content || "");
         setEditedContent(board.content || "");
     };
@@ -252,9 +264,70 @@ export default function StudyPage() {
         }
     };
 
-    const handleSave = async () => {
-        if (!selectedFile) return;
+    const handleGenerateDividend = async () => {
+        if (!dividendPrompt.trim()) {
+            alert("프롬프트를 입력해주세요.");
+            return;
+        }
 
+        setIsGenerating(true);
+        try {
+            const res = await fetch("/api/study/generate-dividend", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt: dividendPrompt })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                setContent(data.content);
+                setEditedContent(data.content);
+                setIsPromptMode(false);
+                setSelectedFile(null); // 신규 생성상태
+                setIsEditing(true); // 에디터 모드로 진입시켜 검수 후 저장 유도
+            } else {
+                alert(`분석 실패: ${data.error}`);
+            }
+        } catch (error) {
+            console.error("AI Generation failed:", error);
+            alert("API 호출 중 오류가 발생했습니다.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (!selectedFile) {
+            // 새 파일 (AI 자동생성 결과 등) 저장
+            const titleInput = prompt("저장할 문서의 제목을 입력하세요:", `${TOPIC_CONFIG[topic].title} - ${new Date().toLocaleDateString()}`);
+            if (!titleInput) return;
+
+            try {
+                const res = await fetch("/api/study-boards", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        topic,
+                        title: titleInput,
+                        content: editedContent,
+                    }),
+                });
+
+                if (res.ok) {
+                    alert("성공적으로 서버에 등록되었습니다.");
+                    await fetchFiles(topic); // 새로고침되어 목록에 표시됨 (이 때 isEditing = false, selectedFile = null 됨)
+                } else {
+                    const err = await res.json();
+                    alert(`저장에 실패했습니다. (${err.error})`);
+                }
+            } catch (error) {
+                console.error("Failed to save new file:", error);
+                alert("저장 중 오류가 발생했습니다.");
+            }
+            return;
+        }
+
+        // 기존 파일 업데이트 로직
         try {
             const res = await fetch("/api/study-boards", {
                 method: "PUT",
@@ -325,6 +398,17 @@ export default function StudyPage() {
                                     </button>
                                 )}
 
+                                {topic === "dividend" && (
+                                    <button
+                                        onClick={() => { setIsPromptMode(true); setSelectedFile(null); setIsEditing(false); }}
+                                        disabled={isGenerating || isUploading}
+                                        className="w-full text-sm bg-purple-600 hover:bg-purple-500 disabled:opacity-50 border border-purple-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
+                                    >
+                                        <ShieldCheck size={16} />
+                                        {isGenerating ? 'AI 준비 중...' : 'AI 분석 시작 (프롬프트)'}
+                                    </button>
+                                )}
+
                                 {/* MD 파일 업로드 버튼 */}
                                 <input
                                     type="file"
@@ -372,23 +456,59 @@ export default function StudyPage() {
                     </div>
                 </div>
 
-                {/* 오른쪽 영역: 문서 내용/수정 */}
+                {/* 오른쪽 영역: 문서 내용/수정/AI 프롬프트 */}
                 <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] bg-[#121212]">
-                    {selectedFile ? (
+                    {isPromptMode ? (
+                        <div className="flex flex-col h-full bg-[#121212] p-8">
+                            <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                                🚀 AI 증권 분석기 (Gemini 연동)
+                            </h2>
+                            <p className="text-gray-400 mb-6 text-sm">원하시는 분석 가이드라인(프롬프트)을 아래에 작성해주세요. 지시사항에 맞게 AI가 마크다운 포맷의 리포트를 자동 생성합니다.</p>
+                            <textarea
+                                className="flex-1 w-full p-6 bg-[#1A1A1A] text-gray-200 border border-[#333] rounded-lg outline-none resize-none font-mono text-sm leading-relaxed mb-6 focus:border-purple-500 transition-colors shadow-inner"
+                                value={dividendPrompt}
+                                onChange={(e) => setDividendPrompt(e.target.value)}
+                            />
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    onClick={() => setIsPromptMode(false)}
+                                    className="px-5 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+                                    disabled={isGenerating}
+                                >
+                                    취소
+                                </button>
+                                <button
+                                    onClick={handleGenerateDividend}
+                                    disabled={isGenerating}
+                                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-bold transition-colors shadow-md flex items-center gap-2"
+                                >
+                                    {isGenerating ? 'AI가 분석하고 문서를 작성하고 있습니다...' : '분석 시작'}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (selectedFile !== null || isEditing) ? (
                         <>
                             {/* 헤더 액션 바 */}
                             <div className="h-14 border-b border-[#333] flex items-center justify-between px-6 bg-[#1A1A1A]">
                                 <h3 className="font-bold text-gray-200 flex items-center gap-2">
                                     <FileText size={18} className="text-gray-400" />
-                                    {selectedFile.title}
+                                    {selectedFile ? selectedFile.title : "새 결과물 미리보기 (미저장 상태)"}
                                 </h3>
                                 <div className="flex gap-2">
                                     {isEditing ? (
                                         <>
                                             <button
                                                 onClick={() => {
-                                                    setIsEditing(false);
-                                                    setEditedContent(content); // 변경 취소
+                                                    if (!selectedFile) {
+                                                        if (confirm("저장하지 않고 취소하시겠습니까?")) {
+                                                            setIsEditing(false);
+                                                            setContent("");
+                                                            setEditedContent("");
+                                                        }
+                                                    } else {
+                                                        setIsEditing(false);
+                                                        setEditedContent(content);
+                                                    }
                                                 }}
                                                 className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 rounded flex items-center gap-1 transition-colors"
                                             >
@@ -398,7 +518,7 @@ export default function StudyPage() {
                                                 onClick={handleSave}
                                                 className="px-3 py-1.5 text-sm bg-[#F7D047] hover:bg-yellow-500 text-black font-bold rounded flex items-center gap-1 transition-colors"
                                             >
-                                                <Save size={16} /> 저장하기
+                                                <Save size={16} /> 서버에 등록(저장)
                                             </button>
                                         </>
                                     ) : (
@@ -406,7 +526,7 @@ export default function StudyPage() {
                                             onClick={() => setIsEditing(true)}
                                             className="px-3 py-1.5 text-sm bg-[#333] hover:bg-[#444] rounded flex items-center gap-1 transition-colors"
                                         >
-                                            <Edit size={16} /> 수정하기
+                                            <Edit size={16} /> 직접 에디터 수정
                                         </button>
                                     )}
                                 </div>
@@ -419,6 +539,7 @@ export default function StudyPage() {
                                         className="w-full h-full p-6 bg-[#121212] text-gray-200 outline-none resize-none font-mono text-sm leading-relaxed"
                                         value={editedContent}
                                         onChange={(e) => setEditedContent(e.target.value)}
+                                        placeholder="이곳에 마크다운 내용이 생성됩니다. 자유롭게 추가 편집하시고 우측 상단 '서버에 등록'을 누르세요."
                                     />
                                 ) : (
                                     <div className="w-full h-full overflow-y-auto p-6 bg-[#121212]">
