@@ -457,25 +457,32 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     };
 
     const handleSaveTrade = async () => {
-        if (!newTrade.price || !newTrade.quantity) return;
+        if (!newTrade.price || (newTrade.type !== 'DIVIDEND' && !newTrade.quantity)) {
+            alert('가격과 수량(배당금 제외)을 모두 입력해주세요.');
+            return;
+        }
         const tradeData = {
             date: newTrade.date,
             type: newTrade.type,
             price: Number(newTrade.price),
-            quantity: Number(newTrade.quantity),
+            quantity: newTrade.type === 'DIVIDEND' && !newTrade.quantity ? 1 : Number(newTrade.quantity),
             kospiIndex: newTrade.kospiIndex ? Number(newTrade.kospiIndex) : undefined,
             memo: newTrade.memo
         };
 
-        if (editingTradeId) {
-            await updateTradeLog(editingTradeId, asset.id, tradeData);
-        } else {
-            await addTradeLog(asset.id, tradeData);
-        }
+        try {
+            if (editingTradeId) {
+                await updateTradeLog(editingTradeId, asset.id, tradeData);
+            } else {
+                await addTradeLog(asset.id, tradeData);
+            }
 
-        setNewTrade({ date: new Date().toISOString().split('T')[0], type: 'BUY', price: '', quantity: '', kospiIndex: '', memo: '' });
-        setIsAddingLog(false);
-        setEditingTradeId(null);
+            setNewTrade({ date: new Date().toISOString().split('T')[0], type: 'BUY', price: '', quantity: '', kospiIndex: '', memo: '' });
+            setIsAddingLog(false);
+            setEditingTradeId(null);
+        } catch (e: any) {
+            alert(`저장 중 오류가 발생했습니다. DB 타입 에러일 수 있습니다. 메시지: ${e.message}`);
+        }
     };
 
     const handleEditTrade = (trade: any) => {

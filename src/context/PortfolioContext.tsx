@@ -367,7 +367,7 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     const addTradeLog = async (assetId: number, trade: Omit<TradeRecord, 'id'>) => {
         if (!user) return;
         try {
-            await supabase.from('trade_logs').insert({
+            const { error } = await supabase.from('trade_logs').insert({
                 portfolio_id: assetId,
                 user_id: user.id,
                 type: trade.type,
@@ -377,10 +377,14 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 kospi_index: trade.kospiIndex,
                 memo: trade.memo
             });
+            if (error) throw error;
 
             await recalculateAssetMetrics(assetId);
             await fetchPortfolio(user.id, true);
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
     };
 
     // CRUD: Update Trade Log (New)
@@ -404,7 +408,10 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
 
             await recalculateAssetMetrics(assetId);
             await fetchPortfolio(user.id, true);
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
     };
 
     // CRUD: Remove Trade Log
