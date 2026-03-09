@@ -1,19 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const MSCI_TOP10 = [
-    { name: '삼성전자', code: '005930', msciWeight: 29.75 },
-    { name: 'SK하이닉스', code: '000660', msciWeight: 20.06 },
-    { name: '현대차', code: '005380', msciWeight: 3.25 },
-    { name: 'SK스퀘어', code: '402340', msciWeight: 2.27 },
-    { name: 'KB금융', code: '105560', msciWeight: 2.10 },
-    { name: '기아', code: '000270', msciWeight: 1.75 },
-    { name: '두산에너빌리티', code: '034020', msciWeight: 1.73 },
-    { name: '신한지주', code: '055550', msciWeight: 1.48 },
-    { name: '한화에어로스페이스', code: '012450', msciWeight: 1.47 },
-    { name: '셀트리온', code: '068270', msciWeight: 1.38 },
-];
-const MSCI_TOTAL_WEIGHT = 65.24;
+export const maxDuration = 60;
+
 
 async function getKospiTotalMarketCap(token: string) {
     const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
@@ -180,6 +170,33 @@ async function getPreviousData() {
 
 export async function POST(request: NextRequest) {
     try {
+        const apiKey = process.env.GOOGLE_AI_API_KEY;
+        if (!apiKey) throw new Error("AI API key is missing");
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const modelObj: any = { model: "gemini-2.5-pro", tools: [{ googleSearch: {} }] };
+        const model = genAI.getGenerativeModel(modelObj);
+
+        const systemPrompt = `당신은 금융 데이터 분석가입니다. 구글 검색을 활용하여 가장 최신의 'MSCI Korea Index' (msci.com 공식 자료 기준) 상위 10개(Top 10 constituents) 종목을 정확하게 조사하세요. 
+각 종목의 '종목코드(6자리 대한민국 주식 코드)', '한글 종목명', '편입비율(%, 숫자만)'을 찾아서 반드시 아래 JSON 배열 형식으로만 응답하고 다른 설명은 일절 추가하지 마세요.
+[
+  { "name": "삼성전자", "code": "005930", "msciWeight": 33.61 },
+  { "name": "SK하이닉스", "code": "000660", "msciWeight": 18.99 },
+  { "name": "삼성전자우", "code": "005935", "msciWeight": 3.85 },
+  ...
+]`;
+        const aiResult = await model.generateContent(systemPrompt);
+        const responseText = aiResult.response.text();
+
+        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) throw new Error("Failed to parse MSCI data from AI.");
+
+        const MSCI_TOP10: { name: string, code: string, msciWeight: number }[] = JSON.parse(jsonMatch[0]);
+        let MSCI_TOTAL_WEIGHT = 0;
+        for (const item of MSCI_TOP10) {
+            MSCI_TOTAL_WEIGHT += item.msciWeight;
+        }
+
         const previousData = await getPreviousData();
 
         const token = await getAccessToken();
@@ -217,7 +234,7 @@ export async function POST(request: NextRequest) {
 
         md += `## 📊 신규 통합 산출 테이블 (현재 데이터)\n\n`;
         md += `KOSPI 시가총액의 경우 KIS 전일 지수를 기반으로 산출되었습니다.\n`;
-        md += `MSCI Top 10 종목의 합산 비중(65.24%)에 맞추어 KOSPI 전체 대비 비중을 조정한 값을 통해 최종 격차를 산출합니다.\n\n`;
+        md += `MSCI Top 10 종목의 합산 비중(${MSCI_TOTAL_WEIGHT.toFixed(2)}%)에 맞추어 KOSPI 전체 대비 비중을 조정한 값을 통해 최종 격차를 산출합니다.\n\n`;
 
         md += `| MSCI TOP10 | MSCI 비율 (%) | KOSPI 시총 (조원) | KOSPI 보정 비율 (%) | 비율 차이 (MSCI - 보정) |\n`;
         md += `|:---|---:|---:|---:|---:|\n`;

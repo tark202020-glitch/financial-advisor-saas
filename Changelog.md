@@ -1,3 +1,13 @@
+## [Alpha V1.291] - 2026-03-09 11:00:00
+
+### 🔄 Build Update
+- **Summary**: MSCI 스터디 데이터 추출 방식 AI 크롤링 연동 개편
+- **Detail**:
+  - 기존 하드코딩된 과거 데이터(`MSCI_TOP10`)를 폐기하고, 공식 페이지 방어 매커니즘 우회를 위해 `GoogleGenerativeAI(Gemini-2.5-pro)` 기반의 구글 실시간 검색 툴 연동
+  - 매 호출 시점마다 2026년 최신 MSCI Korea Index 편입 기준(Top 10 종목 및 비율)을 검색/파싱하여(JSON 변환) KIS 시총 API와 100% 동적 매핑되도록 로직 재구성
+  - AI 생성 응답 시간 대기를 위해 `maxDuration = 60` 설정 추가
+- **Build Time**: 2026-03-09 11:00:00
+
 ## [Alpha V1.290] - 2026-03-09 10:35:00
 
 ### 🔄 Build Update
