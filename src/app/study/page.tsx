@@ -220,6 +220,26 @@ export default function StudyPage() {
         }
     };
 
+    const handleGenerateDividendEtf = async () => {
+        setIsGenerating(true);
+        try {
+            const res = await fetch("/api/study/generate-dividend-etf", { method: "POST" });
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                alert("배당ETF TOP10 문서를 성공적으로 생성했습니다.");
+                await fetchFiles(topic);
+            } else {
+                alert(`문서 생성 실패: ${data.error || '알 수 없는 오류'}`);
+            }
+        } catch (error) {
+            console.error('Failed to generate dividend ETF:', error);
+            alert("문서 생성 중 오류가 발생했습니다.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handleDelete = async () => {
         if (!selectedFile) return;
         if (!confirm(`'${selectedFile.title}' 문서를 정말 삭제하시겠습니까?\n삭제된 문서는 복구할 수 없으며 시스템에서 영구히 지워집니다.`)) return;
@@ -423,17 +443,36 @@ export default function StudyPage() {
                         </div>
                         {isAdmin && (
                             <div className="flex flex-col gap-2 mt-2">
-                                {(topic === "msci" || topic === "dividend") && (
+                                {topic === "msci" && (
                                     <button
                                         onClick={handleGenerateInfo}
                                         disabled={isGenerating || isUploading}
-                                        className={`w-full text-sm ${topic === 'dividend' ? 'bg-purple-600 hover:bg-purple-500 border-purple-500' : 'bg-blue-600 hover:bg-blue-500 border-blue-500'} disabled:opacity-50 border text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md`}
+                                        className="w-full text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 border border-blue-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
                                     >
                                         <ShieldCheck size={16} />
-                                        {isGenerating
-                                            ? (topic === 'dividend' ? 'KIS API 데이터 수집 중... (약 30초)' : '정보 만들기 생성 중...')
-                                            : (topic === 'dividend' ? 'AI 분석 시작 (KIS API)' : '정보 만들기 (키움/자동)')}
+                                        {isGenerating ? '정보 만들기 생성 중...' : '정보 만들기 (키움/자동)'}
                                     </button>
+                                )}
+
+                                {topic === "dividend" && (
+                                    <>
+                                        <button
+                                            onClick={handleGenerateInfo}
+                                            disabled={isGenerating || isUploading}
+                                            className="w-full text-sm bg-purple-600 hover:bg-purple-500 disabled:opacity-50 border border-purple-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
+                                        >
+                                            <ShieldCheck size={16} />
+                                            {isGenerating ? 'KIS API 데이터 수집 중...' : '배당주 TOP10조사'}
+                                        </button>
+                                        <button
+                                            onClick={handleGenerateDividendEtf}
+                                            disabled={isGenerating || isUploading}
+                                            className="w-full text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 border border-emerald-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
+                                        >
+                                            <ShieldCheck size={16} />
+                                            {isGenerating ? 'KIS API 데이터 수집 중...' : '배당ETF TOP10조사'}
+                                        </button>
+                                    </>
                                 )}
 
                                 {/* MD 파일 업로드 버튼 */}
