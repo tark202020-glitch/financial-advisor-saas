@@ -1,3 +1,13 @@
+## [Alpha V1.295] - 2026-03-09 23:02:15
+
+### 🚀 Performance & Bug Fix
+- **Summary**: 포트폴리오 화면 실시간 가격 데이터 연동 통합 및 속도 제한(Rate Limit) 오류 해소
+- **Detail**: 
+  - `PortfolioSummaryBlock`과 `PortfolioTable`에서 각각 개별적으로 발송하던 실시간 데이터 연동 API 요청(useBatchStockPrice)을 하나의 전역 상태 관리 영역(`PortfolioContext`)으로 격상하여 단일화 처리.
+  - 이로 인해 KIS API 및 백엔드 서버로 향하는 트래픽이 절반으로 줄어들어 "Too Many Requests" 에러가 원천적으로 차단됨.
+  - '새로고침' 클릭 시 자식 컴포넌트 간 로딩 상태 동기화 누락 이슈도 함께 해결되어 더 빠르고 일관된 뷰 제공.
+- **Build Time**: 2026-03-09 23:02:15
+
 ## [Alpha V1.294] - 2026-03-09 22:31:23
 
 ### 🐛 Bug Fix

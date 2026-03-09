@@ -1,8 +1,7 @@
 "use client";
 
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
-import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState } from 'react';
 import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2, Coins, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency } from '@/utils/format';
@@ -86,68 +85,26 @@ const getCategoryStyle = (category: string | undefined) => {
 };
 
 export default function PortfolioSummaryBlock() {
-    const { assets, exchangeRate } = usePortfolio();
+    const {
+        assets, exchangeRate, isLoading: isContextLoading,
+        getKrData, krHasError, krLoading, refetchKr,
+        getUsData, usHasError, usLoading, refetchUs,
+        goldData, goldLoading, fetchGoldPrice
+    } = usePortfolio();
+
     const [view, setView] = useState<ViewMode>('all');
 
-    // Batch stock data
-    const { krSymbols, usSymbols } = useMemo(() => {
-        const kr = new Set<string>();
-        const us = new Set<string>();
-        assets.forEach(a => {
-            if (a.category === 'KR') kr.add(a.symbol.replace('.KS', ''));
-            else if (a.category === 'US') us.add(a.symbol);
-        });
-        return { krSymbols: Array.from(kr), usSymbols: Array.from(us) };
-    }, [assets]);
-
-    const { getStockData: getKrData, isLoading: isKrLoading, hasError: krHasError, refetch: refetchKr } = useBatchStockPrice(krSymbols, 'KR');
-    const { getStockData: getUsData, isLoading: isUsLoading, hasError: usHasError, refetch: refetchUs } = useBatchStockPrice(usSymbols, 'US');
-
-    // Fetch Gold Spot Price separately for overall calculation
-    const [goldPrice, setGoldPrice] = useState<number>(0);
-    const [isGoldLoading, setIsGoldLoading] = useState<boolean>(false);
-    const [goldHasError, setGoldHasError] = useState<boolean>(false);
-    const hasGold = assets.some(a => a.category === 'GOLD');
-
-    const fetchGoldPrice = useCallback(async () => {
-        if (!hasGold) return;
-        setIsGoldLoading(true);
-        setGoldHasError(false);
-        try {
-            const res = await fetch('/api/kis/price/gold');
-            if (res.ok) {
-                const data = await res.json();
-                if (data.stck_prpr) {
-                    setGoldPrice(parseFloat(data.stck_prpr));
-                } else {
-                    setGoldHasError(true);
-                }
-            } else {
-                setGoldHasError(true);
-            }
-        } catch (e) {
-            console.warn('[Gold] Summary block gold fetch failed', e);
-            setGoldHasError(true);
-        } finally {
-            setIsGoldLoading(false);
-        }
-    }, [hasGold]);
-
-    useEffect(() => {
-        fetchGoldPrice();
-    }, [fetchGoldPrice]);
-
-    const isLoading = isKrLoading || isUsLoading || isGoldLoading;
-    const hasError = krHasError || usHasError || goldHasError;
+    const isLoading = isContextLoading || krLoading || usLoading || goldLoading;
+    const hasError = krHasError || usHasError;
 
     const handleRetry = () => {
         if (krHasError) refetchKr();
         if (usHasError) refetchUs();
-        if (goldHasError) fetchGoldPrice();
+        if (!goldData) fetchGoldPrice(); // Optional: retry gold explicitly if missing
     };
 
     const getPrice = (asset: Asset) => {
-        if (asset.category === 'GOLD') return goldPrice > 0 ? goldPrice : asset.pricePerShare;
+        if (asset.category === 'GOLD') return goldData?.price > 0 ? goldData.price : asset.pricePerShare;
         const clean = asset.symbol.replace('.KS', '');
         const data = asset.category === 'KR' ? getKrData(clean) : getUsData(asset.symbol);
         return data?.price || asset.pricePerShare;

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { getMarketType } from '@/utils/market';
 import { signout } from '@/app/login/actions';
 import FullPageLoader from '@/components/ui/FullPageLoader';
+import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 
 export interface TradeRecord {
     id: number;
@@ -51,6 +52,21 @@ interface PortfolioContextType {
     logout: () => Promise<void>;
     refreshPortfolio: () => Promise<void>;
     recalculateAllPortfolios: () => Promise<void>;
+
+    // --- Global Realtime Stock Data ---
+    getKrData: (symbol: string) => any;
+    krHasError: boolean;
+    krLoading: boolean;
+    refetchKr: () => void;
+
+    getUsData: (symbol: string) => any;
+    usHasError: boolean;
+    usLoading: boolean;
+    refetchUs: () => void;
+
+    goldData: any;
+    goldLoading: boolean;
+    fetchGoldPrice: () => Promise<void>;
 }
 
 export const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -119,6 +135,72 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             if (!skipLoading) setIsLoading(false);
         }
     }, [supabase]);
+
+    // --- Extract Symbols for Batch Fetching ---
+    const { krSymbols, usSymbols, hasGold } = React.useMemo(() => {
+        const kr = new Set<string>();
+        const us = new Set<string>();
+        let gold = false;
+
+        assets.forEach(a => {
+            if (a.category === 'GOLD') {
+                gold = true;
+            } else if (a.category === 'KR') {
+                const cleanSymbol = a.symbol.replace('.KS', '');
+                kr.add(cleanSymbol);
+            } else if (a.category === 'US') {
+                us.add(a.symbol);
+            }
+        });
+
+        return {
+            krSymbols: Array.from(kr).reverse(),
+            usSymbols: Array.from(us).reverse(),
+            hasGold: gold
+        };
+    }, [assets]);
+
+    // --- Global Batch Fetching ---
+    const { getStockData: getKrData, hasError: krHasError, refetch: refetchKr, isLoading: krLoading } = useBatchStockPrice(krSymbols, 'KR');
+    const { getStockData: getUsData, hasError: usHasError, refetch: refetchUs, isLoading: usLoading } = useBatchStockPrice(usSymbols, 'US');
+
+    // --- Global Gold Price Fetching ---
+    const [goldData, setGoldData] = useState<any>(null);
+    const [goldLoading, setGoldLoading] = useState(false);
+
+    const fetchGoldPrice = useCallback(async () => {
+        if (!hasGold) return;
+        setGoldLoading(true);
+        try {
+            const res = await fetch('/api/kis/price/gold');
+            if (res.ok) {
+                const data = await res.json();
+                const price = parseFloat(data.stck_prpr || '0');
+                const diff = parseFloat(data.prdy_vrss || '0');
+                const rate = parseFloat(data.prdy_ctrt || '0');
+                if (price > 0) {
+                    const now = new Date();
+                    setGoldData({
+                        price,
+                        change: rate < 0 ? -Math.abs(diff) : Math.abs(diff),
+                        changePercent: rate,
+                        time: `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')} (Gold)`,
+                        sector: 'KRX 금현물',
+                        marketName: 'KRX 금현물',
+                    });
+                }
+            }
+        } catch (e) {
+            console.warn('[Gold] Price fetch failed:', e);
+        } finally {
+            setGoldLoading(false);
+        }
+    }, [hasGold]);
+
+    useEffect(() => {
+        fetchGoldPrice();
+    }, [fetchGoldPrice]);
+
 
     // Auth & Data Initialization
     useEffect(() => {
@@ -490,6 +572,17 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             logout,
             refreshPortfolio,
             recalculateAllPortfolios,
+            getKrData,
+            krHasError,
+            krLoading,
+            refetchKr,
+            getUsData,
+            usHasError,
+            usLoading,
+            refetchUs,
+            goldData,
+            goldLoading,
+            fetchGoldPrice,
         }}>
             {loadingMessage ? <FullPageLoader message={loadingMessage} /> : children}
         </PortfolioContext.Provider>

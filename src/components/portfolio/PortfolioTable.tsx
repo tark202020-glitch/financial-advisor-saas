@@ -2,15 +2,19 @@
 
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import PortfolioCard from './PortfolioCard';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { ArrowUpDown, Check, RefreshCw } from 'lucide-react';
-import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
 import StockLoadError from '@/components/ui/StockLoadError';
 
 type SortOption = 'newest' | 'value' | 'name';
 
 export default function PortfolioTable() {
-    const { assets, isLoading, error } = usePortfolio();
+    const {
+        assets, isLoading, error,
+        getKrData, krHasError, krLoading, refetchKr,
+        getUsData, usHasError, usLoading, refetchUs,
+        goldData, goldLoading, fetchGoldPrice
+    } = usePortfolio();
 
     if (error) {
         return (
@@ -21,77 +25,13 @@ export default function PortfolioTable() {
         );
     }
 
-    // 1. Extract Symbols for Batch Fetching
-    const { krSymbols, usSymbols, hasGold } = useMemo(() => {
-        const kr = new Set<string>();
-        const us = new Set<string>();
-        let gold = false;
-
-        assets.forEach(a => {
-            if (a.category === 'GOLD') {
-                gold = true;
-            } else if (a.category === 'KR') {
-                const cleanSymbol = a.symbol.replace('.KS', '');
-                kr.add(cleanSymbol);
-            } else if (a.category === 'US') {
-                us.add(a.symbol);
-            }
-        });
-
-        return {
-            krSymbols: Array.from(kr).reverse(),
-            usSymbols: Array.from(us).reverse(),
-            hasGold: gold
-        };
-    }, [assets]);
-
-    // 2. Batch Fetch Data
-    const { getStockData: getKrData, hasError: krHasError, refetch: refetchKr, isLoading: krLoading } = useBatchStockPrice(krSymbols, 'KR');
-    const { getStockData: getUsData, hasError: usHasError, refetch: refetchUs, isLoading: usLoading } = useBatchStockPrice(usSymbols, 'US');
-
-    // 2.5 Gold Spot Price (separate API)
-    const [goldData, setGoldData] = useState<{ price: number; change: number; changePercent: number; time: string; sector: string; marketName: string } | null>(null);
-    const [goldLoading, setGoldLoading] = useState(false);
-
-    const fetchGoldPrice = useCallback(async () => {
-        if (!hasGold) return;
-        setGoldLoading(true);
-        try {
-            const res = await fetch('/api/kis/price/gold');
-            if (res.ok) {
-                const data = await res.json();
-                const price = parseFloat(data.stck_prpr || '0');
-                const diff = parseFloat(data.prdy_vrss || '0');
-                const rate = parseFloat(data.prdy_ctrt || '0');
-                if (price > 0) {
-                    const now = new Date();
-                    setGoldData({
-                        price,
-                        change: rate < 0 ? -Math.abs(diff) : Math.abs(diff),
-                        changePercent: rate,
-                        time: `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')} (Gold)`,
-                        sector: 'KRX 금현물',
-                        marketName: 'KRX 금현물',
-                    });
-                }
-            }
-        } catch (e) {
-            console.warn('[Gold] Price fetch failed:', e);
-        } finally {
-            setGoldLoading(false);
-        }
-    }, [hasGold]);
-
-    useEffect(() => {
-        fetchGoldPrice();
-    }, [fetchGoldPrice]);
-
     const hasAnyError = krHasError || usHasError;
     const isRefreshing = krLoading || usLoading || goldLoading;
 
     const handleRefreshAll = () => {
         refetchKr();
         refetchUs();
+        fetchGoldPrice();
     };
 
     // State
