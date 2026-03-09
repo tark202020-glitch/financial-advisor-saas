@@ -1,4 +1,15 @@
-## [Alpha V1.300] - 2026-03-10 01:31:14
+## [Alpha V1.303] - 2026-03-10 02:45:00
+
+### 🔄 Build Update
+- **Summary**: 배당ETF 분석 기능 추가 및 모바일/UI/Report 업데이트
+- **Detail**:
+  - `generate-dividend-etf` API 신설: `getEtfPrice` 활용 1차 ETF 판별 및 커버드콜 제외
+  - 주식 스터디 `page.tsx`: 모바일 Drawer 메뉴 동기화(주식 스터디 탭 추가, 휴면 탭 제거)
+  - 배당주 & 배당 ETF 조사 버튼 개별 독립
+  - `doc/DailyReport.md`: 2026-03-10 일보 업데이트
+- **Build Time**: 2026-03-10 02:45:00
+
+
 
 ### ✨ Feature
 - **Summary**: 배당주 분석 기능 KIS API 100% 기반으로 전면 재구축

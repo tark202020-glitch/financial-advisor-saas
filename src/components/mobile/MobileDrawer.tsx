@@ -9,9 +9,9 @@ import {
     Settings,
     User,
     LogOut,
-    Search,
     LineChart,
     StickyNote,
+    GraduationCap,
     X,
 } from "lucide-react";
 import { usePortfolio } from "@/context/PortfolioContext";
@@ -46,7 +46,7 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
         { name: "일일체크", href: "/dashboard", icon: LayoutDashboard },
         { name: "내 주식일지", href: "/portfolio", icon: BookOpen },
         { name: "내 주식 인사이트", href: "/insights", icon: LineChart },
-        { name: "조건검색", href: "/condition-search", icon: Search },
+        { name: "주식 스터디", href: "/study", icon: GraduationCap },
         { name: "주식일지메모", href: "/memo", icon: StickyNote },
     ];
 
