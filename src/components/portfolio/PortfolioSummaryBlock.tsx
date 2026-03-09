@@ -2,8 +2,8 @@
 
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import { useBatchStockPrice } from '@/hooks/useBatchStockPrice';
-import { useMemo, useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2, Coins } from 'lucide-react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2, Coins, RefreshCw } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency } from '@/utils/format';
 
@@ -100,30 +100,51 @@ export default function PortfolioSummaryBlock() {
         return { krSymbols: Array.from(kr), usSymbols: Array.from(us) };
     }, [assets]);
 
-    const { getStockData: getKrData } = useBatchStockPrice(krSymbols, 'KR');
-    const { getStockData: getUsData } = useBatchStockPrice(usSymbols, 'US');
+    const { getStockData: getKrData, isLoading: isKrLoading, hasError: krHasError, refetch: refetchKr } = useBatchStockPrice(krSymbols, 'KR');
+    const { getStockData: getUsData, isLoading: isUsLoading, hasError: usHasError, refetch: refetchUs } = useBatchStockPrice(usSymbols, 'US');
 
     // Fetch Gold Spot Price separately for overall calculation
     const [goldPrice, setGoldPrice] = useState<number>(0);
+    const [isGoldLoading, setIsGoldLoading] = useState<boolean>(false);
+    const [goldHasError, setGoldHasError] = useState<boolean>(false);
     const hasGold = assets.some(a => a.category === 'GOLD');
 
-    useEffect(() => {
+    const fetchGoldPrice = useCallback(async () => {
         if (!hasGold) return;
-        const fetchGoldPrice = async () => {
-            try {
-                const res = await fetch('/api/kis/price/gold');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.stck_prpr) {
-                        setGoldPrice(parseFloat(data.stck_prpr));
-                    }
+        setIsGoldLoading(true);
+        setGoldHasError(false);
+        try {
+            const res = await fetch('/api/kis/price/gold');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.stck_prpr) {
+                    setGoldPrice(parseFloat(data.stck_prpr));
+                } else {
+                    setGoldHasError(true);
                 }
-            } catch (e) {
-                console.warn('[Gold] Summary block gold fetch failed', e);
+            } else {
+                setGoldHasError(true);
             }
-        };
-        fetchGoldPrice();
+        } catch (e) {
+            console.warn('[Gold] Summary block gold fetch failed', e);
+            setGoldHasError(true);
+        } finally {
+            setIsGoldLoading(false);
+        }
     }, [hasGold]);
+
+    useEffect(() => {
+        fetchGoldPrice();
+    }, [fetchGoldPrice]);
+
+    const isLoading = isKrLoading || isUsLoading || isGoldLoading;
+    const hasError = krHasError || usHasError || goldHasError;
+
+    const handleRetry = () => {
+        if (krHasError) refetchKr();
+        if (usHasError) refetchUs();
+        if (goldHasError) fetchGoldPrice();
+    };
 
     const getPrice = (asset: Asset) => {
         if (asset.category === 'GOLD') return goldPrice > 0 ? goldPrice : asset.pricePerShare;
@@ -327,236 +348,258 @@ export default function PortfolioSummaryBlock() {
                     </div>
                 </div>
 
-                {/* 1. Overall Account Row (Top Full Width) */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    {/* Total Purchase */}
-                    <div className="bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1">
-                        <div className="text-xs text-gray-500 mb-1">총 투자 금액</div>
-                        <div className="text-xl sm:text-2xl font-bold text-gray-200">{fmtValue(current.purchase, view)}</div>
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 flex-1 min-h-[400px]">
+                        <div className="w-10 h-10 border-4 border-[#F7D047] border-t-transparent rounded-full animate-spin mb-6"></div>
+                        <p className="text-gray-400 font-bold text-center">실시간 주식 가격 정보를 불러오고 있습니다...</p>
+                        <p className="text-gray-500 text-sm mt-2 text-center">요청이 많을 경우 시간이 다소 소요될 수 있습니다.</p>
                     </div>
-
-                    {/* Total Valuation */}
-                    <div className="bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1">
-                        <div className="text-xs text-gray-500 mb-1">총 평가금액</div>
-                        <div className="text-xl sm:text-2xl font-bold text-white">{fmtValue(current.valuation, view)}</div>
+                ) : hasError ? (
+                    <div className="flex flex-col items-center justify-center py-20 flex-1 min-h-[400px] space-y-5">
+                        <div className="text-red-400 font-bold text-lg text-center">주식 가격 정보를 완전히 불러오지 못했습니다.</div>
+                        <p className="text-gray-500 text-sm text-center">부정확한 종합 정보 제공을 방지하기 위해 데이터를 표시하지 않습니다.<br />정확한 자산 종합 정보를 위해, 다시 시도해주세요.</p>
+                        <button
+                            onClick={handleRetry}
+                            className="px-6 py-2.5 bg-[#2a2a2a] hover:bg-[#333] active:bg-[#444] text-white rounded-lg font-bold border border-[#444] transition-colors flex items-center gap-2 mt-2"
+                        >
+                            <RefreshCw size={18} />
+                            새로고침 시도
+                        </button>
                     </div>
+                ) : (
+                    <>
+                        {/* 1. Overall Account Row (Top Full Width) */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            {/* Total Purchase */}
+                            <div className="bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1">
+                                <div className="text-xs text-gray-500 mb-1">총 투자 금액</div>
+                                <div className="text-xl sm:text-2xl font-bold text-gray-200">{fmtValue(current.purchase, view)}</div>
+                            </div>
 
-                    {/* Profit / Return */}
-                    <div className={`rounded-xl p-5 border md:col-span-2 ${isPositive ? 'bg-gradient-to-br from-red-950/40 to-[#121212] border-red-900/40' : 'bg-gradient-to-br from-blue-950/40 to-[#121212] border-blue-900/40'}`}>
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 h-full">
-                            <div>
-                                <div className="text-[10px] text-gray-400 mb-1">총 평가손익 / 수익률</div>
-                                <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
-                                    <div className={`text-2xl font-black tracking-tighter drop-shadow-sm ${isPositive ? 'text-red-400' : 'text-blue-400'}`}>
-                                        {isPositive ? '+' : ''}{fmtValue(current.profit, view)}
+                            {/* Total Valuation */}
+                            <div className="bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1">
+                                <div className="text-xs text-gray-500 mb-1">총 평가금액</div>
+                                <div className="text-xl sm:text-2xl font-bold text-white">{fmtValue(current.valuation, view)}</div>
+                            </div>
+
+                            {/* Profit / Return */}
+                            <div className={`rounded-xl p-5 border md:col-span-2 ${isPositive ? 'bg-gradient-to-br from-red-950/40 to-[#121212] border-red-900/40' : 'bg-gradient-to-br from-blue-950/40 to-[#121212] border-blue-900/40'}`}>
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 h-full">
+                                    <div>
+                                        <div className="text-[10px] text-gray-400 mb-1">총 평가손익 / 수익률</div>
+                                        <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3">
+                                            <div className={`text-2xl font-black tracking-tighter drop-shadow-sm ${isPositive ? 'text-red-400' : 'text-blue-400'}`}>
+                                                {isPositive ? '+' : ''}{fmtValue(current.profit, view)}
+                                            </div>
+                                            <div className={`text-base font-bold ${isPositive ? 'text-red-400/80' : 'text-blue-400/80'}`}>
+                                                {isPositive ? '▲ ' : '▼ '}{fmtRate(current.rate)}%
+                                            </div>
+                                        </div>
+                                        {current.dividend > 0 && (
+                                            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-yellow-500 mt-2">
+                                                <Coins size={14} className="opacity-80" />
+                                                <span>총 {fmtValue(current.dividend, view)}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className={`text-base font-bold ${isPositive ? 'text-red-400/80' : 'text-blue-400/80'}`}>
-                                        {isPositive ? '▲ ' : '▼ '}{fmtRate(current.rate)}%
+                                    {isPositive ? (
+                                        <TrendingUp className="hidden md:block w-12 h-12 opacity-30 text-red-400" />
+                                    ) : (
+                                        <TrendingDown className="hidden md:block w-12 h-12 opacity-30 text-blue-400" />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Dashboard Grid Container (Split Layout) */}
+                        <div className="flex flex-col xl:flex-row gap-6">
+
+                            {/* Left Panel: Chart & Overall Stats (Stacked if small, side-by-side if wide) */}
+                            {chartData.length > 0 && (
+                                <div className="xl:w-1/2 flex flex-col gap-6">
+                                    {/* Donut Chart Box */}
+                                    <div className="bg-[#121212] rounded-xl border border-[#333] p-4 flex flex-col h-full min-h-[300px]">
+                                        <div className="flex flex-col mb-4">
+                                            <span className="text-sm font-bold text-gray-300">포트폴리오 자산 비중 & 총 평가금액</span>
+                                            <span className="text-2xl font-black text-white mt-1">{fmtValue(current.valuation, view)}</span>
+                                        </div>
+                                        {/* Using absolute positioning container for recharts ResponsiveContainer bug on flex columns */}
+                                        <div className="relative flex-1 w-full min-h-[250px] xl:min-h-[350px]">
+                                            <div className="absolute inset-0">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={chartData}
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={0}
+                                                            outerRadius="85%"
+                                                            stroke="none"
+                                                            paddingAngle={3}
+                                                            dataKey="value"
+                                                            labelLine={false}
+                                                            label={(props: any) => {
+                                                                const { cx, cy, midAngle, innerRadius, outerRadius, percent, name } = props;
+                                                                if (midAngle === undefined || percent === undefined || innerRadius === undefined || outerRadius === undefined) return null;
+
+                                                                const radius = Number(innerRadius) + (Number(outerRadius) - Number(innerRadius)) * 0.5;
+                                                                const x = Number(cx) + radius * Math.cos(-midAngle * (Math.PI / 180));
+                                                                const y = Number(cy) + radius * Math.sin(-midAngle * (Math.PI / 180));
+                                                                // Hide label if slice is too small to fit text
+                                                                if (percent < 0.05) return null;
+
+                                                                return (
+                                                                    <text
+                                                                        x={x}
+                                                                        y={y}
+                                                                        fill="white"
+                                                                        textAnchor="middle"
+                                                                        dominantBaseline="central"
+                                                                        className="text-[10px] sm:text-xs font-bold pointer-events-none drop-shadow-md"
+                                                                    >
+                                                                        <tspan x={x} dy="-0.5em">{name}</tspan>
+                                                                        <tspan x={x} dy="1.2em">{(percent * 100).toFixed(0)}%</tspan>
+                                                                    </text>
+                                                                );
+                                                            }}
+                                                        >
+                                                            {chartData.map((entry, index) => (
+                                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip
+                                                            contentStyle={{ backgroundColor: '#1E1E1E', borderColor: '#333', borderRadius: '8px', zIndex: 50 }}
+                                                            itemStyle={{ color: '#E5E7EB', fontWeight: 'bold' }}
+                                                            formatter={(value: number | undefined | string) => {
+                                                                if (typeof value === 'number') return fmtValue(value, 'kr');
+                                                                return value;
+                                                            }}
+                                                        />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+
+                                        {/* Chart Legend */}
+                                        <div className="flex flex-wrap gap-2 justify-center mt-2">
+                                            {chartData.map((item, idx) => (
+                                                <div key={idx} className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+                                                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></span>
+                                                    {item.name} {((item.value / current.valuation) * 100).toFixed(0)}%
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                                {current.dividend > 0 && (
-                                    <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-yellow-500 mt-2">
-                                        <Coins size={14} className="opacity-80" />
-                                        <span>총 {fmtValue(current.dividend, view)}</span>
-                                    </div>
-                                )}
-                            </div>
-                            {isPositive ? (
-                                <TrendingUp className="hidden md:block w-12 h-12 opacity-30 text-red-400" />
-                            ) : (
-                                <TrendingDown className="hidden md:block w-12 h-12 opacity-30 text-blue-400" />
                             )}
-                        </div>
-                    </div>
-                </div>
 
-                {/* Dashboard Grid Container (Split Layout) */}
-                <div className="flex flex-col xl:flex-row gap-6">
+                            {/* Right Panel: Data Grid */}
+                            <div className="flex-1 flex flex-col gap-6">
 
-                    {/* Left Panel: Chart & Overall Stats (Stacked if small, side-by-side if wide) */}
-                    {chartData.length > 0 && (
-                        <div className="xl:w-1/2 flex flex-col gap-6">
-                            {/* Donut Chart Box */}
-                            <div className="bg-[#121212] rounded-xl border border-[#333] p-4 flex flex-col h-full min-h-[300px]">
-                                <div className="flex flex-col mb-4">
-                                    <span className="text-sm font-bold text-gray-300">포트폴리오 자산 비중 & 총 평가금액</span>
-                                    <span className="text-2xl font-black text-white mt-1">{fmtValue(current.valuation, view)}</span>
-                                </div>
-                                {/* Using absolute positioning container for recharts ResponsiveContainer bug on flex columns */}
-                                <div className="relative flex-1 w-full min-h-[250px] xl:min-h-[350px]">
-                                    <div className="absolute inset-0">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <PieChart>
-                                                <Pie
-                                                    data={chartData}
-                                                    cx="50%"
-                                                    cy="50%"
-                                                    innerRadius={0}
-                                                    outerRadius="85%"
-                                                    stroke="none"
-                                                    paddingAngle={3}
-                                                    dataKey="value"
-                                                    labelLine={false}
-                                                    label={(props: any) => {
-                                                        const { cx, cy, midAngle, innerRadius, outerRadius, percent, name } = props;
-                                                        if (midAngle === undefined || percent === undefined || innerRadius === undefined || outerRadius === undefined) return null;
-
-                                                        const radius = Number(innerRadius) + (Number(outerRadius) - Number(innerRadius)) * 0.5;
-                                                        const x = Number(cx) + radius * Math.cos(-midAngle * (Math.PI / 180));
-                                                        const y = Number(cy) + radius * Math.sin(-midAngle * (Math.PI / 180));
-                                                        // Hide label if slice is too small to fit text
-                                                        if (percent < 0.05) return null;
-
-                                                        return (
-                                                            <text
-                                                                x={x}
-                                                                y={y}
-                                                                fill="white"
-                                                                textAnchor="middle"
-                                                                dominantBaseline="central"
-                                                                className="text-[10px] sm:text-xs font-bold pointer-events-none drop-shadow-md"
-                                                            >
-                                                                <tspan x={x} dy="-0.5em">{name}</tspan>
-                                                                <tspan x={x} dy="1.2em">{(percent * 100).toFixed(0)}%</tspan>
-                                                            </text>
-                                                        );
-                                                    }}
-                                                >
-                                                    {chartData.map((entry, index) => (
-                                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: '#1E1E1E', borderColor: '#333', borderRadius: '8px', zIndex: 50 }}
-                                                    itemStyle={{ color: '#E5E7EB', fontWeight: 'bold' }}
-                                                    formatter={(value: number | undefined | string) => {
-                                                        if (typeof value === 'number') return fmtValue(value, 'kr');
-                                                        return value;
-                                                    }}
-                                                />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-
-                                {/* Chart Legend */}
-                                <div className="flex flex-wrap gap-2 justify-center mt-2">
-                                    {chartData.map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
-                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></span>
-                                            {item.name} {((item.value / current.valuation) * 100).toFixed(0)}%
+                                {/* 3. Category Report Cards */}
+                                {Object.keys(summary.categories).length > 0 && (
+                                    <div>
+                                        <div className="text-sm font-bold text-gray-300 mb-3 border-l-2 border-[#F7D047] pl-3 py-0.5">
+                                            내 주식 분류별 리포트
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                                        <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-2 gap-4">
+                                            {Object.entries(summary.categories)
+                                                .filter(([catName]) => catName !== '미분류')
+                                                .sort((a, b) => b[1].valuation - a[1].valuation)
+                                                .map(([catName, stats]) => {
+                                                    const theme = getCategoryStyle(catName);
+                                                    return (
+                                                        <div key={catName} className={`${theme.wrapper} rounded-xl p-5 transition-all duration-300 flex flex-col justify-between group h-full`}>
+                                                            {/* Holographic Top Line */}
+                                                            <div className={`absolute top-0 left-0 right-0 h-1 ${theme.badgeBg} opacity-80 z-20`}></div>
 
-                    {/* Right Panel: Data Grid */}
-                    <div className="flex-1 flex flex-col gap-6">
-
-                        {/* 3. Category Report Cards */}
-                        {Object.keys(summary.categories).length > 0 && (
-                            <div>
-                                <div className="text-sm font-bold text-gray-300 mb-3 border-l-2 border-[#F7D047] pl-3 py-0.5">
-                                    내 주식 분류별 리포트
-                                </div>
-                                <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-2 gap-4">
-                                    {Object.entries(summary.categories)
-                                        .filter(([catName]) => catName !== '미분류')
-                                        .sort((a, b) => b[1].valuation - a[1].valuation)
-                                        .map(([catName, stats]) => {
-                                            const theme = getCategoryStyle(catName);
-                                            return (
-                                                <div key={catName} className={`${theme.wrapper} rounded-xl p-5 transition-all duration-300 flex flex-col justify-between group h-full`}>
-                                                    {/* Holographic Top Line */}
-                                                    <div className={`absolute top-0 left-0 right-0 h-1 ${theme.badgeBg} opacity-80 z-20`}></div>
-
-                                                    {/* Level Badge (Trading Card Style) */}
-                                                    <div className="absolute top-1 right-1 z-20 shadow-lg pointer-events-none">
-                                                        <div className={`px-3 py-1 rounded-bl-xl rounded-tr-xl ${theme.badgeBg} border-l border-b ${theme.border} flex items-center gap-1.5`}>
-                                                            <span className="font-black italic text-[10px] text-white drop-shadow-md tracking-wider">
-                                                                Lv.{theme.level}
-                                                            </span>
-                                                            <span className="w-px h-2.5 bg-white/30"></span>
-                                                            <span className="text-[9px] font-bold text-white/90">
-                                                                {theme.label}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Background noise */}
-                                                    <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay z-0 pointer-events-none"></div>
-
-                                                    <div className="relative z-10 flex flex-col h-full">
-                                                        <div className="mb-4">
-                                                            <h3 className={`text-xl sm:text-2xl font-black ${theme.header} tracking-tight leading-tight drop-shadow-md`}>
-                                                                {theme.label}
-                                                            </h3>
-                                                        </div>
-                                                        <div className="mb-4 flex-1 flex flex-col justify-center min-w-0">
-                                                            <div className="text-[10px] text-gray-500 mb-0.5 mt-1">평가금액</div>
-                                                            <div className={`text-xl xl:text-2xl font-black tracking-tighter truncate ${stats.profit >= 0 ? 'text-red-400' : 'text-blue-400'}`} title={fmtValue(stats.valuation, 'kr')}>
-                                                                {fmtValue(stats.valuation, 'kr')}
-                                                            </div>
-                                                            <div className={`text-sm font-bold mt-1 ${stats.profit >= 0 ? 'text-red-400/80' : 'text-blue-400/80'}`}>
-                                                                {stats.profit >= 0 ? '+ ' : '- '}{fmtValue(Math.abs(stats.profit), 'kr')}
-                                                            </div>
-                                                            {stats.dividend > 0 && (
-                                                                <div className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-yellow-500 mt-1 truncate" title={`누적 배당금: ${fmtValue(stats.dividend, 'kr')}`}>
-                                                                    <Coins size={12} className="opacity-80" />
-                                                                    <span>{fmtValue(stats.dividend, 'kr')}</span>
+                                                            {/* Level Badge (Trading Card Style) */}
+                                                            <div className="absolute top-1 right-1 z-20 shadow-lg pointer-events-none">
+                                                                <div className={`px-3 py-1 rounded-bl-xl rounded-tr-xl ${theme.badgeBg} border-l border-b ${theme.border} flex items-center gap-1.5`}>
+                                                                    <span className="font-black italic text-[10px] text-white drop-shadow-md tracking-wider">
+                                                                        Lv.{theme.level}
+                                                                    </span>
+                                                                    <span className="w-px h-2.5 bg-white/30"></span>
+                                                                    <span className="text-[9px] font-bold text-white/90">
+                                                                        {theme.label}
+                                                                    </span>
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-end justify-between pt-3 border-t border-white/10 mt-auto">
-                                                            <div>
-                                                                <div className="text-[9px] text-gray-500 mb-0.5">투자금액</div>
-                                                                <div className="text-sm font-bold text-gray-300">{fmtValue(stats.purchase, 'kr')}</div>
                                                             </div>
-                                                            <div className="text-right">
-                                                                <div className="text-[9px] text-gray-500 mb-0.5">수익률</div>
-                                                                <div className={`text-sm font-black ${stats.profit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                                                                    {stats.profit >= 0 ? '+' : ''}{fmtRate(stats.rate)}%
+
+                                                            {/* Background noise */}
+                                                            <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay z-0 pointer-events-none"></div>
+
+                                                            <div className="relative z-10 flex flex-col h-full">
+                                                                <div className="mb-4">
+                                                                    <h3 className={`text-xl sm:text-2xl font-black ${theme.header} tracking-tight leading-tight drop-shadow-md`}>
+                                                                        {theme.label}
+                                                                    </h3>
+                                                                </div>
+                                                                <div className="mb-4 flex-1 flex flex-col justify-center min-w-0">
+                                                                    <div className="text-[10px] text-gray-500 mb-0.5 mt-1">평가금액</div>
+                                                                    <div className={`text-xl xl:text-2xl font-black tracking-tighter truncate ${stats.profit >= 0 ? 'text-red-400' : 'text-blue-400'}`} title={fmtValue(stats.valuation, 'kr')}>
+                                                                        {fmtValue(stats.valuation, 'kr')}
+                                                                    </div>
+                                                                    <div className={`text-sm font-bold mt-1 ${stats.profit >= 0 ? 'text-red-400/80' : 'text-blue-400/80'}`}>
+                                                                        {stats.profit >= 0 ? '+ ' : '- '}{fmtValue(Math.abs(stats.profit), 'kr')}
+                                                                    </div>
+                                                                    {stats.dividend > 0 && (
+                                                                        <div className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-yellow-500 mt-1 truncate" title={`누적 배당금: ${fmtValue(stats.dividend, 'kr')}`}>
+                                                                            <Coins size={12} className="opacity-80" />
+                                                                            <span>{fmtValue(stats.dividend, 'kr')}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-end justify-between pt-3 border-t border-white/10 mt-auto">
+                                                                    <div>
+                                                                        <div className="text-[9px] text-gray-500 mb-0.5">투자금액</div>
+                                                                        <div className="text-sm font-bold text-gray-300">{fmtValue(stats.purchase, 'kr')}</div>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <div className="text-[9px] text-gray-500 mb-0.5">수익률</div>
+                                                                        <div className={`text-sm font-black ${stats.profit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                                                            {stats.profit >= 0 ? '+' : ''}{fmtRate(stats.rate)}%
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                    );
+                                                })}
+                                        </div>
+
+                                        {/* Uncategorized (미분류) Single Line Row */}
+                                        {summary.categories['미분류'] && summary.categories['미분류'].valuation > 0 && (
+                                            <div className="mt-4 bg-[#1E1E1E] border border-[#333] rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 overflow-x-auto hide-scrollbar">
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <div className="w-1.5 h-4 bg-gray-600 rounded-full"></div>
+                                                    <span className="text-sm font-bold text-gray-400 whitespace-nowrap">미분류</span>
+                                                </div>
+                                                <div className="flex items-center gap-4 sm:gap-5 justify-between sm:justify-end shrink-0 min-w-max">
+                                                    <div className="text-left sm:text-right whitespace-nowrap">
+                                                        <div className="text-[10px] text-gray-500">투자금액</div>
+                                                        <div className="text-sm font-bold text-gray-300">{fmtValue(summary.categories['미분류'].purchase, 'kr')}</div>
+                                                    </div>
+                                                    <div className="text-left sm:text-right whitespace-nowrap">
+                                                        <div className="text-[10px] text-gray-500">평가금액</div>
+                                                        <div className="text-sm font-bold text-white">{fmtValue(summary.categories['미분류'].valuation, 'kr')}</div>
+                                                    </div>
+                                                    <div className="text-right whitespace-nowrap">
+                                                        <div className="text-[10px] text-gray-500">평가손익 / 수익률</div>
+                                                        <div className={`text-sm font-bold ${summary.categories['미분류'].profit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                                            {summary.categories['미분류'].profit >= 0 ? '+' : ''}{fmtValue(summary.categories['미분류'].profit, 'kr')}
+                                                            <span className="text-xs ml-1 font-normal opacity-80">({summary.categories['미분류'].profit >= 0 ? '+' : ''}{fmtRate(summary.categories['미분류'].rate)}%)</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                </div>
-
-                                {/* Uncategorized (미분류) Single Line Row */}
-                                {summary.categories['미분류'] && summary.categories['미분류'].valuation > 0 && (
-                                    <div className="mt-4 bg-[#1E1E1E] border border-[#333] rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 overflow-x-auto hide-scrollbar">
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            <div className="w-1.5 h-4 bg-gray-600 rounded-full"></div>
-                                            <span className="text-sm font-bold text-gray-400 whitespace-nowrap">미분류</span>
-                                        </div>
-                                        <div className="flex items-center gap-4 sm:gap-5 justify-between sm:justify-end shrink-0 min-w-max">
-                                            <div className="text-left sm:text-right whitespace-nowrap">
-                                                <div className="text-[10px] text-gray-500">투자금액</div>
-                                                <div className="text-sm font-bold text-gray-300">{fmtValue(summary.categories['미분류'].purchase, 'kr')}</div>
                                             </div>
-                                            <div className="text-left sm:text-right whitespace-nowrap">
-                                                <div className="text-[10px] text-gray-500">평가금액</div>
-                                                <div className="text-sm font-bold text-white">{fmtValue(summary.categories['미분류'].valuation, 'kr')}</div>
-                                            </div>
-                                            <div className="text-right whitespace-nowrap">
-                                                <div className="text-[10px] text-gray-500">평가손익 / 수익률</div>
-                                                <div className={`text-sm font-bold ${summary.categories['미분류'].profit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                                                    {summary.categories['미분류'].profit >= 0 ? '+' : ''}{fmtValue(summary.categories['미분류'].profit, 'kr')}
-                                                    <span className="text-xs ml-1 font-normal opacity-80">({summary.categories['미분류'].profit >= 0 ? '+' : ''}{fmtRate(summary.categories['미분류'].rate)}%)</span>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
-                        )}
-                    </div>
-                </div>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* === Realized Gains Block === */}
