@@ -1,130 +1,30 @@
 "use client";
 
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
-import { useWebSocketContext } from '@/context/WebSocketContext';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell } from 'recharts';
 import StockDetailChartModal from '../modals/StockDetailChartModal';
 
 export default function TargetProximityBlock() {
-    const { assets } = usePortfolio();
-    const { subscribe, lastData } = useWebSocketContext();
+    const {
+        assets,
+        getKrData, krLoading,
+        getUsData, usLoading,
+        goldData, goldLoading
+    } = usePortfolio();
 
     // Modal State
     const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
 
-    // Progressive Loading State
-    const [initialPrices, setInitialPrices] = useState<Map<string, number>>(new Map());
-    const [isLoading, setIsLoading] = useState(true);
-    const [loadingProgress, setLoadingProgress] = useState(0); // 0-100
-    const [loadingStatus, setLoadingStatus] = useState("데이터 준비 중...");
-    const [fetchErrors, setFetchErrors] = useState<string[]>([]);
+    const isLoading = krLoading || usLoading || goldLoading;
 
-    // 0. Initial Progressive Fetch
-    useEffect(() => {
-        let isMounted = true;
-
-        const loadData = async () => {
-            if (!assets || assets.length === 0) {
-                if (isMounted) setIsLoading(false);
-                return;
-            }
-
-            const priceMap = new Map<string, number>();
-            const total = assets.length;
-            const errors: string[] = [];
-
-            // Subscribe to WS for future updates
-            assets.forEach(asset => {
-                if (asset.symbol && asset.category !== 'GOLD') subscribe(asset.symbol, asset.category as 'KR' | 'US');
-            });
-
-            // Iterate sequentially with filtering
-            for (let i = 0; i < total; i++) {
-                const asset = assets[i];
-
-                // Exclude: Empty symbol or Zero quantity (Sold out)
-                if (!asset.symbol || asset.quantity <= 0) continue;
-
-                if (isMounted) {
-                    setLoadingStatus(`${asset.name} (${asset.symbol}) 시세 조회 중...`);
-                    // Calculate progress based on (i+1) instead of i for better progression
-                    setLoadingProgress(Math.round(((i + 1) / total) * 100));
-                }
-
-                try {
-                    // Clean symbol
-                    let cleanSymbol = asset.symbol;
-                    if (asset.symbol.includes('.')) {
-                        cleanSymbol = asset.symbol.split('.')[0];
-                    }
-
-                    let endpoint: string;
-                    if (asset.category === 'GOLD') {
-                        endpoint = '/api/kis/price/gold';
-                    } else if (asset.category === 'US') {
-                        endpoint = `/api/kis/price/overseas/${cleanSymbol}`;
-                    } else {
-                        endpoint = `/api/kis/price/domestic/${cleanSymbol}`;
-                    }
-
-                    const res = await fetch(endpoint);
-                    const data = await res.json();
-
-                    if (!res.ok) {
-                        throw new Error(data.error || `Status ${res.status}`);
-                    }
-
-                    if (res.ok) {
-                        let price = 0;
-                        if (asset.category === 'US') {
-                            // KIS Overseas API
-                            price = parseFloat(data.last || data.base || data.clos || 0);
-                        } else {
-                            // Domestic API
-                            price = parseInt(data.stck_prpr || 0);
-                            // Fallback to Previous Close (stck_sdpr) if current is 0
-                            if (price === 0) {
-                                price = parseInt(data.stck_sdpr || 0);
-                            }
-                        }
-
-                        if (price > 0) {
-                            priceMap.set(asset.symbol, price);
-                        } else {
-                            // Still 0?
-                            // Safely stringify
-                            const rawStr = JSON.stringify(data || {}).slice(0, 100);
-                            console.warn(`[PriceZero] ${asset.symbol}: ${rawStr}`);
-                            errors.push(`${asset.symbol}: Price 0 (Check Market Status)`);
-                        }
-                    }
-                } catch (e: any) {
-                    const errMsg = `${asset.name} (${asset.symbol}): ${e.message}`;
-                    console.error(errMsg);
-                    errors.push(errMsg);
-                }
-
-                // Small delay to make the UI update perceptible if desired
-                // await new Promise(r => setTimeout(r, 50)); 
-            }
-
-            if (isMounted) {
-                setLoadingProgress(100);
-                setTimeout(() => {
-                    if (isMounted) {
-                        setInitialPrices(priceMap);
-                        setFetchErrors(errors);
-                        setIsLoading(false);
-                    }
-                }, 500);
-            }
-        };
-
-        loadData();
-
-        return () => { isMounted = false; };
-    }, [assets, subscribe]);
+    // Helper: get current price from context data
+    const getPrice = (asset: Asset): number => {
+        if (asset.category === 'GOLD') return goldData?.price > 0 ? goldData.price : 0;
+        const cleanSymbol = asset.symbol.replace('.KS', '');
+        const data = asset.category === 'KR' ? getKrData(cleanSymbol) : getUsData(asset.symbol);
+        return data?.price || 0;
+    };
 
     // 1. Prepare Data Split (Lower / Upper)
     const { lowerData, upperData, processingLogs } = useMemo(() => {
@@ -134,12 +34,10 @@ export default function TargetProximityBlock() {
 
         assets.forEach(asset => {
             if (!asset.symbol || asset.quantity <= 0) {
-                // logs.push(`[제외] ${asset.name}: 보유수량 0 또는 기호 없음`); // log noise reduction
                 return;
             }
 
-            const liveData = lastData.get(asset.symbol);
-            const currentPrice = liveData?.price || initialPrices.get(asset.symbol);
+            const currentPrice = getPrice(asset);
 
             if (!currentPrice) return;
 
@@ -182,7 +80,7 @@ export default function TargetProximityBlock() {
         upperList.sort((a, b) => Math.abs(a.distance) - Math.abs(b.distance));
 
         return { lowerData: lowerList, upperData: upperList, processingLogs: logs };
-    }, [assets, lastData, initialPrices]);
+    }, [assets, getKrData, getUsData, goldData]);
 
     const handleBarClick = (data: any) => {
         if (data && data.assetObj) {
@@ -247,14 +145,7 @@ export default function TargetProximityBlock() {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F7D047]"></div>
                 <div className="w-full max-w-xs space-y-2 text-center">
                     <p className="text-white font-medium text-lg">포트폴리오 분석 중...</p>
-                    <p className="text-gray-500 text-sm animate-pulse">{loadingStatus}</p>
-                    <div className="w-full bg-[#252525] rounded-full h-2 overflow-hidden mt-4">
-                        <div
-                            className="bg-[#F7D047] h-2 rounded-full transition-all duration-300 ease-out"
-                            style={{ width: `${loadingProgress}%` }}
-                        ></div>
-                    </div>
-                    <p className="text-xs text-gray-600 text-right mt-1">{loadingProgress}%</p>
+                    <p className="text-gray-500 text-sm animate-pulse">시세 데이터를 불러오는 중입니다</p>
                 </div>
             </div>
         )
@@ -377,16 +268,8 @@ export default function TargetProximityBlock() {
                     <details className="text-xs text-gray-500 cursor-pointer">
                         <summary>📋 데이터 리포트 (제외된 종목 포함)</summary>
                         <div className="mt-2 text-gray-400 max-h-32 overflow-y-auto bg-[#252525] p-2 rounded border border-[#333]">
-                            {fetchErrors.length > 0 && (
-                                <div className="mb-2 pb-2 border-b border-red-900/30 text-red-500">
-                                    <strong>⚠ API 오류:</strong>
-                                    <ul className="list-disc list-inside">
-                                        {fetchErrors.map((e, i) => <li key={i}>{e}</li>)}
-                                    </ul>
-                                </div>
-                            )}
                             <ul className="list-disc list-inside">
-                                {processingLogs.map((log, idx) => <li key={idx}>{log}</li>)}
+                                {processingLogs.map((log: string, idx: number) => <li key={idx}>{log}</li>)}
                             </ul>
                         </div>
                     </details>

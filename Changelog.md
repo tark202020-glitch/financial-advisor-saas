@@ -1,3 +1,16 @@
+## [Alpha V1.296] - 2026-03-09 23:31:46
+
+### 🚀 Performance Optimization
+- **Summary**: Insights 페이지 개별 API 호출 제거 → Context 배치 데이터 공유로 전환
+- **Detail**:
+  - `PortfolioCompositionBlock`: 전 종목 순차 개별 API 호출(~20건) 제거, `PortfolioContext`의 배치 데이터 사용
+  - `TargetProximityBlock`: 전 종목 순차 개별 API 호출(~20건) 제거, `PortfolioContext`의 배치 데이터 사용
+  - `JubotPortfolioInsight`: 전 종목 순차 개별 API 호출(~20건) + 재시도 로직 제거, `PortfolioContext`의 배치 데이터 사용
+  - 이로 인해 페이지 로딩 시 KIS API 호출 수가 **~62건 → 3건**(KR배치 + US배치 + Gold)으로 극적 감소
+  - KIS API "초당 기간건수 초과" rate limit 에러 근본 해결
+  - 3개 컴포넌트에서 `WebSocketContext` 직접 의존성 제거
+- **Build Time**: 2026-03-09 23:31:46
+
 ## [Alpha V1.295] - 2026-03-09 23:02:15
 
 ### 🚀 Performance & Bug Fix

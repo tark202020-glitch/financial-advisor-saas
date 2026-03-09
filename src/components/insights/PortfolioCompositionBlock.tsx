@@ -1,79 +1,21 @@
 "use client";
 
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
-import { useWebSocketContext } from '@/context/WebSocketContext';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 
 export default function PortfolioCompositionBlock() {
-    const { assets } = usePortfolio();
-    const { subscribe, lastData } = useWebSocketContext();
+    const {
+        assets,
+        getKrData, krLoading,
+        getUsData, usLoading,
+        goldData, goldLoading
+    } = usePortfolio();
 
     const [marketFilter, setMarketFilter] = useState<'ALL' | 'KR' | 'US'>('ALL');
     const [sortFilter, setSortFilter] = useState<'AMOUNT' | 'RETURN'>('AMOUNT');
 
-    // Price State
-    const [initialPrices, setInitialPrices] = useState<Map<string, number>>(new Map());
-    const [isLoading, setIsLoading] = useState(true);
-
-    // Initial Fetch (similar to TargetProximityBlock)
-    useEffect(() => {
-        let isMounted = true;
-        const loadData = async () => {
-            if (!assets || assets.length === 0) {
-                if (isMounted) setIsLoading(false);
-                return;
-            }
-
-            const priceMap = new Map<string, number>();
-
-            // Subscribe & Fetch
-            for (const asset of assets) {
-                if (!asset.symbol || asset.quantity <= 0) continue;
-                // GOLD uses separate API, skip WebSocket subscribe
-                if (asset.category !== 'GOLD') {
-                    subscribe(asset.symbol, asset.category as 'KR' | 'US');
-                }
-
-                try {
-                    let cleanSymbol = asset.symbol;
-                    if (asset.symbol.includes('.')) cleanSymbol = asset.symbol.split('.')[0];
-
-                    let endpoint: string;
-                    if (asset.category === 'GOLD') {
-                        endpoint = '/api/kis/price/gold';
-                    } else if (asset.category === 'US') {
-                        endpoint = `/api/kis/price/overseas/${cleanSymbol}`;
-                    } else {
-                        endpoint = `/api/kis/price/domestic/${cleanSymbol}`;
-                    }
-
-                    const res = await fetch(endpoint);
-                    const data = await res.json();
-
-                    if (res.ok) {
-                        let price = 0;
-                        if (asset.category === 'US') {
-                            price = parseFloat(data.last || data.base || data.clos || 0);
-                        } else {
-                            price = parseInt(data.stck_prpr || data.stck_sdpr || 0);
-                        }
-                        if (price > 0) priceMap.set(asset.symbol, price);
-                    }
-                } catch (e) {
-                    console.error("Price fetch error", asset.symbol, e);
-                }
-            }
-
-            if (isMounted) {
-                setInitialPrices(priceMap);
-                setIsLoading(false);
-            }
-        };
-
-        loadData();
-        return () => { isMounted = false; };
-    }, [assets, subscribe]);
+    const isLoading = krLoading || usLoading || goldLoading;
 
     const [viewMode, setViewMode] = useState<'ASSET' | 'SECTOR' | 'SECONDARY'>('ASSET');
     const [selectedSector, setSelectedSector] = useState<string | null>(null);
@@ -83,6 +25,14 @@ export default function PortfolioCompositionBlock() {
         setSelectedSector(null);
     }, [viewMode]);
 
+    // Helper: get current price from context data
+    const getPrice = (asset: Asset): number => {
+        if (asset.category === 'GOLD') return goldData?.price > 0 ? goldData.price : 0;
+        const cleanSymbol = asset.symbol.replace('.KS', '');
+        const data = asset.category === 'KR' ? getKrData(cleanSymbol) : getUsData(asset.symbol);
+        return data?.price || 0;
+    };
+
     // Data Processing
     const processedData = useMemo(() => {
         if (!assets) return [];
@@ -90,12 +40,8 @@ export default function PortfolioCompositionBlock() {
         return assets.map(asset => {
             if (asset.quantity <= 0) return null;
 
-            // Get Current Price
-            let currentPrice = initialPrices.get(asset.symbol) || 0;
-            const realtime = lastData.get(asset.symbol);
-            if (realtime) {
-                currentPrice = realtime.price;
-            }
+            // Get Current Price from Context
+            const currentPrice = getPrice(asset);
 
             if (currentPrice === 0) return null;
 
@@ -104,7 +50,7 @@ export default function PortfolioCompositionBlock() {
             const avgPrice = asset.pricePerShare || 0;
             const profitLoss = (currentPrice - avgPrice) * asset.quantity;
             const returnRate = avgPrice > 0 ? ((currentPrice - avgPrice) / avgPrice) * 100 : 0;
-            const dailyChangeRate = realtime ? realtime.rate : 0; // Approx
+            const dailyChangeRate = 0; // Context 데이터 기반으로 별도 산출 가능
 
             return {
                 ...asset,
@@ -116,7 +62,7 @@ export default function PortfolioCompositionBlock() {
             };
         }).filter(item => item !== null) as any[];
 
-    }, [assets, initialPrices, lastData]);
+    }, [assets, getKrData, getUsData, goldData]);
 
     // Filtering & Sorting
     const { chartData, top10Data, totalPortfolioValue, sectorAssets } = useMemo(() => {
@@ -247,7 +193,7 @@ export default function PortfolioCompositionBlock() {
         }
     };
 
-    if (isLoading && initialPrices.size === 0) {
+    if (isLoading) {
         return <div className="p-6 bg-[#1E1E1E] rounded-2xl shadow-lg shadow-black/20 border border-[#333] h-64 flex items-center justify-center text-gray-400">
             포트폴리오 분석 중...
         </div>;

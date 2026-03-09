@@ -16,6 +16,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({});
     }
 
+    // 🔥 터미널 확인용 로그 추가
+    console.log(`\n▶ [API 호출] ${market} 시장 가격 조회 요청 수신 - ${symbols.length} 종목`);
+    console.log(`  [종목 목록] ${symbols.join(', ')}`);
+
     // Rate Limiting / Concurrency Control
     // We process in chunks of 5 parallel requests to avoid being blocked by KIS
     const CHUNK_SIZE = 5;
@@ -43,14 +47,29 @@ export async function GET(request: NextRequest) {
     };
 
     // Execute chunks sequentially
+    let successCount = 0;
+    let failCount = 0;
+
     for (let i = 0; i < symbols.length; i += CHUNK_SIZE) {
         const chunk = symbols.slice(i, i + CHUNK_SIZE);
         await processChunk(chunk);
+
+        chunk.forEach(s => {
+            if (results[s]) successCount++;
+            else failCount++;
+        });
 
         // Slight delay between chunks to be nice to API
         if (i + CHUNK_SIZE < symbols.length) {
             await new Promise(r => setTimeout(r, 200)); // 200ms delay
         }
+    }
+
+    // 🔥 결과 로그 출력
+    if (failCount === 0) {
+        console.log(`  [완료] ✅ ${market} 시장 ${successCount}종목 데이터 조회 성공`);
+    } else {
+        console.log(`  [완료] ⚠️ ${market} 시장 전체 ${symbols.length}종목 중 ${successCount} 성공, ${failCount} 실패`);
     }
 
     return NextResponse.json(results);
