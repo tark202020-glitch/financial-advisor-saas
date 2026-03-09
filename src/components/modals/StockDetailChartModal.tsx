@@ -276,7 +276,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
         }
     }, [isOpen, asset.symbol, asset.category, chartRetryTrigger]);
 
-    // Fetch Market Name (KOSPI/KOSDAQ) on open
+    // Fetch Market Name (KOSPI/KOSDAQ) on open - using batch API
     useEffect(() => {
         if (!isOpen || !asset.symbol) return;
         // GOLD: keep 'KRX 금현물' and don't fetch market name
@@ -290,10 +290,12 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
         }
         const fetchMarketName = async () => {
             try {
-                const res = await fetch(`/api/kis/price/domestic/${asset.symbol.replace('.KS', '')}`);
+                const cleanSymbol = asset.symbol.replace('.KS', '');
+                const res = await fetch(`/api/kis/price/batch?market=KR&symbols=${cleanSymbol}`);
                 if (!res.ok) return;
                 const data = await res.json();
-                const mktName = data?.rprs_mrkt_kor_name;
+                const item = data[cleanSymbol];
+                const mktName = item?.rprs_mrkt_kor_name;
                 if (mktName) {
                     setDisplayMarketName(mktName);
                 }

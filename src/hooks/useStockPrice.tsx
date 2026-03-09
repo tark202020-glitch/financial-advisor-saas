@@ -14,10 +14,9 @@ export function useStockPrice(symbol: string, initialPrice: number, category: st
 
     const shouldSkip = options?.skip;
 
-    // REST Fallback (Critical for Vercel where WSS might be blocked)
+    // REST Fallback (using Batch API to avoid rate limits)
     useEffect(() => {
         let isMounted = true;
-        let retryCount = 0;
 
         const fetchFallback = async () => {
             // Throttling to prevent rate limits
@@ -29,39 +28,59 @@ export function useStockPrice(symbol: string, initialPrice: number, category: st
 
             try {
                 let endpoint: string;
+                let market: string;
                 if (category === 'GOLD') {
                     endpoint = '/api/kis/price/gold';
+                    market = 'GOLD';
                 } else if (category === 'KR') {
-                    endpoint = `/api/kis/price/domestic/${symbol}`;
+                    const cleanSymbol = symbol.replace('.KS', '');
+                    endpoint = `/api/kis/price/batch?market=KR&symbols=${cleanSymbol}`;
+                    market = 'KR';
                 } else {
-                    endpoint = `/api/kis/price/overseas/${symbol}`;
+                    endpoint = `/api/kis/price/batch?market=US&symbols=${symbol}`;
+                    market = 'US';
                 }
 
                 const res = await fetch(endpoint);
                 if (!res.ok) return; // Silent fail
                 const data = await res.json();
 
-                // Format Data (Reuse logic)
-                const isValidKR = data.stck_prpr && parseInt(data.stck_prpr) > 0;
-                const isValidUS = data.last && parseFloat(data.last) > 0;
+                if (isMounted) {
+                    if (category === 'GOLD') {
+                        // Gold uses direct response format
+                        const price = parseFloat(data.stck_prpr || '0');
+                        const diff = parseFloat(data.prdy_vrss || '0');
+                        const rate = parseFloat(data.prdy_ctrt || '0');
+                        const change = rate < 0 ? -Math.abs(diff) : Math.abs(diff);
+                        const now = new Date();
+                        const timeDisplay = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')} (REST)`;
+                        if (price > 0) {
+                            setRestData({ price, change, changePercent: rate, time: timeDisplay });
+                        }
+                    } else {
+                        // Batch response: data[symbol] = { ... }
+                        const cleanSymbol = symbol.replace('.KS', '');
+                        const item = data[cleanSymbol] || data[symbol];
+                        if (!item) return;
 
-                if (isMounted && (isValidUS || isValidKR || data.output?.stck_prpr)) {
-                    const rawPrice = data.last || data.stck_prpr || data.output?.stck_prpr || '0';
-                    const price = parseFloat(rawPrice);
+                        let price = 0, diff = 0, rate = 0;
+                        if (market === 'KR') {
+                            price = parseFloat(item.stck_prpr || '0');
+                            diff = parseFloat(item.prdy_vrss || '0');
+                            rate = parseFloat(item.prdy_ctrt || '0');
+                        } else {
+                            price = parseFloat(item.last?.replace(/,/g, '') || '0');
+                            diff = parseFloat(item.diff?.replace(/,/g, '') || '0');
+                            rate = parseFloat(item.rate?.replace(/,/g, '') || '0');
+                        }
 
-                    const rawDiff = data.diff || data.prdy_vrss || data.output?.prdy_vrss || '0';
-                    const diff = parseFloat(rawDiff);
+                        const change = rate < 0 ? -Math.abs(diff) : Math.abs(diff);
+                        const now = new Date();
+                        const timeDisplay = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')} (REST)`;
 
-                    const rawRate = data.rate || data.prdy_ctrt || data.output?.prdy_ctrt || '0';
-                    const changePercent = parseFloat(rawRate);
-                    const change = changePercent < 0 ? -Math.abs(diff) : Math.abs(diff);
-
-                    // Timestamp
-                    const now = new Date();
-                    const timeDisplay = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')} (REST)`;
-
-                    if (price > 0) {
-                        setRestData({ price, change, changePercent, time: timeDisplay });
+                        if (price > 0) {
+                            setRestData({ price, change, changePercent: rate, time: timeDisplay });
+                        }
                     }
                 }
             } catch (e) {
