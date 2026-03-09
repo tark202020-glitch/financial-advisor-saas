@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
 
         console.log(`  [1단계] 배당률 상위 ${stockRankings.length}건 조회 완료`);
 
-        // 상위 20개 후보 확보
-        const candidates = stockRankings.slice(0, 20);
+        // 상위 50개 후보 확보
+        const candidates = stockRankings.slice(0, 50);
 
         // ====================================================================
         // 2. 각 종목별 실제 배당 이력 조회 (ksdinfo/dividend)
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
         markdown += `## 국내 주식 배당 수익률 TOP 10 (코스피)\n\n`;
         if (stockResults.length > 0) {
             const avgRate = (stockResults.reduce((sum, s) => sum + s.yieldRate, 0) / stockResults.length).toFixed(2);
-            markdown += `> 코스피 상장 주식 중 **실제 지급된 현금배당** 기준 상위 ${stockResults.length}종목입니다. 수익률은 현재 종가 대비로 산출하였습니다. (평균 ${avgRate}%)\n\n`;
+            markdown += `> 현재 기준 배당수익률 상위 50개 종목을 선정한 후, 실제 지급된 현금배당 내역을 확인하여 정리한 리포트입니다. 수익률은 현재 종가 대비로 산출하였습니다. (평균 ${avgRate}%)\n\n`;
 
             markdown += `| 종목 | 종가 | 주당배당금 | 수익률 | 최근배당일 | 가상배당금 |\n`;
             markdown += `|------|------|-----------|--------|-----------|----------|\n`;
