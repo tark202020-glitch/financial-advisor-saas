@@ -16,56 +16,62 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({});
     }
 
-    // 🔥 터미널 확인용 로그 추가
     console.log(`\n▶ [API 호출] ${market} 시장 가격 조회 요청 수신 - ${symbols.length} 종목`);
     console.log(`  [종목 목록] ${symbols.join(', ')}`);
 
-    // Rate Limiting / Concurrency Control
-    // We process in chunks of 5 parallel requests to avoid being blocked by KIS
-    const CHUNK_SIZE = 5;
     const results: Record<string, any> = {};
+    const fetcher = market === 'KR' ? getDomesticPrice : getOverseasPrice;
 
-    // Helper to process a chunk
-    const processChunk = async (chunk: string[]) => {
-        const promises = chunk.map(async (symbol) => {
-            try {
-                // Determine which fetcher to use
-                const fetcher = market === 'KR' ? getDomesticPrice : getOverseasPrice;
-                const data = await fetcher(symbol);
+    // KR: 3개씩 병렬 + 500ms 딜레이 / US: 1개씩 순차 + 350ms 딜레이
+    const CHUNK_SIZE = market === 'KR' ? 3 : 1;
+    const CHUNK_DELAY = market === 'KR' ? 500 : 350;
 
-                if (data) {
-                    results[symbol] = data;
-                } else {
-                    results[symbol] = null;
-                }
-            } catch (e) {
-                console.error(`Error fetching ${symbol}:`, e);
+    // Helper: 단일 종목 처리
+    const fetchOne = async (symbol: string) => {
+        try {
+            const data = await fetcher(symbol);
+            if (data) {
+                results[symbol] = data;
+            } else {
                 results[symbol] = null;
             }
-        });
-        await Promise.all(promises);
+        } catch (e) {
+            console.error(`Error fetching ${symbol}:`, e);
+            results[symbol] = null;
+        }
     };
 
-    // Execute chunks sequentially
-    let successCount = 0;
-    let failCount = 0;
-
+    // 1차: 청크별 순차 처리
     for (let i = 0; i < symbols.length; i += CHUNK_SIZE) {
         const chunk = symbols.slice(i, i + CHUNK_SIZE);
-        await processChunk(chunk);
+        await Promise.all(chunk.map(fetchOne));
 
-        chunk.forEach(s => {
-            if (results[s]) successCount++;
-            else failCount++;
-        });
-
-        // Slight delay between chunks to be nice to API
+        // 청크 간 딜레이 (마지막 청크 제외)
         if (i + CHUNK_SIZE < symbols.length) {
-            await new Promise(r => setTimeout(r, 200)); // 200ms delay
+            await new Promise(r => setTimeout(r, CHUNK_DELAY));
         }
     }
 
-    // 🔥 결과 로그 출력
+    // 2차: 실패한 종목 자동 재시도 (1건씩 느리게)
+    const failedSymbols = symbols.filter(s => results[s] === null);
+    if (failedSymbols.length > 0) {
+        console.log(`  [재시도] ${failedSymbols.length}개 실패 종목 재시도: ${failedSymbols.join(', ')}`);
+        await new Promise(r => setTimeout(r, 1500)); // 재시도 전 1.5초 대기
+
+        for (const symbol of failedSymbols) {
+            await fetchOne(symbol);
+            await new Promise(r => setTimeout(r, 500)); // 개별 500ms 대기
+        }
+    }
+
+    // 결과 로그
+    let successCount = 0;
+    let failCount = 0;
+    symbols.forEach(s => {
+        if (results[s]) successCount++;
+        else failCount++;
+    });
+
     if (failCount === 0) {
         console.log(`  [완료] ✅ ${market} 시장 ${successCount}종목 데이터 조회 성공`);
     } else {
