@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { getDividendRateRanking, getKsdinfoDividend, getDomesticPrice } from "@/lib/kis/client";
+import { getDividendRateRanking, getKsdinfoDividend, getDomesticPrice, getStockInfo } from "@/lib/kis/client";
 
 function formatNumber(num: number): string {
     return num.toLocaleString('ko-KR');
@@ -72,19 +72,23 @@ export async function POST(req: NextRequest) {
 
             if (dividendAmount <= 0 || dividendRate <= 0) continue;
 
-            // 현재가 조회
-            await new Promise(r => setTimeout(r, 300));
-
             let price = 0;
             let stockName = code;
             try {
+                // 1) 종목명 조회
+                const stockInfo = await getStockInfo(code);
+                if (stockInfo) {
+                    stockName = stockInfo.prdt_abrv_name || stockInfo.prdt_name || code;
+                }
+
+                // 2) 현재가 조회
+                await new Promise(r => setTimeout(r, 200));
                 const priceData = await getDomesticPrice(code);
                 if (priceData) {
                     price = parseInt(priceData.stck_prpr || '0');
-                    stockName = (priceData as any).hts_kor_isnm || code;
                 }
             } catch (e) {
-                console.warn(`  [주식] 현재가 조회 실패: ${code}`);
+                console.warn(`  [주식] 조회 실패: ${code}`, e);
             }
 
             if (price <= 0) continue;

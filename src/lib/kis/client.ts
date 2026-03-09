@@ -1403,3 +1403,42 @@ export async function getEtfPrice(symbol: string): Promise<any | null> {
 
     return data.output || null;
 }
+
+/**
+ * [국내주식-067] 주식기본조회 (종목 한글명 조회용)
+ * URL: /uapi/domestic-stock/v1/quotations/search-stock-info
+ * TR_ID: CTPF1002R
+ */
+export async function getStockInfo(symbol: string): Promise<any | null> {
+    const token = await getAccessToken();
+
+    const params = new URLSearchParams({
+        PRDT_TYPE_CD: '300',  // 주식, ETF, ETN, ELW
+        PDNO: symbol,
+    });
+
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/search-stock-info?${params.toString()}`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "CTPF1002R",
+            "custtype": "P",
+        },
+    }));
+
+    if (!response.ok) {
+        console.error(`[KIS] search-stock-info failed for ${symbol}: ${response.status}`);
+        return null;
+    }
+
+    const data = await response.json();
+    if (data.rt_cd !== "0") {
+        console.error(`[KIS] search-stock-info error for ${symbol}: ${data.msg1}`);
+        return null;
+    }
+
+    return data.output || null;
+}
