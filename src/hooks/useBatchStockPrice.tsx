@@ -10,7 +10,7 @@ interface StockData {
     marketName?: string; // KOSPI / KOSDAQ / US etc.
 }
 
-export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
+export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US', options?: { initialDelay?: number }) {
     const { subscribe, unsubscribe, lastData } = useWebSocketContext();
     const [batchData, setBatchData] = useState<Record<string, StockData>>({});
     const [isLoading, setIsLoading] = useState(true);
@@ -31,7 +31,14 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
             setHasError(false);
             setFailedSymbols([]);
 
-            const chunkSize = 6;
+            // Initial delay to stagger KR/US batch calls (prevent shared rate limit)
+            const initialDelay = options?.initialDelay || 0;
+            if (initialDelay > 0) {
+                await new Promise(r => setTimeout(r, initialDelay));
+                if (!isMounted) return;
+            }
+
+            const chunkSize = 20;
             const chunks: string[][] = [];
             for (let i = 0; i < symbols.length; i += chunkSize) {
                 chunks.push(symbols.slice(i, i + chunkSize));
@@ -130,7 +137,7 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US') {
             for (const chunk of chunks) {
                 if (!isMounted) break;
                 await processChunk(chunk);
-                await new Promise(r => setTimeout(r, 300));
+                await new Promise(r => setTimeout(r, 1000));
             }
 
             if (isMounted) {

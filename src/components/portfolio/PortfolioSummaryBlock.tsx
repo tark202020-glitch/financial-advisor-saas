@@ -84,6 +84,71 @@ const getCategoryStyle = (category: string | undefined) => {
     };
 };
 
+// --- Loading Progress UI Component ---
+function LoadingProgressUI({ krLoading, usLoading, goldLoading, hasKr, hasGold, hasUs }: {
+    krLoading: boolean; usLoading: boolean; goldLoading: boolean;
+    hasKr: boolean; hasGold: boolean; hasUs: boolean;
+}) {
+    const steps = [
+        { id: 'kr', label: '국내주식 시세 조회', loading: krLoading, done: !krLoading && hasKr },
+        { id: 'gold', label: '금 시세 조회', loading: goldLoading, done: !goldLoading && hasGold },
+        { id: 'us', label: '해외주식 시세 조회', loading: usLoading, done: !usLoading && hasUs },
+    ];
+    const totalSteps = steps.filter(s => s.done || s.loading).length || steps.length;
+    const completedSteps = steps.filter(s => s.done).length;
+    const hasActiveStep = steps.some(s => s.loading);
+    const percent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
+
+    return (
+        <div className="flex flex-col items-center justify-center py-16 flex-1 min-h-[400px]">
+            {/* 로딩 아이콘 + 퍼센트 */}
+            <div className="relative mb-6">
+                <div className="w-14 h-14 border-4 border-[#333] rounded-full"></div>
+                <div className="absolute inset-0 w-14 h-14 border-4 border-[#F7D047] border-t-transparent rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-bold text-[#F7D047]">{percent}%</span>
+                </div>
+            </div>
+
+            {/* 타이틀 */}
+            <p className="text-white font-bold text-lg mb-1">실시간 시세 데이터를 불러오는 중</p>
+            <p className="text-gray-500 text-xs mb-6">API 호출 제한으로 순차적으로 조회합니다</p>
+
+            {/* 프로그레스 바 */}
+            <div className="w-full max-w-sm mb-6">
+                <div className="w-full bg-[#252525] rounded-full h-2.5 overflow-hidden">
+                    <div
+                        className="bg-gradient-to-r from-[#F7D047] to-[#f5c518] h-2.5 rounded-full transition-all duration-700 ease-out"
+                        style={{ width: `${Math.max(percent, hasActiveStep ? 8 : 0)}%` }}
+                    ></div>
+                </div>
+            </div>
+
+            {/* 단계별 상태 */}
+            <div className="w-full max-w-xs space-y-2.5">
+                {steps.map((step) => (
+                    <div key={step.id} className="flex items-center gap-3">
+                        {step.done ? (
+                            <div className="w-5 h-5 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0">
+                                <span className="text-green-400 text-[10px]">✓</span>
+                            </div>
+                        ) : step.loading ? (
+                            <div className="w-5 h-5 rounded-full border-2 border-[#F7D047] border-t-transparent animate-spin flex-shrink-0"></div>
+                        ) : (
+                            <div className="w-5 h-5 rounded-full bg-[#252525] border border-[#444] flex-shrink-0"></div>
+                        )}
+                        <span className={`text-sm font-medium ${step.done ? 'text-green-400' : step.loading ? 'text-[#F7D047] animate-pulse' : 'text-gray-600'
+                            }`}>
+                            {step.label}
+                            {step.loading && <span className="ml-1 text-xs text-gray-500">진행 중...</span>}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export default function PortfolioSummaryBlock() {
     const {
         assets, exchangeRate, isLoading: isContextLoading,
@@ -306,11 +371,14 @@ export default function PortfolioSummaryBlock() {
                 </div>
 
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-20 flex-1 min-h-[400px]">
-                        <div className="w-10 h-10 border-4 border-[#F7D047] border-t-transparent rounded-full animate-spin mb-6"></div>
-                        <p className="text-gray-400 font-bold text-center">실시간 주식 가격 정보를 불러오고 있습니다...</p>
-                        <p className="text-gray-500 text-sm mt-2 text-center">요청이 많을 경우 시간이 다소 소요될 수 있습니다.</p>
-                    </div>
+                    <LoadingProgressUI
+                        krLoading={krLoading}
+                        usLoading={usLoading}
+                        goldLoading={goldLoading}
+                        hasKr={assets.some(a => a.category === 'KR')}
+                        hasGold={assets.some(a => a.category === 'GOLD')}
+                        hasUs={assets.some(a => a.category === 'US')}
+                    />
                 ) : hasError ? (
                     <div className="flex flex-col items-center justify-center py-20 flex-1 min-h-[400px] space-y-5">
                         <div className="text-red-400 font-bold text-lg text-center">주식 가격 정보를 완전히 불러오지 못했습니다.</div>

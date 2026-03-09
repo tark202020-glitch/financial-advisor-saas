@@ -161,8 +161,9 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     }, [assets]);
 
     // --- Global Batch Fetching ---
+    // KR 배치 먼저 실행, US 배치는 8초 대기 후 실행 (KIS API 공유 rate limit 회피)
     const { getStockData: getKrData, hasError: krHasError, refetch: refetchKr, isLoading: krLoading } = useBatchStockPrice(krSymbols, 'KR');
-    const { getStockData: getUsData, hasError: usHasError, refetch: refetchUs, isLoading: usLoading } = useBatchStockPrice(usSymbols, 'US');
+    const { getStockData: getUsData, hasError: usHasError, refetch: refetchUs, isLoading: usLoading } = useBatchStockPrice(usSymbols, 'US', { initialDelay: 8000 });
 
     // --- Global Gold Price Fetching ---
     const [goldData, setGoldData] = useState<any>(null);
