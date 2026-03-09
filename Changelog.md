@@ -1,3 +1,16 @@
+## [Alpha V1.299] - 2026-03-10 00:37:31
+
+### 🐛 Critical Fix
+- **Summary**: KIS API Rate Limit 근본 원인 3가지 해결
+- **Detail**:
+  - AiGuruBlock: 독자적 KR+US 동시 배치 API 호출 제거 → Context 데이터 재사용
+  - useStockPrice: REST 폴백 완전 제거 (종목별 개별 batch API 호출 원천 차단)
+  - batch/route.ts: 서버 딜레이 1초→300ms (Vercel 10초 timeout 내 완료)
+  - useBatchStockPrice: 클라이언트 timeout 10초→60초, 청크 20→10
+  - PortfolioContext: US 초기 딜레이 25초→8초 (서버 최적화에 맞춤)
+  - API 호출 수: 기존 40건+ → 3~4건으로 대폭 감소
+- **Build Time**: 2026-03-10 00:37:31
+
 ## [Alpha V1.298] - 2026-03-10 00:17:30
 
 ### 🐛 Bug Fix

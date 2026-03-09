@@ -165,9 +165,9 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     }, [assets]);
 
     // --- Global Batch Fetching ---
-    // KR 배치 먼저 실행, US 배치는 25초 대기 후 실행 (KR 20종목 × 1초 = 20초 소요 + 여유시간)
+    // KR 배치 먼저 실행, US 배치는 8초 대기 후 실행 (KR 10종목×2청크 ≈ 6초 + 여유시간)
     const { getStockData: getKrData, hasError: krHasError, refetch: refetchKr, isLoading: krLoading, loadedCount: krLoadedCount, totalCount: krTotalCount } = useBatchStockPrice(krSymbols, 'KR');
-    const { getStockData: getUsData, hasError: usHasError, refetch: refetchUs, isLoading: usLoading, loadedCount: usLoadedCount, totalCount: usTotalCount } = useBatchStockPrice(usSymbols, 'US', { initialDelay: 25000 });
+    const { getStockData: getUsData, hasError: usHasError, refetch: refetchUs, isLoading: usLoading, loadedCount: usLoadedCount, totalCount: usTotalCount } = useBatchStockPrice(usSymbols, 'US', { initialDelay: 8000 });
 
     // --- Global Gold Price Fetching ---
     const [goldData, setGoldData] = useState<any>(null);

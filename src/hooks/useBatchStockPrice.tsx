@@ -38,7 +38,7 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US', optio
                 if (!isMounted) return;
             }
 
-            const chunkSize = 20;
+            const chunkSize = 10;
             const chunks: string[][] = [];
             for (let i = 0; i < symbols.length; i += chunkSize) {
                 chunks.push(symbols.slice(i, i + chunkSize));
@@ -53,7 +53,7 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US', optio
 
                     // Timeout with AbortController
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 10000);
+                    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
                     const res = await fetch(`/api/kis/price/batch?market=${market}&symbols=${query}`, {
                         signal: controller.signal

@@ -10,55 +10,38 @@ interface Advice {
 }
 
 export default function AiGuruBlock() {
-    const { assets, isLoading: isPortfolioLoading } = usePortfolio();
+    const { assets, isLoading: isPortfolioLoading, getKrData, getUsData, krLoading, usLoading } = usePortfolio();
     const [adviceList, setAdviceList] = useState<Advice[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
-        const fetchPricesAndAdvice = async () => {
+        const generateAdvice = async () => {
             if (!assets || assets.length === 0) return;
+            // Context 데이터 로딩 완료 전이면 대기
+            if (krLoading || usLoading) return;
 
             setIsLoading(true);
             try {
-                // 1. Group assets by market
-                const krSymbols = assets.filter(a => a.category === 'KR').map(a => a.symbol).join(',');
-                const usSymbols = assets.filter(a => a.category === 'US').map(a => a.symbol).join(',');
-
-                const fetchBatch = async (symbols: string, market: string) => {
-                    if (!symbols) return {};
-                    try {
-                        const res = await fetch(`/api/kis/price/batch?market=${market}&symbols=${symbols}`);
-                        if (!res.ok) return {};
-                        return await res.json();
-                    } catch (e) {
-                        console.error(e);
-                        return {};
-                    }
-                };
-
-                const [krData, usData] = await Promise.all([
-                    fetchBatch(krSymbols, 'KR'),
-                    fetchBatch(usSymbols, 'US')
-                ]);
-
-                const priceMap = { ...krData, ...usData };
-
-                // 2. Prepare Enriched Portfolio Data
+                // PortfolioContext에서 이미 로드된 가격 데이터 재사용 (API 호출 0건)
                 let calculatedTotalValue = 0;
 
                 const enrichedPortfolio = assets.map(a => {
-                    const rawData = priceMap[a.symbol];
                     let currentPrice = a.pricePerShare;
                     let changeRate = 0;
 
-                    if (rawData) {
-                        if (a.category === 'US') {
-                            currentPrice = parseFloat(rawData.last || rawData.base || rawData.clos || 0);
-                            changeRate = parseFloat(rawData.rate || 0);
-                        } else {
-                            currentPrice = parseInt(rawData.stck_prpr || '0');
-                            changeRate = parseFloat(rawData.prdy_ctrt || '0');
+                    if (a.category === 'KR') {
+                        const cleanSymbol = a.symbol.replace('.KS', '');
+                        const data = getKrData(cleanSymbol);
+                        if (data && data.price > 0) {
+                            currentPrice = data.price;
+                            changeRate = data.changePercent || 0;
+                        }
+                    } else if (a.category === 'US') {
+                        const data = getUsData(a.symbol);
+                        if (data && data.price > 0) {
+                            currentPrice = data.price;
+                            changeRate = data.changePercent || 0;
                         }
                     }
 
@@ -90,16 +73,16 @@ export default function AiGuruBlock() {
                         targetUpper: a.targetPriceUpper,
                         changeRate: changeRate,
                         totalValue: value,
-                        proximity: proximity // Explicitly tell AI about target proximity
+                        proximity: proximity
                     };
                 });
 
-                // 3. Filter: exclude stocks under 3% of total portfolio
+                // Filter: exclude stocks under 3% of total portfolio
                 const significantPortfolio = enrichedPortfolio.filter(p =>
                     calculatedTotalValue > 0 ? (p.totalValue / calculatedTotalValue) * 100 >= 3 : true
                 );
 
-                // 4. Call AI Advice API
+                // Call AI Advice API (only this call, no price fetching)
                 const res = await fetch('/api/ai/advice', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -123,10 +106,10 @@ export default function AiGuruBlock() {
             }
         };
 
-        if (assets.length > 0 && adviceList.length === 0) {
-            fetchPricesAndAdvice();
+        if (assets.length > 0 && adviceList.length === 0 && !krLoading && !usLoading) {
+            generateAdvice();
         }
-    }, [assets]);
+    }, [assets, krLoading, usLoading]);
 
     if (isPortfolioLoading || isLoading) {
         return (

@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
     const results: Record<string, any> = {};
     const fetcher = market === 'KR' ? getDomesticPrice : getOverseasPrice;
 
-    // ★ 모든 종목을 1건씩 완전 순차 처리 + 1초 딜레이
-    // KIS API "초당 거래건수 초과" 방지를 위해 가장 보수적인 설정
+    // 1건씩 순차 처리 + 300ms 딜레이
+    // 10종목 = ~3초 (Vercel 10초 timeout 내 충분히 완료)
     for (let i = 0; i < symbols.length; i++) {
         const symbol = symbols[i];
         try {
@@ -34,17 +34,17 @@ export async function GET(request: NextRequest) {
             results[symbol] = null;
         }
 
-        // 다음 종목 전 1초 대기 (마지막 종목 제외)
+        // 다음 종목 전 300ms 대기 (마지막 종목 제외)
         if (i < symbols.length - 1) {
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 300));
         }
     }
 
-    // 2차: 실패한 종목 자동 재시도 (2초 대기 후 1건씩 1.5초 간격)
+    // 2차: 실패 종목 재시도 (1초 대기 후 1건씩 500ms 간격)
     const failedSymbols = symbols.filter(s => results[s] === null);
     if (failedSymbols.length > 0) {
         console.log(`  [재시도] ${failedSymbols.length}개 실패 종목 재시도: ${failedSymbols.join(', ')}`);
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, 1000));
 
         for (const symbol of failedSymbols) {
             try {
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
                 console.error(`  [재시도 실패] ${symbol}:`, e instanceof Error ? e.message : e);
                 results[symbol] = null;
             }
-            await new Promise(r => setTimeout(r, 1500));
+            await new Promise(r => setTimeout(r, 500));
         }
     }
 
