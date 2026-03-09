@@ -189,19 +189,28 @@ export default function StudyPage() {
     };
 
     const handleGenerateInfo = async () => {
-        if (topic !== "msci") {
+        if (topic === "etf") {
             alert("해당 주제의 생성 기능은 현재 준비 중입니다.");
             return;
         }
 
         setIsGenerating(true);
         try {
-            const res = await fetch("/api/study/generate-msci", { method: "POST" });
-            if (res.ok) {
-                alert(`${TOPIC_CONFIG[topic].title} 문서를 성공적으로 생성(업데이트) 했습니다.`);
+            let apiUrl = "";
+            if (topic === "msci") {
+                apiUrl = "/api/study/generate-msci";
+            } else if (topic === "dividend") {
+                apiUrl = "/api/study/generate-dividend";
+            }
+
+            const res = await fetch(apiUrl, { method: "POST" });
+            const data = await res.json();
+
+            if (res.ok && (data.success || topic === "msci")) {
+                alert(`${TOPIC_CONFIG[topic].title} 문서를 성공적으로 생성했습니다.`);
                 await fetchFiles(topic);
             } else {
-                alert("문서 생성에 실패했습니다.");
+                alert(`문서 생성 실패: ${data.error || '알 수 없는 오류'}`);
             }
         } catch (error) {
             console.error(`Failed to generate ${topic}:`, error);
@@ -414,25 +423,16 @@ export default function StudyPage() {
                         </div>
                         {isAdmin && (
                             <div className="flex flex-col gap-2 mt-2">
-                                {topic === "msci" && (
+                                {(topic === "msci" || topic === "dividend") && (
                                     <button
                                         onClick={handleGenerateInfo}
                                         disabled={isGenerating || isUploading}
-                                        className="w-full text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 border border-blue-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
+                                        className={`w-full text-sm ${topic === 'dividend' ? 'bg-purple-600 hover:bg-purple-500 border-purple-500' : 'bg-blue-600 hover:bg-blue-500 border-blue-500'} disabled:opacity-50 border text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md`}
                                     >
                                         <ShieldCheck size={16} />
-                                        {isGenerating ? '정보 만들기 생성 중...' : '정보 만들기 (키움/자동)'}
-                                    </button>
-                                )}
-
-                                {topic === "dividend" && (
-                                    <button
-                                        onClick={() => { setIsPromptMode(true); setSelectedFile(null); setIsEditing(false); }}
-                                        disabled={isGenerating || isUploading}
-                                        className="w-full text-sm bg-purple-600 hover:bg-purple-500 disabled:opacity-50 border border-purple-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
-                                    >
-                                        <ShieldCheck size={16} />
-                                        {isGenerating ? 'AI 준비 중...' : 'AI 분석 시작 (프롬프트)'}
+                                        {isGenerating
+                                            ? (topic === 'dividend' ? 'KIS API 데이터 수집 중... (약 30초)' : '정보 만들기 생성 중...')
+                                            : (topic === 'dividend' ? 'AI 분석 시작 (KIS API)' : '정보 만들기 (키움/자동)')}
                                     </button>
                                 )}
 

@@ -1,3 +1,16 @@
+## [Alpha V1.300] - 2026-03-10 01:31:14
+
+### ✨ Feature
+- **Summary**: 배당주 분석 기능 KIS API 100% 기반으로 전면 재구축
+- **Detail**:
+  - KIS client.ts: 배당률 상위(dividend-rate), 예탁원배당일정(ksdinfo/dividend), ETF현재가(inquire-price) API 3개 추가
+  - generate-dividend/route.ts: Gemini AI 프롬프트 → KIS API 100% 데이터 기반으로 전면 재작성
+  - 주식 TOP10 (코스피, 현금배당), ETF TOP10 (커버드콜 제외, KOSDAQ 포함)
+  - 고정 테이블 포맷: 종목|종가|주당배당금|수익률|횟수|최근배당일|가상배당금
+  - 버튼 원클릭 자동 생성 + Supabase 자동 저장
+  - study/page.tsx: 프롬프트 입력 → 원클릭 자동 생성으로 변경
+- **Build Time**: 2026-03-10 01:31:14
+
 ## [Alpha V1.299] - 2026-03-10 00:37:31
 
 ### 🐛 Critical Fix

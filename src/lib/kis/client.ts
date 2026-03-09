@@ -1265,3 +1265,141 @@ export async function getOverseasDailyPriceHistory(symbol: string): Promise<KisC
     }
 }
 
+// ============================================================================
+// [국내주식] 배당 관련 API
+// ============================================================================
+
+/**
+ * [국내주식-106] 배당률 상위 순위 조회
+ * URL: /uapi/domestic-stock/v1/ranking/dividend-rate
+ * TR_ID: HHKDB13470100
+ */
+export async function getDividendRateRanking(options: {
+    gb1: string;      // 0:전체, 1:코스피, 2:코스피200, 3:코스닥
+    upjong?: string;   // 업종코드 (0001:종합)
+    gb2?: string;      // 0:전체, 6:보통주, 7:우선주
+    gb3?: string;      // 1:주식배당, 2:현금배당
+    f_dt: string;      // 기준일From (YYYYMMDD)
+    t_dt: string;      // 기준일To (YYYYMMDD)
+    gb4?: string;      // 0:전체, 1:결산배당, 2:중간배당
+}): Promise<any[]> {
+    const token = await getAccessToken();
+
+    const params = new URLSearchParams({
+        CTS_AREA: '',
+        GB1: options.gb1,
+        UPJONG: options.upjong || '0001',
+        GB2: options.gb2 || '0',
+        GB3: options.gb3 || '2',  // 현금배당
+        F_DT: options.f_dt,
+        T_DT: options.t_dt,
+        GB4: options.gb4 || '0',
+    });
+
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/ranking/dividend-rate?${params.toString()}`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "HHKDB13470100",
+            "custtype": "P",
+        },
+    }));
+
+    if (!response.ok) {
+        console.error(`[KIS] dividend-rate failed: ${response.status}`);
+        return [];
+    }
+
+    const data = await response.json();
+    if (data.rt_cd !== "0") {
+        console.error(`[KIS] dividend-rate error: ${data.msg1}`);
+        return [];
+    }
+
+    return data.output || [];
+}
+
+/**
+ * [국내주식-145] 예탁원정보(배당일정)
+ * URL: /uapi/domestic-stock/v1/ksdinfo/dividend
+ * TR_ID: HHKDB669102C0
+ */
+export async function getKsdinfoDividend(options: {
+    gb1?: string;      // 0:배당전체, 1:결산배당, 2:중간배당
+    f_dt: string;      // 조회일자From
+    t_dt: string;      // 조회일자To
+    sht_cd?: string;   // 종목코드 (공백: 전체)
+    high_gb?: string;  // 고배당여부
+}): Promise<any[]> {
+    const token = await getAccessToken();
+
+    const params = new URLSearchParams({
+        CTS: '',
+        GB1: options.gb1 || '0',
+        F_DT: options.f_dt,
+        T_DT: options.t_dt,
+        SHT_CD: options.sht_cd || '',
+        HIGH_GB: options.high_gb || '',
+    });
+
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/ksdinfo/dividend?${params.toString()}`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "HHKDB669102C0",
+            "custtype": "P",
+        },
+    }));
+
+    if (!response.ok) {
+        console.error(`[KIS] ksdinfo/dividend failed: ${response.status}`);
+        return [];
+    }
+
+    const data = await response.json();
+    if (data.rt_cd !== "0") {
+        console.error(`[KIS] ksdinfo/dividend error: ${data.msg1}`);
+        return [];
+    }
+
+    return data.output1 || [];
+}
+
+/**
+ * [국내주식-068] ETF/ETN 현재가 조회
+ * URL: /uapi/etfetn/v1/quotations/inquire-price
+ * TR_ID: FHPST02400000
+ */
+export async function getEtfPrice(symbol: string): Promise<any | null> {
+    const token = await getAccessToken();
+
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/etfetn/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "FHPST02400000",
+        },
+    }));
+
+    if (!response.ok) {
+        console.error(`[KIS] ETF price failed for ${symbol}: ${response.status}`);
+        return null;
+    }
+
+    const data = await response.json();
+    if (data.rt_cd !== "0") {
+        console.error(`[KIS] ETF price error for ${symbol}: ${data.msg1}`);
+        return null;
+    }
+
+    return data.output || null;
+}
