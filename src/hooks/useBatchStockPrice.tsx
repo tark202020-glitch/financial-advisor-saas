@@ -234,5 +234,8 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US', optio
         }
     }, [market, failedSymbols]);
 
-    return { getStockData, isLoading, hasError, failedSymbols, refetch, refetchSymbol };
+    const loadedCount = Object.keys(batchData).length;
+    const totalCount = symbols.length;
+
+    return { getStockData, isLoading, hasError, failedSymbols, refetch, refetchSymbol, loadedCount, totalCount };
 }

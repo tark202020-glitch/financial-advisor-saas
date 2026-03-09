@@ -85,65 +85,102 @@ const getCategoryStyle = (category: string | undefined) => {
 };
 
 // --- Loading Progress UI Component ---
-function LoadingProgressUI({ krLoading, usLoading, goldLoading, hasKr, hasGold, hasUs }: {
-    krLoading: boolean; usLoading: boolean; goldLoading: boolean;
-    hasKr: boolean; hasGold: boolean; hasUs: boolean;
-}) {
+function LoadingProgressUI({ krLoading, usLoading, goldLoading, hasKr, hasGold, hasUs,
+    krLoadedCount, krTotalCount, usLoadedCount, usTotalCount }: {
+        krLoading: boolean; usLoading: boolean; goldLoading: boolean;
+        hasKr: boolean; hasGold: boolean; hasUs: boolean;
+        krLoadedCount: number; krTotalCount: number;
+        usLoadedCount: number; usTotalCount: number;
+    }) {
+    // 전체 진행률: 개별 종목 기반 정확한 % 계산
+    const goldTotal = hasGold ? 1 : 0;
+    const goldLoaded = (!goldLoading && hasGold) ? 1 : 0;
+    const totalItems = krTotalCount + usTotalCount + goldTotal;
+    const loadedItems = krLoadedCount + usLoadedCount + goldLoaded;
+    const percent = totalItems > 0 ? Math.round((loadedItems / totalItems) * 100) : 0;
+
     const steps = [
-        { id: 'kr', label: '국내주식 시세 조회', loading: krLoading, done: !krLoading && hasKr },
-        { id: 'gold', label: '금 시세 조회', loading: goldLoading, done: !goldLoading && hasGold },
-        { id: 'us', label: '해외주식 시세 조회', loading: usLoading, done: !usLoading && hasUs },
+        {
+            id: 'kr', label: '국내주식 시세',
+            loading: krLoading, done: !krLoading && hasKr,
+            loaded: krLoadedCount, total: krTotalCount,
+        },
+        {
+            id: 'gold', label: '금 시세',
+            loading: goldLoading, done: !goldLoading && hasGold,
+            loaded: goldLoaded, total: goldTotal,
+        },
+        {
+            id: 'us', label: '해외주식 시세',
+            loading: usLoading, done: !usLoading && hasUs,
+            loaded: usLoadedCount, total: usTotalCount,
+        },
     ];
-    const totalSteps = steps.filter(s => s.done || s.loading).length || steps.length;
-    const completedSteps = steps.filter(s => s.done).length;
-    const hasActiveStep = steps.some(s => s.loading);
-    const percent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
     return (
         <div className="flex flex-col items-center justify-center py-16 flex-1 min-h-[400px]">
             {/* 로딩 아이콘 + 퍼센트 */}
             <div className="relative mb-6">
-                <div className="w-14 h-14 border-4 border-[#333] rounded-full"></div>
-                <div className="absolute inset-0 w-14 h-14 border-4 border-[#F7D047] border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-16 h-16 border-4 border-[#333] rounded-full"></div>
+                <div className="absolute inset-0 w-16 h-16 border-4 border-[#F7D047] border-t-transparent rounded-full animate-spin"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-bold text-[#F7D047]">{percent}%</span>
+                    <span className="text-sm font-bold text-[#F7D047]">{percent}%</span>
                 </div>
             </div>
 
             {/* 타이틀 */}
             <p className="text-white font-bold text-lg mb-1">실시간 시세 데이터를 불러오는 중</p>
-            <p className="text-gray-500 text-xs mb-6">API 호출 제한으로 순차적으로 조회합니다</p>
+            <p className="text-gray-500 text-xs mb-1">API 호출 제한으로 순차적으로 조회합니다</p>
+            <p className="text-gray-600 text-[11px] mb-6">{loadedItems} / {totalItems} 종목 완료</p>
 
-            {/* 프로그레스 바 */}
+            {/* 전체 프로그레스 바 */}
             <div className="w-full max-w-sm mb-6">
-                <div className="w-full bg-[#252525] rounded-full h-2.5 overflow-hidden">
+                <div className="w-full bg-[#252525] rounded-full h-3 overflow-hidden">
                     <div
-                        className="bg-gradient-to-r from-[#F7D047] to-[#f5c518] h-2.5 rounded-full transition-all duration-700 ease-out"
-                        style={{ width: `${Math.max(percent, hasActiveStep ? 8 : 0)}%` }}
+                        className="bg-gradient-to-r from-[#F7D047] to-[#f5c518] h-3 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${Math.max(percent, percent > 0 ? 3 : 0)}%` }}
                     ></div>
                 </div>
             </div>
 
-            {/* 단계별 상태 */}
-            <div className="w-full max-w-xs space-y-2.5">
-                {steps.map((step) => (
-                    <div key={step.id} className="flex items-center gap-3">
-                        {step.done ? (
-                            <div className="w-5 h-5 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0">
-                                <span className="text-green-400 text-[10px]">✓</span>
+            {/* 단계별 상태 (개별 종목 수 표시) */}
+            <div className="w-full max-w-sm space-y-3">
+                {steps.filter(s => s.total > 0).map((step) => {
+                    const stepPercent = step.total > 0 ? Math.round((step.loaded / step.total) * 100) : 0;
+                    return (
+                        <div key={step.id} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    {step.done ? (
+                                        <div className="w-4 h-4 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center flex-shrink-0">
+                                            <span className="text-green-400 text-[9px]">✓</span>
+                                        </div>
+                                    ) : step.loading ? (
+                                        <div className="w-4 h-4 rounded-full border-2 border-[#F7D047] border-t-transparent animate-spin flex-shrink-0"></div>
+                                    ) : (
+                                        <div className="w-4 h-4 rounded-full bg-[#252525] border border-[#444] flex-shrink-0"></div>
+                                    )}
+                                    <span className={`text-sm font-medium ${step.done ? 'text-green-400' : step.loading ? 'text-[#F7D047]' : 'text-gray-600'
+                                        }`}>
+                                        {step.label}
+                                    </span>
+                                </div>
+                                <span className={`text-xs font-mono ${step.done ? 'text-green-400' : step.loading ? 'text-[#F7D047]' : 'text-gray-600'
+                                    }`}>
+                                    {step.loading ? `${step.loaded}/${step.total}` : step.done ? `${step.total}/${step.total}` : '대기'}
+                                </span>
                             </div>
-                        ) : step.loading ? (
-                            <div className="w-5 h-5 rounded-full border-2 border-[#F7D047] border-t-transparent animate-spin flex-shrink-0"></div>
-                        ) : (
-                            <div className="w-5 h-5 rounded-full bg-[#252525] border border-[#444] flex-shrink-0"></div>
-                        )}
-                        <span className={`text-sm font-medium ${step.done ? 'text-green-400' : step.loading ? 'text-[#F7D047] animate-pulse' : 'text-gray-600'
-                            }`}>
-                            {step.label}
-                            {step.loading && <span className="ml-1 text-xs text-gray-500">진행 중...</span>}
-                        </span>
-                    </div>
-                ))}
+                            {/* 개별 프로그레스 바 */}
+                            <div className="ml-6 w-[calc(100%-1.5rem)] bg-[#1a1a1a] rounded-full h-1.5 overflow-hidden">
+                                <div
+                                    className={`h-1.5 rounded-full transition-all duration-300 ease-out ${step.done ? 'bg-green-500/60' : step.loading ? 'bg-[#F7D047]/70' : 'bg-[#333]'
+                                        }`}
+                                    style={{ width: `${step.done ? 100 : stepPercent}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
@@ -152,8 +189,8 @@ function LoadingProgressUI({ krLoading, usLoading, goldLoading, hasKr, hasGold, 
 export default function PortfolioSummaryBlock() {
     const {
         assets, exchangeRate, isLoading: isContextLoading,
-        getKrData, krHasError, krLoading, refetchKr,
-        getUsData, usHasError, usLoading, refetchUs,
+        getKrData, krHasError, krLoading, krLoadedCount, krTotalCount, refetchKr,
+        getUsData, usHasError, usLoading, usLoadedCount, usTotalCount, refetchUs,
         goldData, goldLoading, fetchGoldPrice
     } = usePortfolio();
 
@@ -378,6 +415,10 @@ export default function PortfolioSummaryBlock() {
                         hasKr={assets.some(a => a.category === 'KR')}
                         hasGold={assets.some(a => a.category === 'GOLD')}
                         hasUs={assets.some(a => a.category === 'US')}
+                        krLoadedCount={krLoadedCount}
+                        krTotalCount={krTotalCount}
+                        usLoadedCount={usLoadedCount}
+                        usTotalCount={usTotalCount}
                     />
                 ) : hasError ? (
                     <div className="flex flex-col items-center justify-center py-20 flex-1 min-h-[400px] space-y-5">

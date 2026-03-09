@@ -22,45 +22,39 @@ export async function GET(request: NextRequest) {
     const results: Record<string, any> = {};
     const fetcher = market === 'KR' ? getDomesticPrice : getOverseasPrice;
 
-    // KR: 3개씩 병렬 + 500ms 딜레이 / US: 1개씩 순차 + 350ms 딜레이
-    const CHUNK_SIZE = market === 'KR' ? 3 : 1;
-    const CHUNK_DELAY = market === 'KR' ? 500 : 350;
-
-    // Helper: 단일 종목 처리
-    const fetchOne = async (symbol: string) => {
+    // ★ 모든 종목을 1건씩 완전 순차 처리 + 1초 딜레이
+    // KIS API "초당 거래건수 초과" 방지를 위해 가장 보수적인 설정
+    for (let i = 0; i < symbols.length; i++) {
+        const symbol = symbols[i];
         try {
             const data = await fetcher(symbol);
-            if (data) {
-                results[symbol] = data;
-            } else {
-                results[symbol] = null;
-            }
+            results[symbol] = data || null;
         } catch (e) {
-            console.error(`Error fetching ${symbol}:`, e);
+            console.error(`  [실패] ${symbol}:`, e instanceof Error ? e.message : e);
             results[symbol] = null;
         }
-    };
 
-    // 1차: 청크별 순차 처리
-    for (let i = 0; i < symbols.length; i += CHUNK_SIZE) {
-        const chunk = symbols.slice(i, i + CHUNK_SIZE);
-        await Promise.all(chunk.map(fetchOne));
-
-        // 청크 간 딜레이 (마지막 청크 제외)
-        if (i + CHUNK_SIZE < symbols.length) {
-            await new Promise(r => setTimeout(r, CHUNK_DELAY));
+        // 다음 종목 전 1초 대기 (마지막 종목 제외)
+        if (i < symbols.length - 1) {
+            await new Promise(r => setTimeout(r, 1000));
         }
     }
 
-    // 2차: 실패한 종목 자동 재시도 (1건씩 느리게)
+    // 2차: 실패한 종목 자동 재시도 (2초 대기 후 1건씩 1.5초 간격)
     const failedSymbols = symbols.filter(s => results[s] === null);
     if (failedSymbols.length > 0) {
         console.log(`  [재시도] ${failedSymbols.length}개 실패 종목 재시도: ${failedSymbols.join(', ')}`);
-        await new Promise(r => setTimeout(r, 1500)); // 재시도 전 1.5초 대기
+        await new Promise(r => setTimeout(r, 2000));
 
         for (const symbol of failedSymbols) {
-            await fetchOne(symbol);
-            await new Promise(r => setTimeout(r, 500)); // 개별 500ms 대기
+            try {
+                const data = await fetcher(symbol);
+                results[symbol] = data || null;
+            } catch (e) {
+                console.error(`  [재시도 실패] ${symbol}:`, e instanceof Error ? e.message : e);
+                results[symbol] = null;
+            }
+            await new Promise(r => setTimeout(r, 1500));
         }
     }
 
