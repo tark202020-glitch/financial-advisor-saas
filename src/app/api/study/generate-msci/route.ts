@@ -135,6 +135,7 @@ async function getPreviousData() {
 
                     const nameMapping: Record<string, string> = {
                         "현대자동차 주식회사": "현대차",
+                        "현대자동차": "현대차", // Add this to normalize "현대자동차" to "현대차"
                         "SK 스퀘어 주식회사": "SK스퀘어",
                         "KB 파이낸셜 그룹": "KB금융",
                         "기아 주식회사": "기아",
@@ -264,12 +265,21 @@ export async function POST(request: NextRequest) {
         if (!previousData) {
             md += `*이전 조회 내역이 존재하지 않아 신규 데이터에 대한 단독 산출만 진행되었습니다. 다음 업데이트부터 비교 분석이 제공됩니다.*\n`;
         } else {
+            // Helper function to normalize names
+            const normalizeName = (name: string) => {
+                let n = name.replace("신한금융그룹", "신한지주")
+                    .replace("KB 파이낸셜 그룹", "KB금융")
+                    .replace("두산에너지", "두산에너빌리티")
+                    .replace("현대자동차", "현대차"); // Normalize Hyundai Motor consistently
+                return n;
+            };
+
             const newItemsMap = new Map(results.map(r => [
-                r.name.replace("신한금융그룹", "신한지주").replace("KB 파이낸셜 그룹", "KB금융").replace("두산에너지", "두산에너빌리티"),
+                normalizeName(r.name),
                 r
             ]));
             const oldItemsMap = new Map();
-            previousData.items.forEach((item: any) => oldItemsMap.set(item.name, item));
+            previousData.items.forEach((item: any) => oldItemsMap.set(normalizeName(item.name), item));
 
             const newEntrants: string[] = [];
             const droppedOuts: string[] = [];
@@ -277,7 +287,7 @@ export async function POST(request: NextRequest) {
             const notRecommended: { name: string, diff: number }[] = [];
 
             results.forEach(r => {
-                const displayName = r.name.replace("신한금융그룹", "신한지주").replace("KB 파이낸셜 그룹", "KB금융").replace("두산에너지", "두산에너빌리티");
+                const displayName = normalizeName(r.name);
                 const adjRatio = r.kospiRatio * adjustmentFactor;
                 const diff = r.msciWeight - adjRatio;
 
