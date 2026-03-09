@@ -1,3 +1,13 @@
+## [Alpha V1.290] - 2026-03-09 10:35:00
+
+### 🔄 Build Update
+- **Summary**: MSCI 스터디 정보생성 오류 수정 (Supabase 권한)
+- **Detail**:
+  - MSCI 문서 자동 생성 시 환경변수(`SUPABASE_SERVICE_ROLE_KEY`) 누락으로 인한 서버 500 에러 해결
+  - 관리자 인증이 완료된 클라이언트(`supabaseAuth`) 객체를 직접 활용하여 RLS 정책 하에 정상적으로 문서를 저장하도록 로직 수정
+  - 사용되지 않는 `supabase-js` 임포트 제거
+- **Build Time**: 2026-03-09 10:35:00
+
 ## [Alpha V1.289] - 2026-03-08 22:52:00
 
 ### 🔄 Build Update

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 const MSCI_TOP10 = [
     { name: '삼성전자', code: '005930', msciWeight: 29.75 },
@@ -328,12 +327,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const supabaseAdmin = createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        const { error: insertError } = await supabaseAdmin.from('study_boards').insert({
+        const { error: insertError } = await supabaseAuth.from('study_boards').insert({
             topic: 'msci',
             title: `MSCI KOREA INDEX (${kst.toISOString().slice(0, 10)})`,
             content: md,
