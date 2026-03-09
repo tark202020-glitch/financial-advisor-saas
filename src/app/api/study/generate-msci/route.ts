@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const maxDuration = 60;
 
@@ -170,28 +169,19 @@ async function getPreviousData() {
 
 export async function POST(request: NextRequest) {
     try {
-        const apiKey = process.env.GOOGLE_AI_API_KEY;
-        if (!apiKey) throw new Error("AI API key is missing");
-
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const modelObj: any = { model: "gemini-2.5-pro", tools: [{ googleSearch: {} }] };
-        const model = genAI.getGenerativeModel(modelObj);
-
-        const systemPrompt = `당신은 금융 데이터 분석가입니다. 구글 검색을 활용하여 가장 최신의 'MSCI Korea Index' (msci.com 공식 자료 기준) 상위 10개(Top 10 constituents) 종목을 정확하게 조사하세요. 
-각 종목의 '종목코드(6자리 대한민국 주식 코드)', '한글 종목명', '편입비율(%, 숫자만)'을 찾아서 반드시 아래 JSON 배열 형식으로만 응답하고 다른 설명은 일절 추가하지 마세요.
-[
-  { "name": "삼성전자", "code": "005930", "msciWeight": 33.61 },
-  { "name": "SK하이닉스", "code": "000660", "msciWeight": 18.99 },
-  { "name": "삼성전자우", "code": "005935", "msciWeight": 3.85 },
-  ...
-]`;
-        const aiResult = await model.generateContent(systemPrompt);
-        const responseText = aiResult.response.text();
-
-        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-        if (!jsonMatch) throw new Error("Failed to parse MSCI data from AI.");
-
-        const MSCI_TOP10: { name: string, code: string, msciWeight: number }[] = JSON.parse(jsonMatch[0]);
+        // AI 동적 검색 대신 공식 MSCI KOREA INDEX 비중표 하드코딩 (2026.03 기준)
+        const MSCI_TOP10: { name: string, code: string, msciWeight: number }[] = [
+            { "name": "삼성전자", "code": "005930", "msciWeight": 33.61 },
+            { "name": "SK하이닉스", "code": "000660", "msciWeight": 18.99 },
+            { "name": "삼성전자우", "code": "005935", "msciWeight": 3.85 },
+            { "name": "현대차", "code": "005380", "msciWeight": 2.94 },
+            { "name": "SK스퀘어", "code": "402340", "msciWeight": 1.96 },
+            { "name": "KB금융", "code": "105560", "msciWeight": 1.89 },
+            { "name": "기아", "code": "000270", "msciWeight": 1.59 },
+            { "name": "두산에너빌리티", "code": "034020", "msciWeight": 1.56 },
+            { "name": "신한지주", "code": "055550", "msciWeight": 1.39 },
+            { "name": "한화에어로스페이스", "code": "012450", "msciWeight": 1.31 }
+        ];
         let MSCI_TOTAL_WEIGHT = 0;
         for (const item of MSCI_TOP10) {
             MSCI_TOTAL_WEIGHT += item.msciWeight;
