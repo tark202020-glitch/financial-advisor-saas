@@ -3,7 +3,9 @@ export const NYSE_SYMBOLS = new Set([
 ]);
 
 export const AMEX_SYMBOLS = new Set([
-    'AMEX' // Placeholder if any
+    'SPY', 'GLD', 'SLV', 'IWM', 'DIA', 'XLF', 'XLE', 'XLK', 'EEM', 'EFA',
+    'VTI', 'VEA', 'VWO', 'AGG', 'BND', 'HYG', 'LQD', 'TLT', 'IEF', 'TIP',
+    'ARKK', 'ARKG', 'ARKW', 'ARKF',
 ]);
 
 export function getUSExchangeCode(symbol: string): string {
