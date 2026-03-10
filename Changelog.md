@@ -1,3 +1,15 @@
+## [Alpha V1.305] - 2026-03-10 11:42:00
+
+### 🔄 Build Update
+- **Summary**: 배당 ETF 후보군 추출 방식 동적(Dynamic) 전환 기능 개편
+- **Detail**:
+  - 기존 37개의 하드코딩된 ETF 후보군 제거 및 100% 동적 추출 방식 도입
+  - 사용자 맞춤형 키워드 필터 추가: `배당`, `액티브`, `보험`, `은행` 등의 단어가 포함된 ETF를 자동으로 파싱하여 후보군 구성
+  - ETF 검증 정밀도 향상: `KoAct`, `TIMEFOLIO(TIME)`, `PLUS`, `KODEX` 등 20개 이상의 공식 ETF 브랜드 식별 기능 도입을 통해 일반 주식의 오인출 필터링 적용
+  - `all_stocks_master.json` 마스터 데이터를 로컬 캐시로 활용하여 불필요한 KIS 상품 정보 호출(`getStockInfo`) 딜레이 제거 및 조회 속도 최적화 (API Rate Limit 에러 방지)
+  - Vercel Timeout 방지를 위해 해당 라우트에 `maxDuration = 60` 속성 추가
+- **Build Time**: 2026-03-10 11:42:00
+
 ## [Alpha V1.304] - 2026-03-10 11:21:07
 
 ### 🔄 Build Update

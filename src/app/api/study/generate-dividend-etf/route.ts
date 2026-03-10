@@ -2,8 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getDividendRateRanking, getKsdinfoDividend, getEtfPrice, getStockInfo } from "@/lib/kis/client";
 
+import fs from 'fs';
+import path from 'path';
+
+export const maxDuration = 60; // Allow 60 seconds execution limit
+
 // 커버드콜 ETF 필터링 키워드
 const COVERED_CALL_KEYWORDS = ['커버드콜', '커버드', 'COVERED', 'CC', '프리미엄', 'PREMIUM', '인컴', 'INCOME'];
+
+// 원하는 키워드 및 식별용 브랜드
+const TARGET_KEYWORDS = ['배당', '액티브', '보험', '은행'];
+const ETF_BRANDS = [
+    'KODEX', 'TIGER', 'KBSTAR', 'ARIRANG', 'HANARO', 'ACE', 'SOL', 
+    'TIMEFOLIO', 'TIME', 'PLUS', 'WOORI', '마이티', 'KOSEF', '히어로즈', 
+    'KOACT', 'BNK', 'HK', 'NAVIGATOR', '파워', 'TREX'
+];
 
 function formatNumber(num: number): string {
     return num.toLocaleString('ko-KR');
@@ -37,50 +50,40 @@ export async function POST(req: NextRequest) {
         console.log(`\n▶ [배당ETF분석] 시작`);
 
         // ====================================================================
-        // 1. 배당 ETF 파싱 및 데이터 확보
-        // KIS 배당률 랭킹 API는 주식만 반환하므로, 주요 배당 ETF들의 고정 후보군을 사용합니다.
+        // 1. 배당 ETF 파싱 및 데이터 확보 (동적 추출)
+        // json 파일에서 키워드가 포함된 ETF 종목을 동적으로 필터링하여 후보군으로 구성합니다.
         // ====================================================================
-        const DIVIDEND_ETF_CANDIDATES = [
-            '161510', // PLUS 고배당주
-            '200020', // KODEX 고배당
-            '279530', // KODEX 고배당주
-            '325020', // KODEX 배당가치
-            '211560', // TIGER 배당성장
-            '466940', // TIGER 은행고배당플러스TOP10
-            '484880', // SOL 금융지주플러스고배당
-            '411060', // TIGER 은행
-            '091220', // KODEX 은행
-            '139260', // TIGER 200 금융
-            '140700', // KODEX 보험
-            '367800', // TIGER 100 플러스배당
-            '332610', // KODEX 배당성장
-            '332620', // KODEX 고배당가치
-            '104530', // KODEX 고배당
-            '429000', // TIGER 배당프리미엄액티브
-            '329200', // TIGER 부동산인프라고배당
-            '339160', // TIGER 부동산인프라
-            '400970', // KODEX 한국부동산리츠
-            '460330', // TIGER 미국배당다우존스
-            '458760', // ACE 미국배당다우존스
-            '446720', // SOL 미국배당다우존스
-            '379760', // TIGER 배당가치
-            '306540', // HANARO 고배당
-            '227830', // ARIRANG 고배당저변동50
-            '266160', // KBSTAR 고배당
-            '287330', // KBSTAR 고배당저변동
-            '376410', // TIGER 200 배당성장
-            '315960', // KBSTAR 대형고배당10TR
-            '433330', // KODEX 미국배당프리미엄액티브
-            '415580', // TIMEFOLIO Korea플러스배당액티브
-            '441680', // TIGER 배당프리미엄액티브
-            '379800', // KODEX 배당가치
-            '379810', // KODEX 고배당
-            '453860', // KODEX 배당성장채권혼합
-            '452360', // ARIRANG 고배당주채권혼합
-            '251600'  // PLUS 고배당주채권혼합
-        ];
+        let matchedEtfs: { code: string, name: string }[] = [];
+        try {
+            const unifiedPath = path.join(process.cwd(), 'public', 'data', 'all_stocks_master.json');
+            if (fs.existsSync(unifiedPath)) {
+                const rawData = fs.readFileSync(unifiedPath, 'utf-8');
+                const allStocks = JSON.parse(rawData);
 
-        console.log(`  [1단계] ETF 후보군 ${DIVIDEND_ETF_CANDIDATES.length}개 설정 완료`);
+                matchedEtfs = allStocks.filter((stock: any) => {
+                    if (!stock.name) return false;
+                    const nameUpper = stock.name.toUpperCase();
+                    
+                    // 1. 필수 키워드 포함 확인 ('배당', '액티브', '보험', '은행')
+                    const hasKeyword = TARGET_KEYWORDS.some(kw => nameUpper.includes(kw.toUpperCase()));
+                    if (!hasKeyword) return false;
+
+                    // 2. 커버드콜 종목 필터링 제외
+                    const hasExclude = COVERED_CALL_KEYWORDS.some(kw => nameUpper.includes(kw.toUpperCase()));
+                    if (hasExclude) return false;
+
+                    // 3. ETF 브랜드명 확인하여 일반 주식 혼입 방지
+                    const isEtf = ETF_BRANDS.some(brand => nameUpper.includes(brand.toUpperCase()));
+                    return isEtf;
+                }).map((stock: any) => ({ code: stock.symbol, name: stock.name }));
+            } else {
+                console.warn("[경고] all_stocks_master.json 파일을 찾을 수 없습니다.");
+            }
+        } catch (error) {
+            console.error("[에러] ETF 후보군 파싱 중 오류 발생:", error);
+        }
+
+        console.log(`  [1단계] 동적 ETF 후보군 ${matchedEtfs.length}개 파싱 및 설정 완료`);
 
         // ====================================================================
         // 2. ETF 정보 및 현재가 조회
@@ -96,12 +99,11 @@ export async function POST(req: NextRequest) {
 
         const etfCandidates: EtfCandidate[] = [];
 
-        for (const code of DIVIDEND_ETF_CANDIDATES) {
-            await new Promise(r => setTimeout(r, 150));
+        for (const item of matchedEtfs) {
+            await new Promise(r => setTimeout(r, 80)); // 80ms 딜레이 (api limit 고려)
             try {
-                // getStockInfo를 통해 정확한 ETF 이름을 가져옵니다
-                const stockInfo = await getStockInfo(code);
-                let etfName = stockInfo ? (stockInfo.prdt_abrv_name || stockInfo.prdt_name || code) : code;
+                const code = item.code;
+                const etfName = item.name;
 
                 const etfData = await getEtfPrice(code);
                 if (!etfData || !etfData.stck_prpr) continue;
@@ -110,13 +112,6 @@ export async function POST(req: NextRequest) {
                 if (price <= 0) continue;
 
                 const dividendCycle = etfData.etf_dvdn_cycl || '-';
-
-                // 커버드콜 제외
-                const nameUpper = etfName.toUpperCase();
-                if (COVERED_CALL_KEYWORDS.some(kw => nameUpper.includes(kw.toUpperCase()))) {
-                    console.log(`  [커버드콜 제외] ${etfName}(${code})`);
-                    continue;
-                }
 
                 etfCandidates.push({
                     code,
@@ -128,7 +123,7 @@ export async function POST(req: NextRequest) {
                 console.log(`  [ETF 확인] ${etfName}(${code}) - ${price}원, 배당주기: ${dividendCycle}`);
 
             } catch (e) {
-                console.warn(`  [ETF 조회 실패] ${code}`);
+                console.warn(`  [ETF 조회 실패] ${item.code}`);
                 continue;
             }
         }
