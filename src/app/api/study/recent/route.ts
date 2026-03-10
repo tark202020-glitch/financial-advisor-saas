@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-        const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-        
-        // Initialize Supabase client inside the handler
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        const supabase = await createClient();
 
         // Fetch the 3 most recent study documents
         const { data, error } = await supabase

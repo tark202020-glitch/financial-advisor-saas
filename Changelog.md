@@ -1,3 +1,12 @@
+## [Alpha V1.320] - 2026-03-10 17:25:00
+
+### 🚑 Critical Fix: study/recent API 500 Error in Production
+- **Summary**: 배포 환경(Vercel)에서 `/api/study/recent`가 빈번히 500 에러를 반환해 NEW 뱃지가 아예 노출되지 않는 코어 버그 철저 원인 파악 및 해결
+- **Detail**:
+  - 기존에는 `route.ts` 내에서 Supabase 인스턴스를 `@supabase/supabase-js` 패키지로 직접 생성하면서, 배포 환경의 Service Role Key 변수에 접근하려 했으나 제대로 주입되지 않아 Null 오류로 인해 500 Internal Server error가 지속 발생했음. 그래서 API 응답값이 아예 없으므로 UI에서는 뱃지가 계속 보이지 않는 현상이 있었음.
+  - `@/utils/supabase/server`의 규격화된 `createClient()`를 호출(`await createClient()`)하는 방식으로 로직을 전면 교체하여, 권한 및 DB 접근 안정성을 타 API(study-boards 등)와 동일하게 동기화.
+- **Build Time**: 2026-03-10 17:25:00
+
 ## [Alpha V1.319] - 2026-03-10 17:15:00
 
 ### 🔄 NEW Badge Sync & Login Check Fix
