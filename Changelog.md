@@ -1,3 +1,12 @@
+## [Alpha V1.312] - 2026-03-10 14:48:00
+
+### 🐛 Price Data Readiness Fix
+- **Summary**: 인사이트 분석 시 현재가 0원 문제 수정 — 가격 로딩 완료 대기 로직 추가
+- **Detail**:
+  - `JubotPortfolioInsight.tsx`: 가격 데이터 로딩 중(`krLoading || usLoading`)이면 최대 15초 대기 후 분석 진행
+  - 근본 원인: 배치 가격 조회 API(14:43:16~37)보다 AI 분석(14:43:12)이 먼저 실행되어 모든 currentPrice가 0으로 전달됨
+- **Build Time**: 2026-03-10 14:48:00
+
 ## [Alpha V1.311] - 2026-03-10 14:31:00
 
 ### ✨ Naver Search API Integration

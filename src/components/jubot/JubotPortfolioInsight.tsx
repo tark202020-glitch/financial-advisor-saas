@@ -83,6 +83,33 @@ export default function JubotPortfolioInsight() {
             const totalSteps = 2; // prices (from context) + AI (서버에서 뉴스+공시+재무 통합 수집)
             let completedSteps = 0;
 
+            // ── STEP 0: 가격 데이터 로딩 완료 대기 ──
+            // PortfolioContext의 배치 가격 조회가 아직 진행 중이면 최대 15초 대기
+            if (krLoading || usLoading) {
+                setProgressStep('시세 데이터 로딩 대기...');
+                setProgressDetail('가격 데이터를 불러오는 중입니다');
+                setProgressPercent(5);
+
+                const maxWait = 15000; // 15초
+                const checkInterval = 500; // 0.5초마다 체크
+                let waited = 0;
+
+                await new Promise<void>((resolve) => {
+                    const timer = setInterval(() => {
+                        waited += checkInterval;
+                        setProgressPercent(Math.min(8, Math.round((waited / maxWait) * 10)));
+                        // 컴포넌트 리렌더시 krLoading/usLoading이 업데이트되지 않으므로
+                        // 타이머 기반으로 대기 후 진행
+                        if (waited >= maxWait) {
+                            clearInterval(timer);
+                            resolve();
+                        }
+                    }, checkInterval);
+                });
+
+                console.log(`[Jubot] 가격 로딩 대기 ${waited / 1000}초 후 진행`);
+            }
+
             // ── STEP 1: Context에서 현재가 + 등락률 즉시 조회 ──
             setProgressStep('시세 데이터 확인 중...');
             setProgressPercent(10);
