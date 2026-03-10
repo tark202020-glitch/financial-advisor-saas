@@ -1,3 +1,13 @@
+## [Alpha V1.319] - 2026-03-10 17:15:00
+
+### 🔄 NEW Badge Sync & Login Check Fix
+- **Summary**: 초기 로그인 시 주식 스터디 NEW 뱃지 누락 현상 및 컴포넌트 간 상태 동기화 문제 해결
+- **Detail**:
+  - `useStudyNotification` 커스텀 훅 내에서 `usePathname`을 의존성으로 추가하여 사용자가 로그인 후 대시보드 등으로 리다이렉트 시 새로운 글감 확인(`checkNewStudies`)을 무조건 재구동하도록 변경
+  - API 캐시 무력화를 위해 Fetch 요청 시점에 타임스탬프 쿼리(`?t=Date.now()`) 강제 할당
+  - `window.dispatchEvent`를 활용해 주식 스터디 페이지 내부에서 글을 읽었을 때(markAsRead), 별개로 마운트되어 있는 `Sidebar`의 NEW 뱃지 상태도 즉각적으로 전역 동기화(false 처리) 되도록 이중화 수정
+- **Build Time**: 2026-03-10 17:15:00
+
 ## [Alpha V1.318] - 2026-03-10 17:05:00
 
 ### 🐛 NEW Badge Bug Fix & PnL Message Refinement
