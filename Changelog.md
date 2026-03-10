@@ -1,3 +1,15 @@
+## [Alpha V1.313] - 2026-03-10 15:50:00
+
+### 🐛 Reactive Price Data Readiness (Critical Fix)
+- **Summary**: 인사이트 분석 시 현재가 0원 문제 근본 수정 — "내 주식일지" 패턴 적용
+- **Detail**:
+  - `JubotPortfolioInsight.tsx`: 15초 고정 대기 타이머 ❌ 제거 → `useEffect`로 `krLoading/usLoading` 리액티브 감지
+  - `priceReady` 상태 도입: KR/US 배치 가격 로딩 완료 시에만 `true`
+  - 분석 버튼에 실시간 로딩 진행률 표시: "시세 로딩 중... (KR: 5/10, US: 0/3)"
+  - `priceReady === false`이면 버튼 비활성화 + 분석 차단
+  - PortfolioContext의 `krLoadedCount/krTotalCount/usLoadedCount/usTotalCount` 활용
+- **Build Time**: 2026-03-10 15:50:00
+
 ## [Alpha V1.312] - 2026-03-10 14:48:00
 
 ### 🐛 Price Data Readiness Fix

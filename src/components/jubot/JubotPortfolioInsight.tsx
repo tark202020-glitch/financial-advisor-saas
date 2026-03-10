@@ -41,7 +41,7 @@ const RISK_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 export default function JubotPortfolioInsight() {
-    const { assets, getKrData, getUsData, goldData, krLoading, usLoading } = usePortfolio();
+    const { assets, getKrData, getUsData, goldData, krLoading, usLoading, krLoadedCount, krTotalCount, usLoadedCount, usTotalCount } = usePortfolio();
     const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
     const [lastAnalysisTime, setLastAnalysisTime] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -54,6 +54,18 @@ export default function JubotPortfolioInsight() {
     const [progressPercent, setProgressPercent] = useState(0);
     const [progressDetail, setProgressDetail] = useState('');
 
+    // 가격 데이터 로딩 완료 여부 (PortfolioContext의 KR/US 배치 로딩 추적)
+    const [priceReady, setPriceReady] = useState(false);
+
+    useEffect(() => {
+        if (!krLoading && !usLoading) {
+            console.log('[Jubot] ✅ 가격 데이터 로딩 완료 — 분석 가능');
+            setPriceReady(true);
+        } else {
+            setPriceReady(false);
+        }
+    }, [krLoading, usLoading]);
+
     // Helper: get price & change from context
     const getContextData = useCallback((asset: { symbol: string; category: string }) => {
         if (asset.category === 'GOLD') return { price: goldData?.price > 0 ? goldData.price : 0, changePercent: 0 };
@@ -65,9 +77,15 @@ export default function JubotPortfolioInsight() {
     const fetchAnalysis = useCallback(async () => {
         if (!assets || assets.length === 0) return;
 
+        // 가격 데이터 로딩이 아직 완료되지 않았으면 분석 불가
+        if (!priceReady) {
+            console.warn('[Jubot] 가격 데이터 아직 로딩 중 — 분석 대기');
+            return;
+        }
+
         setLoading(true);
         setError(false);
-        setProgressStep('시세 데이터 준비');
+        setProgressStep('시세 데이터 확인');
         setProgressPercent(0);
         setProgressDetail('');
 
@@ -83,34 +101,7 @@ export default function JubotPortfolioInsight() {
             const totalSteps = 2; // prices (from context) + AI (서버에서 뉴스+공시+재무 통합 수집)
             let completedSteps = 0;
 
-            // ── STEP 0: 가격 데이터 로딩 완료 대기 ──
-            // PortfolioContext의 배치 가격 조회가 아직 진행 중이면 최대 15초 대기
-            if (krLoading || usLoading) {
-                setProgressStep('시세 데이터 로딩 대기...');
-                setProgressDetail('가격 데이터를 불러오는 중입니다');
-                setProgressPercent(5);
-
-                const maxWait = 15000; // 15초
-                const checkInterval = 500; // 0.5초마다 체크
-                let waited = 0;
-
-                await new Promise<void>((resolve) => {
-                    const timer = setInterval(() => {
-                        waited += checkInterval;
-                        setProgressPercent(Math.min(8, Math.round((waited / maxWait) * 10)));
-                        // 컴포넌트 리렌더시 krLoading/usLoading이 업데이트되지 않으므로
-                        // 타이머 기반으로 대기 후 진행
-                        if (waited >= maxWait) {
-                            clearInterval(timer);
-                            resolve();
-                        }
-                    }, checkInterval);
-                });
-
-                console.log(`[Jubot] 가격 로딩 대기 ${waited / 1000}초 후 진행`);
-            }
-
-            // ── STEP 1: Context에서 현재가 + 등락률 즉시 조회 ──
+            // ── STEP 1: Context에서 현재가 + 등락률 즉시 조회 (이미 로딩 완료) ──
             setProgressStep('시세 데이터 확인 중...');
             setProgressPercent(10);
 
@@ -308,11 +299,11 @@ export default function JubotPortfolioInsight() {
                 </div>
                 <button
                     onClick={fetchAnalysis}
-                    disabled={loading || activeAssets.length === 0}
+                    disabled={loading || activeAssets.length === 0 || !priceReady}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-purple-600 text-white font-bold text-base hover:bg-purple-500 transition-colors disabled:opacity-50"
                 >
-                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    {loading ? '분석 중...' : analysis ? '재분석' : '분석 시작'}
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : (!priceReady ? 'animate-spin' : '')} />
+                    {!priceReady ? `시세 로딩 중... (KR: ${krLoadedCount}/${krTotalCount}, US: ${usLoadedCount}/${usTotalCount})` : loading ? '분석 중...' : analysis ? '재분석' : '분석 시작'}
                 </button>
             </div>
 
