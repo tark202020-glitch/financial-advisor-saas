@@ -86,9 +86,9 @@ export async function POST(req: NextRequest) {
         console.log(`  [1단계] 동적 ETF 후보군 ${matchedEtfs.length}개 파싱 및 설정 완료`);
 
         // ====================================================================
-        // 2. ETF 정보 및 현재가 조회
+        // 2. ETF 정보 및 현재가 조회 (Chunk 병렬 처리로 속도 개선)
         // ====================================================================
-        console.log(`  [2단계] ETF 현재가 및 정보 조회 시작...`);
+        console.log(`  [2단계] ETF 현재가 및 정보 조회 시작... (대상: ${matchedEtfs.length}개)`);
 
         interface EtfCandidate {
             code: string;
@@ -98,105 +98,119 @@ export async function POST(req: NextRequest) {
         }
 
         const etfCandidates: EtfCandidate[] = [];
+        
+        // KIS API 초당 호출 제한을 고려하여 10개씩 청크 단위로 병렬 처리
+        const chunkSize = 10;
+        for (let i = 0; i < matchedEtfs.length; i += chunkSize) {
+            const chunk = matchedEtfs.slice(i, i + chunkSize);
+            
+            const chunkResults = await Promise.all(
+                chunk.map(async (item) => {
+                    try {
+                        const etfData = await getEtfPrice(item.code);
+                        if (!etfData || !etfData.stck_prpr) return null;
 
-        for (const item of matchedEtfs) {
-            await new Promise(r => setTimeout(r, 80)); // 80ms 딜레이 (api limit 고려)
-            try {
-                const code = item.code;
-                const etfName = item.name;
+                        const price = parseInt(etfData.stck_prpr || '0');
+                        if (price <= 0) return null;
 
-                const etfData = await getEtfPrice(code);
-                if (!etfData || !etfData.stck_prpr) continue;
+                        return {
+                            code: item.code,
+                            name: item.name,
+                            price,
+                            dividendCycle: etfData.etf_dvdn_cycl || '-',
+                        } as EtfCandidate;
+                    } catch (e) {
+                        return null;
+                    }
+                })
+            );
 
-                const price = parseInt(etfData.stck_prpr || '0');
-                if (price <= 0) continue;
-
-                const dividendCycle = etfData.etf_dvdn_cycl || '-';
-
-                etfCandidates.push({
-                    code,
-                    name: etfName,
-                    price,
-                    dividendCycle,
-                });
-
-                console.log(`  [ETF 확인] ${etfName}(${code}) - ${price}원, 배당주기: ${dividendCycle}`);
-
-            } catch (e) {
-                console.warn(`  [ETF 조회 실패] ${item.code}`);
-                continue;
+            // 유효한 결과만 추가
+            chunkResults.forEach(res => {
+                if (res) etfCandidates.push(res);
+            });
+            
+            // 청크 간 딜레이 (KIS API Rate Limit: 초당 20건 제한 대비 0.5초 대기)
+            if (i + chunkSize < matchedEtfs.length) {
+                await new Promise(r => setTimeout(r, 500)); 
             }
         }
 
         console.log(`  [2단계] 유효 ETF ${etfCandidates.length}개 확보 완료`);
 
         // ====================================================================
-        // 3. ETF 후보들의 실제 배당 이력 조회 → TOP10 선정
+        // 3. ETF 후보들의 실제 배당 이력 조회 → TOP10 선정 (Chunk 병렬 처리)
         // ====================================================================
         console.log(`  [3단계] ETF 실제 배당 이력 조회 중...`);
         const etfResults: any[] = [];
+        const divChunkSize = 5; // 배당 이력은 호출 비용이 높을 수 있으므로 5개씩
 
-        for (const etf of etfCandidates) {
-            // 실제 배당 이력 조회
-            await new Promise(r => setTimeout(r, 200));
-            let actualDividends: any[] = [];
-            try {
-                actualDividends = await getKsdinfoDividend({
-                    gb1: '0',
-                    f_dt: fromDate,
-                    t_dt: todayStr,
-                    sht_cd: etf.code,
-                });
-            } catch (e) {
-                console.warn(`  [배당이력] 조회 실패: ${etf.code}`);
-                continue;
-            }
+        for (let i = 0; i < etfCandidates.length; i += divChunkSize) {
+            const chunk = etfCandidates.slice(i, i + divChunkSize);
+            
+            const chunkDivResults = await Promise.all(
+                chunk.map(async (etf) => {
+                    try {
+                        const actualDividends = await getKsdinfoDividend({
+                            gb1: '0',
+                            f_dt: fromDate,
+                            t_dt: todayStr,
+                            sht_cd: etf.code,
+                        });
 
-            if (!actualDividends || actualDividends.length === 0) {
-                console.log(`  [${etf.name}] 배당 이력 없음 - 건너뜀`);
-                continue;
-            }
+                        if (!actualDividends || actualDividends.length === 0) return null;
 
-            // 가장 최근 배당
-            const sortedDividends = actualDividends
-                .filter((d: any) => parseFloat(d.per_sto_divi_amt || '0') > 0)
-                .sort((a: any, b: any) => (b.record_date || '').localeCompare(a.record_date || ''));
+                        // 가장 최근 배당
+                        const sortedDividends = actualDividends
+                            .filter((d: any) => parseFloat(d.per_sto_divi_amt || '0') > 0)
+                            .sort((a: any, b: any) => (b.record_date || '').localeCompare(a.record_date || ''));
 
-            if (sortedDividends.length === 0) continue;
+                        if (sortedDividends.length === 0) return null;
 
-            const latest = sortedDividends[0];
-            const actualAmount = parseFloat(latest.per_sto_divi_amt || '0');
-            const dividendPayDate = latest.divi_pay_dt || latest.record_date || '';
-            const recordDate = latest.record_date || '';
+                        const latest = sortedDividends[0];
+                        const actualAmount = parseFloat(latest.per_sto_divi_amt || '0');
+                        const dividendPayDate = latest.divi_pay_dt || latest.record_date || '';
+                        const recordDate = latest.record_date || '';
 
-            // 수익률 = 실제 배당금 / 현재 종가 × 100
-            const yieldRate = (actualAmount / etf.price) * 100;
+                        // 수익률 = 실제 배당금 / 현재 종가 × 100
+                        const yieldRate = (actualAmount / etf.price) * 100;
 
-            // 배당 횟수 추정
-            let frequency = '-';
-            const cycle = etf.dividendCycle;
-            if (cycle.includes('월')) frequency = '12회';
-            else if (cycle.includes('분기')) frequency = '4회';
-            else if (cycle.includes('반기')) frequency = '2회';
-            else if (cycle.includes('연')) frequency = '1회';
+                        // 배당 횟수 추정
+                        let frequency = '-';
+                        const cycle = etf.dividendCycle;
+                        if (cycle.includes('월')) frequency = '12회';
+                        else if (cycle.includes('분기')) frequency = '4회';
+                        else if (cycle.includes('반기')) frequency = '2회';
+                        else if (cycle.includes('연')) frequency = '1회';
 
-            // 가상배당금
-            const shares = Math.floor(10000000 / etf.price);
-            const virtualDividend = shares * actualAmount;
+                        // 가상배당금
+                        const shares = Math.floor(10000000 / etf.price);
+                        const virtualDividend = shares * actualAmount;
 
-            etfResults.push({
-                code: etf.code,
-                name: etf.name,
-                price: etf.price,
-                dividendAmount: actualAmount,
-                dividendPayDate,
-                recordDate,
-                yieldRate,
-                frequency,
-                virtualDividend,
+                        return {
+                            code: etf.code,
+                            name: etf.name,
+                            price: etf.price,
+                            dividendAmount: actualAmount,
+                            dividendPayDate,
+                            recordDate,
+                            yieldRate,
+                            frequency,
+                            virtualDividend,
+                        };
+                    } catch (e) {
+                        return null;
+                    }
+                })
+            );
+
+            chunkDivResults.forEach(res => {
+                if (res) etfResults.push(res);
             });
-
-            console.log(`  [결과] ${etf.name}: ${actualAmount}원, ${yieldRate.toFixed(2)}%`);
+            
+            if (i + divChunkSize < etfCandidates.length) {
+                await new Promise(r => setTimeout(r, 600)); 
+            }
         }
 
         // 수익률 높은 순 재정렬 후 상위 10개 추출

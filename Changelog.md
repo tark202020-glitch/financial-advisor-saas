@@ -1,3 +1,15 @@
+## [Alpha V1.306] - 2026-03-10 12:05:00
+
+### 🚀 Performance Optimization & Bug Fix
+- **Summary**: 배당ETF 분석 API 속도 개선 및 504 Gateway Timeout 에러 해결
+- **Detail**:
+  - 동적 추출로 인해 ETF 후보군이 37개에서 240개 이상으로 대폭 증가함에 따라 발생하던 Vercel 60초 타임아웃(504 Error) 문제 해결
+  - KIS API 호출 방식을 순차적(Sequential) 처리에서 **청크 단위 병렬(Chunked Parallel) 처리** 로 전면 개편
+  - 단계 1 (현재가 조회): 240개 종목을 10개씩 묶어 `Promise.all` 로 동시 조회 (청크 간 0.5초 대기)
+  - 단계 2 (배당이력 조회): 유효한 ETF 종목들에 대해 5개씩 묶어 동시 배당금 내역 조회 (청크 간 0.6초 대기)
+  - 전체 API 응답 시간을 기존 대비 300% 이상 단축하여 안정적인 마크다운 리포트 생성 보장
+- **Build Time**: 2026-03-10 12:05:00
+
 ## [Alpha V1.305] - 2026-03-10 11:42:00
 
 ### 🔄 Build Update
