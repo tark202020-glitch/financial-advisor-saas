@@ -99,8 +99,8 @@ export async function POST(req: NextRequest) {
 
         const etfCandidates: EtfCandidate[] = [];
         
-        // KIS API 초당 호출 제한을 고려하여 10개씩 청크 단위로 병렬 처리
-        const chunkSize = 10;
+        // KIS API 초당 호출 제한(20건/초)을 고려하여 15개씩 청크 단위로 병렬 처리
+        const chunkSize = 15;
         for (let i = 0; i < matchedEtfs.length; i += chunkSize) {
             const chunk = matchedEtfs.slice(i, i + chunkSize);
             
@@ -130,9 +130,9 @@ export async function POST(req: NextRequest) {
                 if (res) etfCandidates.push(res);
             });
             
-            // 청크 간 딜레이 (KIS API Rate Limit: 초당 20건 제한 대비 0.5초 대기)
+            // 청크 간 딜레이 최소화 (Vercel 60초 타임아웃 방지)
             if (i + chunkSize < matchedEtfs.length) {
-                await new Promise(r => setTimeout(r, 500)); 
+                await new Promise(r => setTimeout(r, 200)); 
             }
         }
 
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest) {
         // ====================================================================
         console.log(`  [3단계] ETF 실제 배당 이력 조회 중...`);
         const etfResults: any[] = [];
-        const divChunkSize = 5; // 배당 이력은 호출 비용이 높을 수 있으므로 5개씩
+        const divChunkSize = 15; // 타임아웃 방지를 위해 청크 사이즈 확대
 
         for (let i = 0; i < etfCandidates.length; i += divChunkSize) {
             const chunk = etfCandidates.slice(i, i + divChunkSize);
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
             });
             
             if (i + divChunkSize < etfCandidates.length) {
-                await new Promise(r => setTimeout(r, 600)); 
+                await new Promise(r => setTimeout(r, 200)); 
             }
         }
 
