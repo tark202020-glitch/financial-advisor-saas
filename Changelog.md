@@ -1,3 +1,12 @@
+## [Alpha V1.317] - 2026-03-10 16:50:00
+
+### ✨ Daily PnL Analysis & NEW Badge Fix
+- **Summary**: 주식스터디 메뉴 NEW 뱃지 표출 버그 픽스 & 내 주식 종합 당일 분석줄 추가
+- **Detail**:
+  - `/api/study/recent` fetch 요청에 옵션을 주어 서버 응답이 캐시되지 않도록 브라우저 렌더링 무효화 설정 (`cache: 'no-store'`). 이로 인해 사이드바를 열 시 즉시 NEW 뱃지가 생성되도록 수정
+  - `PortfolioSummaryBlock.tsx` 내 평가손익 하단에 "당일 손익의 상승/하락 폭 및 원인이 된 최대 기여 종목 명찰"을 실시간으로 분석해 자연스러운 Text 형태로 렌더링하도록 조건부 UI 신설
+- **Build Time**: 2026-03-10 16:50:00
+
 ## [Alpha V1.316] - 2026-03-10 16:35:00
 
 ### ✨ Update Modal & Study Board Notification

@@ -281,6 +281,51 @@ export default function PortfolioSummaryBlock() {
         return result;
     }, [assets, getKrData, getUsData, view, exchangeRate]);
 
+    // ===== Daily Profit/Loss Analysis =====
+    const dailyAnalysis = useMemo(() => {
+        let totalDailyProfit = 0;
+        let maxPos = { name: '', profit: 0 };
+        let maxNeg = { name: '', profit: 0 };
+        let hasData = false;
+        
+        assets.filter(a => a.quantity > 0)
+        .filter(a => {
+            if (view === 'all') return true;
+            if (view === 'kr' && (a.category === 'KR' || a.category === 'GOLD')) return true;
+            if (view === 'us' && a.category === 'US') return true;
+            return false;
+        })
+        .forEach(a => {
+            let change = 0;
+            if (a.category === 'GOLD') {
+                if (goldData) { change = goldData.change || 0; hasData = true; }
+            } else {
+                const clean = a.symbol.replace('.KS', '');
+                const data = a.category === 'KR' ? getKrData(clean) : getUsData(a.symbol);
+                if (data) { change = data.change || 0; hasData = true; }
+            }
+            
+            const exRate = exchangeRate || 1350;
+            const isUs = a.category === 'US';
+            const dailyProfitKRW = change * a.quantity * (isUs ? exRate : 1);
+            
+            totalDailyProfit += dailyProfitKRW;
+            
+            if (dailyProfitKRW > maxPos.profit) {
+                maxPos = { name: a.name, profit: dailyProfitKRW };
+            }
+            if (dailyProfitKRW < maxNeg.profit) {
+                maxNeg = { name: a.name, profit: dailyProfitKRW };
+            }
+        });
+
+        return { 
+            totalDailyProfit, 
+            contributor: totalDailyProfit >= 0 ? maxPos : maxNeg,
+            hasData 
+        };
+    }, [assets, getKrData, getUsData, goldData, view, exchangeRate]);
+
     // ===== Realized Gains (Closed Positions) =====
     const realizedGains = useMemo(() => {
         const closedAssets = assets
@@ -465,6 +510,18 @@ export default function PortfolioSummaryBlock() {
                                             <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-yellow-500 mt-2">
                                                 <Coins size={14} className="opacity-80" />
                                                 <span>총 {fmtValue(current.dividend, view)}</span>
+                                            </div>
+                                        )}
+                                        {dailyAnalysis.hasData && dailyAnalysis.totalDailyProfit !== 0 && (
+                                            <div className="mt-4 text-xs sm:text-[13px] text-gray-300 bg-black/30 p-3 rounded-xl border border-white/5 leading-relaxed shadow-inner">
+                                                어제 대비 평가손익이 <span className={`font-bold ${dailyAnalysis.totalDailyProfit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                                    {formatCurrency(Math.abs(dailyAnalysis.totalDailyProfit), 'KRW')}원 {dailyAnalysis.totalDailyProfit >= 0 ? '늘었어요~' : '줄었어요.'}
+                                                </span>
+                                                {dailyAnalysis.contributor.name && (
+                                                    <span className="block mt-1 text-gray-400 text-xs text-pretty">
+                                                        오늘의 {dailyAnalysis.totalDailyProfit >= 0 ? '이익' : '손해'} 부분은 대부분 <span className="text-white font-bold bg-white/10 px-1 py-0.5 rounded">[{dailyAnalysis.contributor.name}]</span>에서 왔네요.
+                                                    </span>
+                                                )}
                                             </div>
                                         )}
                                     </div>

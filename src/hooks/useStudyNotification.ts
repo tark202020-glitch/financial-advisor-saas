@@ -8,7 +8,7 @@ export function useStudyNotification() {
 
     const checkNewStudies = useCallback(async () => {
         try {
-            const res = await fetch('/api/study/recent');
+            const res = await fetch('/api/study/recent', { cache: 'no-store' });
             const data = await res.json();
             
             if (data.success && data.documents.length > 0) {
