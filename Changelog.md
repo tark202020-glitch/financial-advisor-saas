@@ -1,3 +1,25 @@
+## [Alpha V1.311] - 2026-03-10 14:31:00
+
+### ✨ Naver Search API Integration
+- **Summary**: 차단되던 네이버 RSS를 공식 네이버 검색 API로 교체
+- **Detail**:
+  - `.env.local`에 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` 추가
+  - `collect/news/route.ts`: 네이버 RSS 소스 제거 → 네이버 검색 API 2개 쿼리('주식 증권 시장', '주식 투자 전망') 통합
+  - `analyze/portfolio/route.ts`: 직접 뉴스 수집에도 네이버 검색 API 추가
+  - HTML 태그 제거, 중복 기사 필터링, 전문가 기사 판별 포함
+  - 기존 RSS 3소스(매일경제, 연합뉴스, 인베스팅닷컴) + 네이버 API = 총 4소스 체제
+- **Build Time**: 2026-03-10 14:31:00
+
+## [Alpha V1.310] - 2026-03-10 14:22:00
+
+### 🔧 Insights Process Optimization
+- **Summary**: 인사이트 페이지 내부 프로세스 전면 최적화 — API 호출 ~50% 감소, 공시 범위 확대
+- **Detail**:
+  - `JubotPortfolioInsight.tsx`: 클라이언트 뉴스 API 2중 호출 제거 (서버에서만 수집), changeRate(전일대비 등락률) 실제 데이터 전달
+  - `analyze/portfolio/route.ts`: (1) DART 재무/공시 2건씩 병렬 처리, (2) 배당 API 2중 호출 제거 (fetchCompanySummary 내 dps 활용), (3) 뉴스 수집 자기 API 재호출→직접 import로 변경, (4) 재무+공시+뉴스 3대 수집을 Promise.all로 동시 실행
+  - `opendart.ts`: 공시 조회 기간 6개월→12개월, 공시 타입 D(기타)/F(공정) 추가, 키워드 11종 추가, 최대 건수 10→15건
+- **Build Time**: 2026-03-10 14:22:00
+
 ## [Alpha V1.309] - 2026-03-10 13:27:00
 
 ### 🔧 Error Handling Improvement

@@ -41,26 +41,25 @@ const RISK_CONFIG: Record<string, { label: string; color: string }> = {
 };
 
 export default function JubotPortfolioInsight() {
-    const { assets, getKrData, getUsData, goldData } = usePortfolio();
+    const { assets, getKrData, getUsData, goldData, krLoading, usLoading } = usePortfolio();
     const [analysis, setAnalysis] = useState<PortfolioAnalysis | null>(null);
     const [lastAnalysisTime, setLastAnalysisTime] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(false);
     const [selectedStock, setSelectedStock] = useState<any>(null);
     const [debugPriceMap, setDebugPriceMap] = useState<Record<string, number>>({});
-    const [debugNewsMap, setDebugNewsMap] = useState<Record<string, number>>({});
 
     // Progress state
     const [progressStep, setProgressStep] = useState('');
     const [progressPercent, setProgressPercent] = useState(0);
     const [progressDetail, setProgressDetail] = useState('');
 
-    // Helper: get price from context
-    const getContextPrice = useCallback((asset: { symbol: string; category: string }) => {
-        if (asset.category === 'GOLD') return goldData?.price > 0 ? goldData.price : 0;
+    // Helper: get price & change from context
+    const getContextData = useCallback((asset: { symbol: string; category: string }) => {
+        if (asset.category === 'GOLD') return { price: goldData?.price > 0 ? goldData.price : 0, changePercent: 0 };
         const cleanSymbol = asset.symbol.replace('.KS', '');
         const data = asset.category === 'KR' ? getKrData(cleanSymbol) : getUsData(asset.symbol);
-        return data?.price || 0;
+        return { price: data?.price || 0, changePercent: data?.changePercent || 0 };
     }, [getKrData, getUsData, goldData]);
 
     const fetchAnalysis = useCallback(async () => {
@@ -81,17 +80,21 @@ export default function JubotPortfolioInsight() {
                 return;
             }
 
-            const totalSteps = 3; // prices (from context) + news + AI
+            const totalSteps = 2; // prices (from context) + AI (서버에서 뉴스+공시+재무 통합 수집)
             let completedSteps = 0;
 
-            // ── STEP 1: Context에서 현재가 즉시 조회 ──
+            // ── STEP 1: Context에서 현재가 + 등락률 즉시 조회 ──
             setProgressStep('시세 데이터 확인 중...');
             setProgressPercent(10);
 
             const priceMap: Record<string, number> = {};
+            const changeRateMap: Record<string, number> = {};
             for (const a of activeList) {
-                const price = getContextPrice(a);
-                if (price > 0) priceMap[a.symbol] = price;
+                const { price, changePercent } = getContextData(a);
+                if (price > 0) {
+                    priceMap[a.symbol] = price;
+                    changeRateMap[a.symbol] = changePercent;
+                }
             }
 
             const zeroCount = activeList.length - Object.keys(priceMap).length;
@@ -104,37 +107,9 @@ export default function JubotPortfolioInsight() {
             setDebugPriceMap({ ...priceMap });
             completedSteps++;
 
-            // ── STEP 2: 뉴스 수집 (서버 API 경유 — CORS 우회) ──
-            setProgressStep('뉴스 수집 중...');
-            setProgressDetail('RSS 뉴스 분석');
-            setProgressPercent(Math.round((completedSteps / totalSteps) * 100));
-
-            const newsCountMap: Record<string, number> = {};
-            try {
-                const newsRes = await fetch('/api/jubot/collect/news');
-                if (newsRes.ok) {
-                    const newsData = await newsRes.json();
-                    if (newsData.success && newsData.articles) {
-                        // 각 종목별 뉴스 매칭
-                        for (const a of activeList) {
-                            const cleanSym = a.symbol.includes('.') ? a.symbol.split('.')[0] : a.symbol;
-                            const count = newsData.articles.filter((article: any) => {
-                                const text = `${article.title} ${article.description || ''}`;
-                                return text.includes(a.name) || text.includes(cleanSym);
-                            }).length;
-                            newsCountMap[a.symbol] = count;
-                        }
-                    }
-                }
-            } catch {
-                console.warn('[Jubot] News fetch failed');
-            }
-            setDebugNewsMap({ ...newsCountMap });
-            completedSteps++;
-
-            // ── STEP 3: AI 분석 호출 ──
+            // ── STEP 2: AI 분석 호출 (서버에서 뉴스+공시+재무 통합 수집) ──
             setProgressStep('AI 분석 요청 중...');
-            setProgressDetail('JUBOT이 포트폴리오를 분석합니다');
+            setProgressDetail('뉴스 수집 + 공시 조회 + AI 분석을 서버에서 진행합니다');
             setProgressPercent(Math.round((completedSteps / totalSteps) * 100));
 
             const portfolioData = activeList.map(a => ({
@@ -142,15 +117,14 @@ export default function JubotPortfolioInsight() {
                 symbol: a.symbol,
                 category: a.category,
                 sector: a.sector || '',
-                secondary_category: a.secondary_category || '', // 2차 카테고리 합류
+                secondary_category: a.secondary_category || '',
                 currentPrice: priceMap[a.symbol] || 0,
                 avgPrice: a.pricePerShare || 0,
                 quantity: a.quantity || 0,
-                changeRate: 0,
+                changeRate: changeRateMap[a.symbol] || 0,
                 targetPriceUpper: a.targetPriceUpper || 0,
                 targetPriceLower: a.targetPriceLower || 0,
-                newsCount: newsCountMap[a.symbol] || 0,
-                trades: (a as any).trades || [], // 주봇 1.0: 거래기록 전달
+                trades: (a as any).trades || [],
             }));
 
             // ── 평가금액 순 정렬 (높은 것부터) ──
@@ -219,7 +193,7 @@ export default function JubotPortfolioInsight() {
         } finally {
             setLoading(false);
         }
-    }, [assets, getContextPrice]);
+    }, [assets, getContextData]);
 
     // Check cache on mount
     const checkCache = useCallback(async () => {
@@ -422,7 +396,6 @@ export default function JubotPortfolioInsight() {
                                         const config = SIGNAL_CONFIG[insight.signal] || SIGNAL_CONFIG.hold;
                                         const Icon = config.icon;
                                         const price = debugPriceMap[insight.symbol] || 0;
-                                        const newsCount = debugNewsMap[insight.symbol] || 0;
                                         const asset = activeAssets.find(a => a.symbol === insight.symbol);
                                         const isUS = asset?.category === 'US';
 
@@ -448,13 +421,9 @@ export default function JubotPortfolioInsight() {
                                                         <Icon size={18} className={config.color} />
                                                         <span className="font-bold text-white text-base">{insight.name}</span>
                                                         <span className="text-sm text-gray-500">({insight.symbol})</span>
-                                                        {/* 디버그: 현재가 */}
+                                                        {/* 현재가 */}
                                                         <span className={`text-xs px-1.5 py-0.5 rounded ${price > 0 ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
                                                             {isUS ? '$' : '₩'}{price.toLocaleString()}
-                                                        </span>
-                                                        {/* 디버그: 뉴스 수 */}
-                                                        <span className={`text-xs px-1.5 py-0.5 rounded ${newsCount > 0 ? 'bg-blue-900/30 text-blue-400' : 'bg-gray-800 text-gray-500'}`}>
-                                                            뉴스 {newsCount}건
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-2">

@@ -13,23 +13,171 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
 
-// OpenDART API 직접 호출로 재무 데이터 조회
+// OpenDART — 2건씩 병렬 처리로 재무+배당 통합 조회
 async function fetchFinancialData(symbols: string[]) {
     const { fetchCompanySummary } = await import('@/lib/opendart');
     const financialMap: Record<string, any> = {};
+    const CHUNK_SIZE = 2; // DART API 레이트 리밋 고려
 
-    for (const symbol of symbols) {
-        try {
-            const summary = await fetchCompanySummary(symbol);
-            if (summary) {
-                financialMap[symbol] = summary;
-            }
-        } catch (e) {
-            console.warn(`[Jubot] DART fetch failed for ${symbol}:`, e);
+    for (let i = 0; i < symbols.length; i += CHUNK_SIZE) {
+        const chunk = symbols.slice(i, i + CHUNK_SIZE);
+        const results = await Promise.all(
+            chunk.map(async (symbol) => {
+                try {
+                    const summary = await fetchCompanySummary(symbol);
+                    return { symbol, summary };
+                } catch (e) {
+                    console.log(`[Jubot] DART 재무 조회 실패: ${symbol}`);
+                    return { symbol, summary: null };
+                }
+            })
+        );
+        for (const { symbol, summary } of results) {
+            if (summary) financialMap[symbol] = summary;
+        }
+        // 청크 간 딜레이 (레이트 리밋 방지)
+        if (i + CHUNK_SIZE < symbols.length) {
+            await new Promise(r => setTimeout(r, 300));
         }
     }
 
     return financialMap;
+}
+
+// 공시 데이터 — 2건씩 병렬 처리
+async function fetchDisclosureData(symbols: string[]) {
+    const { fetchDisclosures } = await import('@/lib/opendart');
+    const disclosureMap: Record<string, any> = {};
+    const CHUNK_SIZE = 2;
+
+    for (let i = 0; i < symbols.length; i += CHUNK_SIZE) {
+        const chunk = symbols.slice(i, i + CHUNK_SIZE);
+        const results = await Promise.all(
+            chunk.map(async (symbol) => {
+                try {
+                    const disc = await fetchDisclosures(symbol);
+                    return { symbol, disc };
+                } catch {
+                    return { symbol, disc: null };
+                }
+            })
+        );
+        for (const { symbol, disc } of results) {
+            if (disc) disclosureMap[symbol] = disc;
+        }
+        if (i + CHUNK_SIZE < symbols.length) {
+            await new Promise(r => setTimeout(r, 300));
+        }
+    }
+
+    return disclosureMap;
+}
+
+// 뉴스 수집 (직접 import — 자기 API 재호출 방지)
+async function collectNewsDirectly() {
+    const DEFAULT_RSS_SOURCES = [
+        { name: '매일경제 증권', url: 'https://www.mk.co.kr/rss/40300001/' },
+        { name: '연합뉴스 경제', url: 'https://www.yna.co.kr/rss/economy.xml' },
+        { name: '인베스팅닷컴', url: 'https://kr.investing.com/rss/news.rss' },
+    ];
+    const EXPERT_NAMES = ['박시동', '이광수'];
+    const allArticles: any[] = [];
+    const expertArticles: any[] = [];
+
+    for (const source of DEFAULT_RSS_SOURCES) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(source.url, {
+                signal: controller.signal,
+                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; JubotNewsCollector/1.0)' }
+            });
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+                const xml = await res.text();
+                // 간단한 RSS 파싱
+                const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+                let match;
+                let count = 0;
+                while ((match = itemRegex.exec(xml)) !== null && count < 10) {
+                    const itemXml = match[1];
+                    const getTag = (tag: string) => {
+                        const tagRegex = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i');
+                        const m = itemXml.match(tagRegex);
+                        return (m?.[1] || m?.[2] || '').trim();
+                    };
+                    const title = getTag('title');
+                    if (title) {
+                        const description = getTag('description').replace(/<[^>]+>/g, '').slice(0, 300);
+                        const fullText = `${title} ${description}`;
+                        let isExpert = false;
+                        let expertName: string | null = null;
+                        for (const expert of EXPERT_NAMES) {
+                            if (fullText.includes(expert)) {
+                                isExpert = true;
+                                expertName = expert;
+                                break;
+                            }
+                        }
+                        const article = { title, description, source: source.name, isExpert, expertName };
+                        allArticles.push(article);
+                        if (isExpert) expertArticles.push(article);
+                        count++;
+                    }
+                }
+                console.log(`  [뉴스] ${source.name}: ${count}개 수집`);
+            }
+        } catch (e: any) {
+            const reason = e.name === 'AbortError' ? '타임아웃' : '네트워크 오류';
+            console.log(`  [뉴스] ${source.name}: ${reason} (스킵)`);
+        }
+    }
+
+    // 네이버 검색 API 뉴스 추가
+    const naverClientId = process.env.NAVER_CLIENT_ID;
+    const naverClientSecret = process.env.NAVER_CLIENT_SECRET;
+    if (naverClientId && naverClientSecret) {
+        const queries = ['주식 증권 시장', '주식 투자 전망'];
+        for (const query of queries) {
+            try {
+                const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(query)}&display=10&sort=date`;
+                const res = await fetch(url, {
+                    headers: {
+                        'X-Naver-Client-Id': naverClientId,
+                        'X-Naver-Client-Secret': naverClientSecret,
+                    },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.items) {
+                        for (const item of data.items) {
+                            const cleanTitle = (item.title || '').replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+                            const cleanDesc = (item.description || '').replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').slice(0, 300);
+                            const fullText = `${cleanTitle} ${cleanDesc}`;
+                            let isExpert = false;
+                            let expertName: string | null = null;
+                            for (const expert of EXPERT_NAMES) {
+                                if (fullText.includes(expert)) {
+                                    isExpert = true;
+                                    expertName = expert;
+                                    break;
+                                }
+                            }
+                            const article = { title: cleanTitle, description: cleanDesc, source: '네이버 검색', isExpert, expertName };
+                            allArticles.push(article);
+                            if (isExpert) expertArticles.push(article);
+                        }
+                    }
+                }
+            } catch {
+                console.log(`  [뉴스] 네이버 검색 API 오류 (query=${query})`);
+            }
+        }
+        console.log(`  [뉴스] 네이버 검색 API 추가 완료`);
+    }
+
+    return { articles: allArticles, expertArticles };
 }
 
 export async function POST(request: NextRequest) {
@@ -56,47 +204,22 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Phase 2: DART 재무 데이터 + 공시 + 배당 수집
+        // ── 국내 종목 필터링 (GOLD 제외 — DART 대상 아님) ──
         const domesticSymbols = assets
-            .filter((a: any) => a.category !== 'US' && a.symbol)
+            .filter((a: any) => a.category === 'KR' && a.symbol)
             .map((a: any) => a.symbol);
 
-        const financialMap = await fetchFinancialData(domesticSymbols);
+        console.log(`[Jubot] 분석 시작: 총 ${assets.length}종목, 국내 ${domesticSymbols.length}종목`);
 
-        // Phase 3: 공시 및 배당 데이터 수집
-        const { fetchDisclosures, fetchDividends } = await import('@/lib/opendart');
-        const disclosureMap: Record<string, any> = {};
-        const dividendMap: Record<string, any> = {};
+        // ── Phase 1+2+3 병렬: 재무+배당 | 공시 | 뉴스 동시 수집 ──
+        const [financialMap, disclosureMap, newsResult] = await Promise.all([
+            fetchFinancialData(domesticSymbols),
+            fetchDisclosureData(domesticSymbols),
+            collectNewsDirectly(),
+        ]);
 
-        for (const sym of domesticSymbols) {
-            try {
-                const [disc, div] = await Promise.all([
-                    fetchDisclosures(sym),
-                    fetchDividends(sym),
-                ]);
-                if (disc) disclosureMap[sym] = disc;
-                if (div) dividendMap[sym] = div;
-            } catch {
-                // 개별 종목 실패 무시
-            }
-        }
-
-        // 주봇 1.0: 뉴스 데이터 수집 (서버 측 직접 호출)
-        let newsArticles: any[] = [];
-        let expertArticles: any[] = [];
-        try {
-            const baseUrl = request.nextUrl.origin;
-            const newsRes = await fetch(`${baseUrl}/api/jubot/collect/news`, { next: { revalidate: 0 } });
-            if (newsRes.ok) {
-                const newsData = await newsRes.json();
-                if (newsData.success) {
-                    newsArticles = newsData.articles || [];
-                    expertArticles = newsData.expert_articles || [];
-                }
-            }
-        } catch (e) {
-            console.warn('[Jubot Portfolio] News fetch failed:', e);
-        }
+        const { articles: newsArticles, expertArticles } = newsResult;
+        console.log(`[Jubot] 수집 완료: 재무 ${Object.keys(financialMap).length}건, 공시 ${Object.keys(disclosureMap).length}건, 뉴스 ${newsArticles.length}건`);
 
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
@@ -104,7 +227,6 @@ export async function POST(request: NextRequest) {
         const portfolioText = JSON.stringify(assets.map((a: any) => {
             const fin = financialMap[a.symbol] || null;
             const disc = disclosureMap[a.symbol] || null;
-            const div = dividendMap[a.symbol] || null;
             return {
                 name: a.name,
                 symbol: a.symbol,
@@ -130,14 +252,12 @@ export async function POST(request: NextRequest) {
                 } : null,
                 // 최근 공시 목록
                 recentDisclosures: disc?.disclosures || [],
-                // 배당 정보
-                dividend: div ? {
-                    year: div.year,
-                    dps: div.dps,
-                    payoutRatio: div.payoutRatio,
-                    totalDividend: div.dps && a.quantity ? div.dps * a.quantity : null,
+                // 배당 정보 (fetchCompanySummary에서 이미 수집된 dps 활용)
+                dividend: fin?.dps ? {
+                    dps: fin.dps,
+                    totalDividend: fin.dps && a.quantity ? fin.dps * a.quantity : null,
                 } : null,
-                // 주봇 1.0: 거래기록 포함
+                // 거래기록 포함
                 trades: a.trades || [],
             };
         }));

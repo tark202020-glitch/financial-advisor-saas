@@ -255,11 +255,11 @@ export async function fetchDisclosures(stockCode: string): Promise<{
     if (!corpCode) return null;
 
     try {
-        // 6개월 전 날짜
+        // 12개월 전 날짜 (연간 사업보고서 포함)
         const now = new Date();
-        const sixMonthsAgo = new Date(now);
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        const beginDate = sixMonthsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+        const twelveMonthsAgo = new Date(now);
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+        const beginDate = twelveMonthsAgo.toISOString().slice(0, 10).replace(/-/g, '');
         const endDate = now.toISOString().slice(0, 10).replace(/-/g, '');
 
         const url = `${DART_BASE_URL}/list.json?crtfc_key=${DART_API_KEY}&corp_code=${corpCode}&bgn_de=${beginDate}&end_de=${endDate}&page_count=20&sort=date&sort_mth=desc`;
@@ -268,12 +268,15 @@ export async function fetchDisclosures(stockCode: string): Promise<{
 
         if (data.status !== '000' || !data.list) return { disclosures: [] };
 
-        // 주요 공시 필터 (주가 영향 큰 것만)
+        // 주요 공시 필터 (주가 영향 큰 것 + 정기 보고서)
         const importantKeywords = [
             '배당', '유상증자', '무상증자', '자기주식', '합병', '분할',
             '영업실적', '매출액', '주요사항', '최대주주', '소송',
             '투자', '계약', '신규사업', '상장폐지', '관리종목',
             '공개매수', '전환사채', '신주인수권', '감자', '해산',
+            // 추가 키워드
+            '실적', '분기보고서', '반기보고서', '사업보고서', 'CB', '전환',
+            '주식매수선택권', '임원', '대표이사', '감사보고서', '공정공시',
         ];
 
         const filtered = data.list
@@ -282,9 +285,11 @@ export async function fetchDisclosures(stockCode: string): Promise<{
                 return importantKeywords.some(kw => title.includes(kw)) ||
                     d.pblntf_ty === 'A' || // 정기공시
                     d.pblntf_ty === 'B' || // 주요사항보고
-                    d.pblntf_ty === 'C';   // 발행공시
+                    d.pblntf_ty === 'C' || // 발행공시
+                    d.pblntf_ty === 'D' || // 기타공시
+                    d.pblntf_ty === 'F';   // 공정공시
             })
-            .slice(0, 10) // 최대 10건
+            .slice(0, 15) // 최대 15건
             .map((d: any) => ({
                 date: d.rcept_dt ? `${d.rcept_dt.slice(0, 4)}-${d.rcept_dt.slice(4, 6)}-${d.rcept_dt.slice(6, 8)}` : '',
                 title: d.report_nm || '',

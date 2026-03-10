@@ -14,11 +14,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
  */
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
+const naverClientId = process.env.NAVER_CLIENT_ID;
+const naverClientSecret = process.env.NAVER_CLIENT_SECRET;
 
 // 주목해야 할 전문가 목록
 const EXPERT_NAMES = ['박시동', '이광수'];
 
-// RSS 소스 정의 (주봇 1.0 기준)
+// RSS 소스 정의 (네이버 RSS 제거 — 서버에서 차단됨, 공식 API로 대체)
 const DEFAULT_RSS_SOURCES = [
     {
         name: '매일경제 증권',
@@ -31,16 +33,88 @@ const DEFAULT_RSS_SOURCES = [
         type: 'rss'
     },
     {
-        name: '네이버 경제',
-        url: 'https://rss.news.naver.com/economic.xml',
-        type: 'rss'
-    },
-    {
         name: '인베스팅닷컴',
         url: 'https://kr.investing.com/rss/news.rss',
         type: 'rss'
     },
 ];
+
+// 네이버 검색 API로 증권 뉴스 수집
+async function fetchNaverNews(): Promise<Array<{
+    title: string;
+    link: string;
+    pubDate: string;
+    description: string;
+    source: string;
+    isExpert: boolean;
+    expertName: string | null;
+}>> {
+    if (!naverClientId || !naverClientSecret) {
+        console.log('  [뉴스] 네이버 API 키 없음 (스킵)');
+        return [];
+    }
+
+    const items: any[] = [];
+    const queries = ['주식 증권 시장', '주식 투자 전망'];
+
+    for (const query of queries) {
+        try {
+            const url = `https://openapi.naver.com/v1/search/news.json?query=${encodeURIComponent(query)}&display=10&sort=date`;
+            const res = await fetch(url, {
+                headers: {
+                    'X-Naver-Client-Id': naverClientId,
+                    'X-Naver-Client-Secret': naverClientSecret,
+                },
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.items) {
+                    for (const item of data.items) {
+                        // HTML 태그 제거
+                        const cleanTitle = (item.title || '').replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+                        const cleanDesc = (item.description || '').replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').slice(0, 300);
+
+                        // 전문가 기사 판별
+                        const fullText = `${cleanTitle} ${cleanDesc}`;
+                        let isExpert = false;
+                        let expertName: string | null = null;
+                        for (const expert of EXPERT_NAMES) {
+                            if (fullText.includes(expert)) {
+                                isExpert = true;
+                                expertName = expert;
+                                break;
+                            }
+                        }
+
+                        items.push({
+                            title: cleanTitle,
+                            link: item.link || '',
+                            pubDate: item.pubDate || '',
+                            description: cleanDesc,
+                            source: '네이버 검색',
+                            isExpert,
+                            expertName,
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            console.log(`  [뉴스] 네이버 검색 API 오류 (query=${query})`);
+        }
+    }
+
+    // 중복 제거 (title 기준)
+    const seen = new Set<string>();
+    const unique = items.filter(item => {
+        if (seen.has(item.title)) return false;
+        seen.add(item.title);
+        return true;
+    });
+
+    console.log(`  [뉴스] 네이버 검색 API: ${unique.length}개 수집`);
+    return unique;
+}
 
 const MAX_ITEMS_PER_SOURCE = 10;
 
@@ -216,6 +290,17 @@ export async function GET(request: NextRequest) {
                 const reason = e.name === 'AbortError' ? '타임아웃' : '네트워크 오류';
                 console.log(`  [뉴스] ${source.name}: ${reason} (정상 스킵)`);
             }
+        }
+
+        // 2. 네이버 검색 API 뉴스 추가
+        try {
+            const naverItems = await fetchNaverNews();
+            for (const item of naverItems) {
+                if (item.isExpert) expertArticles.push(item);
+                allArticles.push(item);
+            }
+        } catch (e) {
+            console.log('  [뉴스] 네이버 API 전체 실패');
         }
 
         if (allArticles.length === 0) {
