@@ -143,12 +143,16 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
     }, [supabase]);
 
     // --- Extract Symbols for Batch Fetching ---
+    // 거래완료(quantity=0) 종목은 시세 조회 불필요 → 제외하여 API 호출 최소화
     const { krSymbols, usSymbols, hasGold } = React.useMemo(() => {
         const kr = new Set<string>();
         const us = new Set<string>();
         let gold = false;
 
         assets.forEach(a => {
+            // 거래완료 종목 제외 (보유수량 0 이하)
+            if ((a.quantity || 0) <= 0) return;
+
             if (a.category === 'GOLD') {
                 gold = true;
             } else if (a.category === 'KR') {

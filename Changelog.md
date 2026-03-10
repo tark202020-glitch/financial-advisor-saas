@@ -1,3 +1,12 @@
+## [Alpha V1.314] - 2026-03-10 16:00:00
+
+### ⚡ Skip Price Fetching for Sold Stocks
+- **Summary**: 거래완료(quantity=0) 종목을 시세 조회에서 제외하여 API 호출 최적화
+- **Detail**:
+  - `PortfolioContext.tsx`: 심볼 추출 시 `quantity <= 0` 종목 `return`으로 스킵
+  - 보유 중인 종목만 KIS 배치 가격 API 호출 → 불필요한 API 호출 제거
+- **Build Time**: 2026-03-10 16:00:00
+
 ## [Alpha V1.313] - 2026-03-10 15:50:00
 
 ### 🐛 Reactive Price Data Readiness (Critical Fix)
