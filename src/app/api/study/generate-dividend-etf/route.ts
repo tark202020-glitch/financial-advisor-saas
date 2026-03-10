@@ -34,33 +34,58 @@ export async function POST(req: NextRequest) {
         twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
         const fromDate = twoYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
-        const oneYearAgo = new Date(kstNow);
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        const rankFromDate = oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
-
         console.log(`\n▶ [배당ETF분석] 시작`);
 
         // ====================================================================
-        // 1. 전체 배당률 상위 (코스피+코스닥) - 가능한 많이 확보
+        // 1. 배당 ETF 파싱 및 데이터 확보
+        // KIS 배당률 랭킹 API는 주식만 반환하므로, 주요 배당 ETF들의 고정 후보군을 사용합니다.
         // ====================================================================
-        console.log(`  [1단계] 전체 배당률 상위 조회 중...`);
-        const allRankings = await getDividendRateRanking({
-            gb1: '0',       // 전체 (코스피+코스닥)
-            upjong: '0001',
-            gb2: '0',       // 전체
-            gb3: '2',       // 현금배당
-            f_dt: rankFromDate,
-            t_dt: todayStr,
-            gb4: '0',
-        });
+        const DIVIDEND_ETF_CANDIDATES = [
+            '161510', // PLUS 고배당주
+            '200020', // KODEX 고배당
+            '279530', // KODEX 고배당주
+            '325020', // KODEX 배당가치
+            '211560', // TIGER 배당성장
+            '466940', // TIGER 은행고배당플러스TOP10
+            '484880', // SOL 금융지주플러스고배당
+            '411060', // TIGER 은행
+            '091220', // KODEX 은행
+            '139260', // TIGER 200 금융
+            '140700', // KODEX 보험
+            '367800', // TIGER 100 플러스배당
+            '332610', // KODEX 배당성장
+            '332620', // KODEX 고배당가치
+            '104530', // KODEX 고배당
+            '429000', // TIGER 배당프리미엄액티브
+            '329200', // TIGER 부동산인프라고배당
+            '339160', // TIGER 부동산인프라
+            '400970', // KODEX 한국부동산리츠
+            '460330', // TIGER 미국배당다우존스
+            '458760', // ACE 미국배당다우존스
+            '446720', // SOL 미국배당다우존스
+            '379760', // TIGER 배당가치
+            '306540', // HANARO 고배당
+            '227830', // ARIRANG 고배당저변동50
+            '266160', // KBSTAR 고배당
+            '287330', // KBSTAR 고배당저변동
+            '376410', // TIGER 200 배당성장
+            '315960', // KBSTAR 대형고배당10TR
+            '433330', // KODEX 미국배당프리미엄액티브
+            '415580', // TIMEFOLIO Korea플러스배당액티브
+            '441680', // TIGER 배당프리미엄액티브
+            '379800', // KODEX 배당가치
+            '379810', // KODEX 고배당
+            '453860', // KODEX 배당성장채권혼합
+            '452360', // ARIRANG 고배당주채권혼합
+            '251600'  // PLUS 고배당주채권혼합
+        ];
 
-        console.log(`  [1단계] 전체 ${allRankings.length}건 조회 완료`);
+        console.log(`  [1단계] ETF 후보군 ${DIVIDEND_ETF_CANDIDATES.length}개 설정 완료`);
 
         // ====================================================================
-        // 2. ETF만 필터링하여 50개 확보
-        //    → getEtfPrice API는 ETF 전용으로, ETF가 아닌 종목은 에러 반환
+        // 2. ETF 정보 및 현재가 조회
         // ====================================================================
-        console.log(`  [2단계] ETF 필터링 시작 (getEtfPrice API로 ETF 여부 확인)...`);
+        console.log(`  [2단계] ETF 현재가 및 정보 조회 시작...`);
 
         interface EtfCandidate {
             code: string;
@@ -71,57 +96,44 @@ export async function POST(req: NextRequest) {
 
         const etfCandidates: EtfCandidate[] = [];
 
-        for (const item of allRankings) {
-            if (etfCandidates.length >= 50) break;
-
-            const code = item.sht_cd;
-
-            // ETF 전용 API로 조회 → 성공하면 ETF
+        for (const code of DIVIDEND_ETF_CANDIDATES) {
             await new Promise(r => setTimeout(r, 150));
             try {
+                // getStockInfo를 통해 정확한 ETF 이름을 가져옵니다
+                const stockInfo = await getStockInfo(code);
+                let etfName = stockInfo ? (stockInfo.prdt_abrv_name || stockInfo.prdt_name || code) : code;
+
                 const etfData = await getEtfPrice(code);
                 if (!etfData || !etfData.stck_prpr) continue;
 
                 const price = parseInt(etfData.stck_prpr || '0');
                 if (price <= 0) continue;
 
-                const etfName = etfData.bstp_kor_isnm || '';
                 const dividendCycle = etfData.etf_dvdn_cycl || '-';
 
-                // ETF 이름이 비어있으면 getStockInfo로 보강
-                let finalName = etfName;
-                if (!finalName || finalName.length < 2) {
-                    try {
-                        const stockInfo = await getStockInfo(code);
-                        if (stockInfo) {
-                            finalName = stockInfo.prdt_abrv_name || stockInfo.prdt_name || code;
-                        }
-                    } catch (e) { /* ignore */ }
-                }
-
                 // 커버드콜 제외
-                const nameUpper = finalName.toUpperCase();
+                const nameUpper = etfName.toUpperCase();
                 if (COVERED_CALL_KEYWORDS.some(kw => nameUpper.includes(kw.toUpperCase()))) {
-                    console.log(`  [커버드콜 제외] ${finalName}(${code})`);
+                    console.log(`  [커버드콜 제외] ${etfName}(${code})`);
                     continue;
                 }
 
                 etfCandidates.push({
                     code,
-                    name: finalName,
+                    name: etfName,
                     price,
                     dividendCycle,
                 });
 
-                console.log(`  [ETF 확인] ${finalName}(${code}) - ${price}원, 배당주기: ${dividendCycle} (${etfCandidates.length}/50)`);
+                console.log(`  [ETF 확인] ${etfName}(${code}) - ${price}원, 배당주기: ${dividendCycle}`);
 
             } catch (e) {
-                // getEtfPrice 실패 → ETF가 아님 → 건너뜀
+                console.warn(`  [ETF 조회 실패] ${code}`);
                 continue;
             }
         }
 
-        console.log(`  [2단계] ETF ${etfCandidates.length}개 확보 완료`);
+        console.log(`  [2단계] 유효 ETF ${etfCandidates.length}개 확보 완료`);
 
         // ====================================================================
         // 3. ETF 후보들의 실제 배당 이력 조회 → TOP10 선정
@@ -130,8 +142,6 @@ export async function POST(req: NextRequest) {
         const etfResults: any[] = [];
 
         for (const etf of etfCandidates) {
-            if (etfResults.length >= 10) break;
-
             // 실제 배당 이력 조회
             await new Promise(r => setTimeout(r, 200));
             let actualDividends: any[] = [];
@@ -194,8 +204,9 @@ export async function POST(req: NextRequest) {
             console.log(`  [결과] ${etf.name}: ${actualAmount}원, ${yieldRate.toFixed(2)}%`);
         }
 
-        // 수익률 높은 순 재정렬
+        // 수익률 높은 순 재정렬 후 상위 10개 추출
         etfResults.sort((a, b) => b.yieldRate - a.yieldRate);
+        const top10Etfs = etfResults.slice(0, 10);
 
         // ====================================================================
         // 4. 마크다운 생성
@@ -205,14 +216,14 @@ export async function POST(req: NextRequest) {
         markdown += `---\n\n`;
 
         markdown += `## 국내 ETF 배당 수익률 TOP 10 (커버드콜 제외, KOSDAQ 포함)\n\n`;
-        if (etfResults.length > 0) {
-            const avgRate = (etfResults.reduce((sum, s) => sum + s.yieldRate, 0) / etfResults.length).toFixed(2);
+        if (top10Etfs.length > 0) {
+            const avgRate = (top10Etfs.reduce((sum, s) => sum + s.yieldRate, 0) / top10Etfs.length).toFixed(2);
             markdown += `> 배당수익률 상위 ETF 중 커버드콜을 제외하고, 실제 지급된 현금배당 내역을 확인하여 정리한 리포트입니다. 수익률은 현재 종가 대비로 산출하였습니다. (평균 ${avgRate}%)\n\n`;
 
             markdown += `| 종목 | 종가 | 주당배당금 | 수익률 | 횟수 | 최근배당일 | 가상배당금 |\n`;
             markdown += `|------|------|-----------|--------|------|-----------|----------|\n`;
 
-            for (const s of etfResults) {
+            for (const s of top10Etfs) {
                 const payDateFormatted = formatDate(s.dividendPayDate || s.recordDate);
                 markdown += `| ${s.name} | ${formatNumber(s.price)}원 | ${formatNumber(s.dividendAmount)}원 (${payDateFormatted}) | ${s.yieldRate.toFixed(2)}% | ${s.frequency} | ${formatDate(s.recordDate)} | ${formatNumber(Math.round(s.virtualDividend))}원 |\n`;
             }
