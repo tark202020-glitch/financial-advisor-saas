@@ -188,11 +188,11 @@ export async function GET(request: NextRequest) {
         for (const source of DEFAULT_RSS_SOURCES) {
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                const timeoutId = setTimeout(() => controller.abort(), 6000);
 
                 const res = await fetch(source.url, {
                     signal: controller.signal,
-                    headers: { 'User-Agent': 'JubotNewsCollector/1.0' }
+                    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; JubotNewsCollector/1.0)' }
                 });
                 clearTimeout(timeoutId);
 
@@ -207,9 +207,14 @@ export async function GET(request: NextRequest) {
                         }
                         allArticles.push(item);
                     }
+                    console.log(`  [뉴스] ${source.name}: ${items.length}개 수집`);
+                } else {
+                    console.log(`  [뉴스] ${source.name}: HTTP ${res.status} 응답`);
                 }
-            } catch (e) {
-                console.warn(`[Jubot] Failed to fetch ${source.name}:`, e);
+            } catch (e: any) {
+                // 네트워크 에러 (DNS 실패, 차단 등)는 간결하게 로그
+                const reason = e.name === 'AbortError' ? '타임아웃' : '네트워크 오류';
+                console.log(`  [뉴스] ${source.name}: ${reason} (정상 스킵)`);
             }
         }
 

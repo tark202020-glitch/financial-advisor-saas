@@ -1,3 +1,12 @@
+## [Alpha V1.309] - 2026-03-10 13:27:00
+
+### 🔧 Error Handling Improvement
+- **Summary**: Jubot 뉴스 수집 및 DART 재무데이터 에러 핸들링 개선
+- **Detail**:
+  - `collect/news/route.ts`: 네이버 RSS 차단 시 간결한 로그만 출력 (TypeError 대신 "네트워크 오류 (정상 스킵)"), User-Agent 개선, 수집 건수 로깅 추가
+  - `opendart.ts`: DART 데이터 없음(status=013) 로그를 warn→log로 변경 (정상 동작)
+- **Build Time**: 2026-03-10 13:27:00
+
 ## [Alpha V1.308] - 2026-03-10 13:15:00
 
 ### 🔧 Data Reliability Improvement

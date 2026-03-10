@@ -59,7 +59,7 @@ export async function fetchFinancials(stockCode: string, year?: number): Promise
         const data = await res.json();
 
         if (data.status !== '000' || !data.list) {
-            console.warn(`[DART] No data for ${corpCode}/${targetYear}: status=${data.status}, msg=${data.message}`);
+            console.log(`[DART] ${corpCode}/${targetYear}: 데이터 없음 (status=${data.status}) — 이전 연도 시도`);
             // 이전 연도 시도
             const prevUrl = `${DART_BASE_URL}/fnlttSinglAcnt.json?crtfc_key=${DART_API_KEY}&corp_code=${corpCode}&bsns_year=${targetYear - 1}&reprt_code=11011`;
             const prevRes = await fetch(prevUrl);
