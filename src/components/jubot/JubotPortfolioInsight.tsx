@@ -211,7 +211,7 @@ export default function JubotPortfolioInsight() {
         } finally {
             setLoading(false);
         }
-    }, [assets, getContextData]);
+    }, [assets, getContextData, priceReady]);
 
     // Check cache on mount
     const checkCache = useCallback(async () => {
@@ -413,8 +413,10 @@ export default function JubotPortfolioInsight() {
                                     {analysis.stock_insights.map((insight, i) => {
                                         const config = SIGNAL_CONFIG[insight.signal] || SIGNAL_CONFIG.hold;
                                         const Icon = config.icon;
-                                        const price = debugPriceMap[insight.symbol] || 0;
                                         const asset = activeAssets.find(a => a.symbol === insight.symbol);
+                                        // 현재가를 PortfolioContext에서 실시간으로 읽기
+                                        const ctxData = asset ? getContextData(asset) : null;
+                                        const price = ctxData?.price || debugPriceMap[insight.symbol] || 0;
                                         const isUS = asset?.category === 'US';
 
                                         return (
@@ -425,7 +427,7 @@ export default function JubotPortfolioInsight() {
                                                             symbol: asset.symbol,
                                                             name: asset.name,
                                                             category: asset.category,
-                                                            currentPrice: asset.pricePerShare,
+                                                            currentPrice: ctxData?.price || 0,
                                                             avgPrice: asset.pricePerShare,
                                                             quantity: asset.quantity,
                                                             targetPriceUpper: asset.targetPriceUpper,

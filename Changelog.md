@@ -1,3 +1,13 @@
+## [Alpha V1.315] - 2026-03-10 16:06:00
+
+### 🐛 Reanalysis Button & Price Display Fix
+- **Summary**: 재분석 버튼 클릭 불가 + 현재가 0원 표시 문제 수정
+- **Detail**:
+  - `fetchAnalysis` useCallback 의존성에 `priceReady` 추가 → 클로저 갱신으로 버튼 정상 동작
+  - 종목별 현재가 표시를 `debugPriceMap` → `getContextData()` 실시간 조회로 변경
+  - `selectedStock.currentPrice`를 매수가 대신 Context 실시간 가격 사용
+- **Build Time**: 2026-03-10 16:06:00
+
 ## [Alpha V1.314] - 2026-03-10 16:00:00
 
 ### ⚡ Skip Price Fetching for Sold Stocks
