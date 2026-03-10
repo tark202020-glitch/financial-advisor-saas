@@ -1,3 +1,14 @@
+## [Alpha V1.316] - 2026-03-10 16:35:00
+
+### ✨ Update Modal & Study Board Notification
+- **Summary**: 사이트 진입 시 최근 업데이트/스터디 모달 표출 및 사이드바 알림 시스템 구축
+- **Detail**:
+  - `UpdateModal.tsx` 컴포넌트를 레이아웃에 추가 (오늘 하루 보지 않기 지원)
+  - `/api/changelog` 엔드포인트: `Changelog.md`를 파싱하여 최근 3건의 빌드 업데이트 렌더링
+  - `/api/study/recent` 엔드포인트: 최근 등록된 주식 스터디 문서 존재 여부 확인
+  - `useStudyNotification` 커스텀 훅: 사이드바 및 보드 진입/읽음 처리 및 NEW 뱃지 UI 표시 연동
+- **Build Time**: 2026-03-10 16:35:00
+
 ## [Alpha V1.315] - 2026-03-10 16:06:00
 
 ### 🐛 Reanalysis Button & Price Display Fix

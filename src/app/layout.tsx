@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import ClientProviders from "@/components/ClientProviders";
 import { createClient } from "@/utils/supabase/server";
+import UpdateModal from "@/components/layout/UpdateModal";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,6 +25,7 @@ export default async function RootLayout({
       <body className={`${inter.className} bg-slate-50 antialiased`}>
         <ClientProviders initialUser={user}>
           {children}
+          {user && <UpdateModal />}
         </ClientProviders>
       </body>
     </html>

@@ -5,6 +5,7 @@ import { BookOpen, Edit, Save, X, FileText, CheckCircle2, TrendingUp, BarChart3,
 import SidebarLayout from "@/components/SidebarLayout";
 import JubotPageGuide from "@/components/common/JubotPageGuide";
 import { createClient } from "@/utils/supabase/client";
+import { useStudyNotification } from "@/hooks/useStudyNotification";
 import React from "react";
 
 type Topic = "msci" | "dividend" | "etf";
@@ -145,10 +146,17 @@ export default function StudyPage() {
     // Auth state
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
     const supabase = createClient();
+    const { hasNewStudy, markAsRead } = useStudyNotification();
 
     useEffect(() => {
         checkAdmin();
     }, []);
+
+    useEffect(() => {
+        if (hasNewStudy) {
+            markAsRead();
+        }
+    }, [hasNewStudy, markAsRead]);
 
     useEffect(() => {
         fetchFiles(topic);

@@ -17,6 +17,7 @@ import {
     GraduationCap,
 } from "lucide-react";
 import { usePortfolio } from "@/context/PortfolioContext";
+import { useStudyNotification } from "@/hooks/useStudyNotification";
 import AccountModal from "./modals/AccountModal";
 
 interface SidebarProps {
@@ -27,6 +28,7 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
     const pathname = usePathname();
     const { user, logout } = usePortfolio();
+    const { hasNewStudy } = useStudyNotification();
     const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
 
     const handleLogout = async () => {
@@ -82,7 +84,16 @@ export default function Sidebar({ isCollapsed, toggle }: SidebarProps) {
                             `}
                             >
                                 <item.icon size={20} className={isActive ? "text-black" : "group-hover:text-white transition-colors"} />
-                                {!isCollapsed && <span>{item.name}</span>}
+                                {!isCollapsed && (
+                                    <div className="flex items-center gap-2">
+                                        <span>{item.name}</span>
+                                        {item.name === "주식 스터디" && hasNewStudy && (
+                                            <span className="px-1.5 py-0.5 text-[10px] font-black bg-red-500 text-white rounded-md animate-pulse">
+                                                NEW
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
                             </Link>
                         );
                     })}

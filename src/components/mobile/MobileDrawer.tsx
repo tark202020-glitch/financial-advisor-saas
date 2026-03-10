@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -13,8 +13,10 @@ import {
     StickyNote,
     GraduationCap,
     X,
+    Bot,
 } from "lucide-react";
 import { usePortfolio } from "@/context/PortfolioContext";
+import { useStudyNotification } from '@/hooks/useStudyNotification';
 
 interface MobileDrawerProps {
     isOpen: boolean;
@@ -23,7 +25,9 @@ interface MobileDrawerProps {
 
 export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
     const pathname = usePathname();
+    const [isVisible, setIsVisible] = useState(false);
     const { user, logout } = usePortfolio();
+    const { hasNewStudy } = useStudyNotification();
 
     // Prevent body scroll when drawer is open
     useEffect(() => {
@@ -102,18 +106,24 @@ export default function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
                         const isActive = pathname === item.href;
                         return (
                             <Link
-                                key={item.name}
+                                key={item.href}
                                 href={item.href}
                                 onClick={onClose}
                                 className={`
-                                    flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-200 group font-bold text-sm
+                                    flex items-center gap-3 px-4 py-4 rounded-2xl font-bold transition-all duration-200
                                     ${isActive
-                                        ? "bg-[#F7D047] text-black"
-                                        : "text-gray-400 hover:bg-[#333] hover:text-white"}
+                                        ? 'bg-[#F7D047] text-black shadow-lg shadow-yellow-900/20'
+                                        : 'text-gray-400 hover:bg-[#333] hover:text-white'
+                                    }
                                 `}
                             >
-                                <item.icon size={20} className={isActive ? "text-black" : "text-gray-500 group-hover:text-white"} />
+                                <item.icon size={22} className={isActive ? 'text-black' : ''} />
                                 <span>{item.name}</span>
+                                {item.name === "주식 스터디" && hasNewStudy && (
+                                    <span className="px-1.5 py-0.5 ml-auto text-xs font-black bg-red-500 text-white rounded-md animate-pulse">
+                                        NEW
+                                    </span>
+                                )}
                             </Link>
                         );
                     })}
