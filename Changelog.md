@@ -1,3 +1,16 @@
+## [Alpha V1.308] - 2026-03-10 13:15:00
+
+### 🔧 Data Reliability Improvement
+- **Summary**: 내 주식 인사이트 페이지 데이터 로딩 안정성 대폭 개선
+- **Detail**:
+  - `batch/route.ts`: KR 시장 가격 조회를 1건씩 순차 → **3건씩 병렬(Promise.all)** 처리로 속도 3배 향상
+  - `useBatchStockPrice.tsx`: 실패 종목 **5초 후 자동 재시도 로직** 추가, `isRetrying` 상태 노출
+  - `PortfolioContext.tsx`: `krRetrying`, `usRetrying` 상태를 전역 Context로 전파
+  - `insights/page.tsx`: **DataStatusBanner** 컴포넌트 추가 — KR/US/Gold 로딩 진행률, 자동 재시도 상태, 수동 재시도 버튼 표시
+  - `TargetProximityBlock.tsx`: 시세 미조회로 차트에서 제외된 종목명 목록을 경고 메시지로 표시
+  - `PortfolioCompositionBlock.tsx`: 시세 미조회 종목 수를 경고 메시지로 표시
+- **Build Time**: 2026-03-10 13:15:00
+
 ## [Alpha V1.307] - 2026-03-10 12:35:00
 
 ### 🚑 Hotfix

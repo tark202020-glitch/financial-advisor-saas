@@ -34,16 +34,20 @@ export default function PortfolioCompositionBlock() {
     };
 
     // Data Processing
-    const processedData = useMemo(() => {
-        if (!assets) return [];
+    const { processedItems, skippedCount } = useMemo(() => {
+        if (!assets) return { processedItems: [], skippedCount: 0 };
 
-        return assets.map(asset => {
+        let skipped = 0;
+        const items = assets.map(asset => {
             if (asset.quantity <= 0) return null;
 
             // Get Current Price from Context
             const currentPrice = getPrice(asset);
 
-            if (currentPrice === 0) return null;
+            if (currentPrice === 0) {
+                skipped++;
+                return null;
+            }
 
             // Calculations
             const totalValue = currentPrice * asset.quantity;
@@ -62,11 +66,12 @@ export default function PortfolioCompositionBlock() {
             };
         }).filter(item => item !== null) as any[];
 
+        return { processedItems: items, skippedCount: skipped };
     }, [assets, getKrData, getUsData, goldData]);
 
     // Filtering & Sorting
     const { chartData, top10Data, totalPortfolioValue, sectorAssets } = useMemo(() => {
-        let filtered = processedData;
+        let filtered = processedItems;
 
         // 1. Filter Market
         if (marketFilter !== 'ALL') {
@@ -169,7 +174,7 @@ export default function PortfolioCompositionBlock() {
         }
 
         return { chartData: finalPie, top10Data: top10, totalPortfolioValue: totalValue, sectorAssets: sectorAssetList };
-    }, [processedData, marketFilter, sortFilter, viewMode, selectedSector]);
+    }, [processedItems, marketFilter, sortFilter, viewMode, selectedSector]);
 
     // Formatters
     const formatCurrency = (val: number, cat: string = 'KR') => {
@@ -201,6 +206,13 @@ export default function PortfolioCompositionBlock() {
 
     return (
         <div className="bg-[#1E1E1E] rounded-2xl p-6 shadow-lg shadow-black/20 border border-[#333] mb-6 relative animate-in fade-in zoom-in duration-500">
+            {/* Skipped stocks alert */}
+            {skippedCount > 0 && (
+                <div className="mb-4 bg-amber-950/20 rounded-lg p-2.5 border border-amber-900/30 text-xs text-amber-400 flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>시세 미조회 {skippedCount}개 종목이 차트에서 제외되었습니다. 상단 배너에서 재시도할 수 있습니다.</span>
+                </div>
+            )}
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <div className="flex items-center gap-4">

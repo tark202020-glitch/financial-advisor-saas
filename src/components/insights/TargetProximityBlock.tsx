@@ -27,10 +27,11 @@ export default function TargetProximityBlock() {
     };
 
     // 1. Prepare Data Split (Lower / Upper)
-    const { lowerData, upperData, processingLogs } = useMemo(() => {
+    const { lowerData, upperData, processingLogs, skippedNames } = useMemo(() => {
         const logs: string[] = [];
         const lowerList: any[] = [];
         const upperList: any[] = [];
+        const skipped: string[] = [];
 
         assets.forEach(asset => {
             if (!asset.symbol || asset.quantity <= 0) {
@@ -39,7 +40,10 @@ export default function TargetProximityBlock() {
 
             const currentPrice = getPrice(asset);
 
-            if (!currentPrice) return;
+            if (!currentPrice) {
+                skipped.push(asset.name);
+                return;
+            }
 
             // Common Logic: Filter > 30%
             const isRelevant = (dist: number) => Math.abs(dist) <= 30;
@@ -79,7 +83,7 @@ export default function TargetProximityBlock() {
         lowerList.sort((a, b) => Math.abs(a.distance) - Math.abs(b.distance));
         upperList.sort((a, b) => Math.abs(a.distance) - Math.abs(b.distance));
 
-        return { lowerData: lowerList, upperData: upperList, processingLogs: logs };
+        return { lowerData: lowerList, upperData: upperList, processingLogs: logs, skippedNames: skipped };
     }, [assets, getKrData, getUsData, goldData]);
 
     const handleBarClick = (data: any) => {
@@ -273,6 +277,16 @@ export default function TargetProximityBlock() {
                             </ul>
                         </div>
                     </details>
+                </div>
+            )}
+
+            {/* 시세 미조회 종목 안내 */}
+            {skippedNames.length > 0 && (
+                <div className="bg-amber-950/20 rounded-xl p-3 border border-amber-900/30 text-xs text-amber-400 flex items-start gap-2">
+                    <span className="flex-shrink-0 mt-0.5">⚠️</span>
+                    <span>
+                        시세 미조회로 차트에서 제외된 종목 ({skippedNames.length}개): {skippedNames.join(', ')}
+                    </span>
                 </div>
             )}
 

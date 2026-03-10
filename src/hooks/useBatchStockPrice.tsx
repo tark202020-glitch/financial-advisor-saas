@@ -17,6 +17,7 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US', optio
     const [hasError, setHasError] = useState(false);
     const [failedSymbols, setFailedSymbols] = useState<string[]>([]);
     const [fetchTrigger, setFetchTrigger] = useState(0);
+    const [isRetrying, setIsRetrying] = useState(false);
 
     // 1. Batch Fetch (with enhanced retry)
     useEffect(() => {
@@ -145,6 +146,73 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US', optio
                 if (allFailed.length > 0) {
                     setHasError(true);
                     setFailedSymbols(allFailed);
+
+                    // 자동 재시도: 5초 후 실패 종목만 개별 재조회 (1회)
+                    console.log(`[Batch] ${market} ${allFailed.length}개 실패 종목 5초 후 자동 재시도: ${allFailed.join(', ')}`);
+                    setIsRetrying(true);
+
+                    await new Promise(r => setTimeout(r, 5000));
+                    if (!isMounted) return;
+
+                    const retryResults: { symbol: string; data: StockData | null }[] = [];
+                    for (const symbol of allFailed) {
+                        if (!isMounted) break;
+                        try {
+                            const res = await fetch(`/api/kis/price/batch?market=${market}&symbols=${symbol}`);
+                            if (!res.ok) continue;
+                            const data = await res.json();
+                            const item = data[symbol];
+                            if (!item) continue;
+
+                            let price = 0, diff = 0, rate = 0;
+                            let sector: string | undefined = undefined;
+                            let retryMarketName: string = '';
+
+                            if (market === 'KR') {
+                                price = parseFloat(item.stck_prpr || '0');
+                                diff = parseFloat(item.prdy_vrss || '0');
+                                rate = parseFloat(item.prdy_ctrt || '0');
+                                sector = item.bstp_kor_isnm;
+                                retryMarketName = item.rprs_mrkt_kor_name || '';
+                            } else {
+                                price = parseFloat(item.last?.replace(/,/g, '') || '0');
+                                diff = parseFloat(item.diff?.replace(/,/g, '') || '0');
+                                rate = parseFloat(item.rate?.replace(/,/g, '') || '0');
+                            }
+
+                            if (price > 0) {
+                                const change = rate < 0 ? -Math.abs(diff) : Math.abs(diff);
+                                const now = new Date();
+                                const timeDisplay = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')} (AutoRetry)`;
+
+                                retryResults.push({
+                                    symbol,
+                                    data: { price, change, changePercent: rate, time: timeDisplay, sector, marketName: market === 'KR' ? (retryMarketName || undefined) : undefined }
+                                });
+                            }
+                        } catch (e) {
+                            // silent
+                        }
+                        await new Promise(r => setTimeout(r, 500));
+                    }
+
+                    if (isMounted && retryResults.length > 0) {
+                        setBatchData(prev => {
+                            const next = { ...prev };
+                            retryResults.forEach(({ symbol, data }) => {
+                                if (data) next[symbol] = data;
+                            });
+                            return next;
+                        });
+
+                        const recoveredSymbols = retryResults.map(r => r.symbol);
+                        setFailedSymbols(prev => prev.filter(s => !recoveredSymbols.includes(s)));
+                        const remainingFailed = allFailed.filter(s => !recoveredSymbols.includes(s));
+                        if (remainingFailed.length === 0) setHasError(false);
+                        console.log(`[Batch] ${market} 자동 재시도 결과: ${retryResults.length}개 복구`);
+                    }
+
+                    if (isMounted) setIsRetrying(false);
                 }
             }
         };
@@ -237,5 +305,5 @@ export function useBatchStockPrice(symbols: string[], market: 'KR' | 'US', optio
     const loadedCount = Object.keys(batchData).length;
     const totalCount = symbols.length;
 
-    return { getStockData, isLoading, hasError, failedSymbols, refetch, refetchSymbol, loadedCount, totalCount };
+    return { getStockData, isLoading, isRetrying, hasError, failedSymbols, refetch, refetchSymbol, loadedCount, totalCount };
 }

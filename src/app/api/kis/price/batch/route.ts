@@ -22,21 +22,33 @@ export async function GET(request: NextRequest) {
     const results: Record<string, any> = {};
     const fetcher = market === 'KR' ? getDomesticPrice : getOverseasPrice;
 
-    // 1건씩 순차 처리 + 300ms 딜레이
-    // 10종목 = ~3초 (Vercel 10초 timeout 내 충분히 완료)
-    for (let i = 0; i < symbols.length; i++) {
-        const symbol = symbols[i];
-        try {
-            const data = await fetcher(symbol);
-            results[symbol] = data || null;
-        } catch (e) {
-            console.error(`  [실패] ${symbol}:`, e instanceof Error ? e.message : e);
-            results[symbol] = null;
-        }
+    // KR: 3건씩 병렬 + 500ms 딜레이 (10종목 ≈ 2초, 속도 3배 개선)
+    // US: 1건씩 순차 + 350ms 딜레이 (해외 API는 더 보수적으로 처리)
+    const parallelSize = market === 'KR' ? 3 : 1;
+    const delayMs = market === 'KR' ? 500 : 350;
 
-        // 다음 종목 전 300ms 대기 (마지막 종목 제외)
-        if (i < symbols.length - 1) {
-            await new Promise(r => setTimeout(r, 300));
+    for (let i = 0; i < symbols.length; i += parallelSize) {
+        const group = symbols.slice(i, i + parallelSize);
+
+        const groupResults = await Promise.all(
+            group.map(async (symbol) => {
+                try {
+                    const data = await fetcher(symbol);
+                    return { symbol, data: data || null };
+                } catch (e) {
+                    console.error(`  [실패] ${symbol}:`, e instanceof Error ? e.message : e);
+                    return { symbol, data: null };
+                }
+            })
+        );
+
+        groupResults.forEach(({ symbol, data }) => {
+            results[symbol] = data;
+        });
+
+        // 다음 그룹 전 딜레이 (마지막 그룹 제외)
+        if (i + parallelSize < symbols.length) {
+            await new Promise(r => setTimeout(r, delayMs));
         }
     }
 

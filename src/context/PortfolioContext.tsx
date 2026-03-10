@@ -59,6 +59,7 @@ interface PortfolioContextType {
     krLoading: boolean;
     krLoadedCount: number;
     krTotalCount: number;
+    krRetrying: boolean;
     refetchKr: () => void;
 
     getUsData: (symbol: string) => any;
@@ -66,6 +67,7 @@ interface PortfolioContextType {
     usLoading: boolean;
     usLoadedCount: number;
     usTotalCount: number;
+    usRetrying: boolean;
     refetchUs: () => void;
 
     goldData: any;
@@ -166,8 +168,8 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
 
     // --- Global Batch Fetching ---
     // KR 배치 먼저 실행, US 배치는 8초 대기 후 실행 (KR 10종목×2청크 ≈ 6초 + 여유시간)
-    const { getStockData: getKrData, hasError: krHasError, refetch: refetchKr, isLoading: krLoading, loadedCount: krLoadedCount, totalCount: krTotalCount } = useBatchStockPrice(krSymbols, 'KR');
-    const { getStockData: getUsData, hasError: usHasError, refetch: refetchUs, isLoading: usLoading, loadedCount: usLoadedCount, totalCount: usTotalCount } = useBatchStockPrice(usSymbols, 'US', { initialDelay: 8000 });
+    const { getStockData: getKrData, hasError: krHasError, isRetrying: krRetrying, refetch: refetchKr, isLoading: krLoading, loadedCount: krLoadedCount, totalCount: krTotalCount } = useBatchStockPrice(krSymbols, 'KR');
+    const { getStockData: getUsData, hasError: usHasError, isRetrying: usRetrying, refetch: refetchUs, isLoading: usLoading, loadedCount: usLoadedCount, totalCount: usTotalCount } = useBatchStockPrice(usSymbols, 'US', { initialDelay: 8000 });
 
     // --- Global Gold Price Fetching ---
     const [goldData, setGoldData] = useState<any>(null);
@@ -580,12 +582,14 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
             getKrData,
             krHasError,
             krLoading,
+            krRetrying,
             krLoadedCount,
             krTotalCount,
             refetchKr,
             getUsData,
             usHasError,
             usLoading,
+            usRetrying,
             usLoadedCount,
             usTotalCount,
             refetchUs,
