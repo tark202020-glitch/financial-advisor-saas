@@ -153,12 +153,6 @@ export default function StudyPage() {
     }, []);
 
     useEffect(() => {
-        if (hasNewStudy) {
-            markAsRead();
-        }
-    }, [hasNewStudy, markAsRead]);
-
-    useEffect(() => {
         fetchFiles(topic);
     }, [topic]);
 
@@ -189,6 +183,9 @@ export default function StudyPage() {
     };
 
     const handleSelectFile = (board: StudyBoard) => {
+        if (hasNewStudy) {
+            markAsRead();
+        }
         setSelectedFile(board);
         setIsEditing(false);
         setIsPromptMode(false);

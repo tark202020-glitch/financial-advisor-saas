@@ -519,7 +519,7 @@ export default function PortfolioSummaryBlock() {
                                                 </span>
                                                 {dailyAnalysis.contributor.name && (
                                                     <span className="block mt-1 text-gray-400 text-xs text-pretty">
-                                                        오늘의 {dailyAnalysis.totalDailyProfit >= 0 ? '이익' : '손해'} 부분은 대부분 <span className="text-white font-bold bg-white/10 px-1 py-0.5 rounded">[{dailyAnalysis.contributor.name}]</span>에서 왔네요.
+                                                        {dailyAnalysis.totalDailyProfit >= 0 ? '이익은' : '손해는'} 대부분 <span className="text-white font-bold bg-white/10 px-1 py-0.5 rounded">{dailyAnalysis.contributor.name}</span>에서 왔네요.
                                                     </span>
                                                 )}
                                             </div>

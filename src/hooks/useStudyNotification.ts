@@ -17,7 +17,7 @@ export function useStudyNotification() {
                 
                 if (typeof window !== 'undefined') {
                     const lastRead = localStorage.getItem('lastReadStudyId');
-                    if (latest !== lastRead) {
+                    if (String(latest) !== lastRead) {
                         setHasNewStudy(true);
                     } else {
                         setHasNewStudy(false);
@@ -41,7 +41,7 @@ export function useStudyNotification() {
 
     const markAsRead = useCallback(() => {
         if (latestStudyId && typeof window !== 'undefined') {
-            localStorage.setItem('lastReadStudyId', latestStudyId);
+            localStorage.setItem('lastReadStudyId', String(latestStudyId));
             setHasNewStudy(false);
         }
     }, [latestStudyId]);

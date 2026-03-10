@@ -1,3 +1,13 @@
+## [Alpha V1.318] - 2026-03-10 17:05:00
+
+### 🐛 NEW Badge Bug Fix & PnL Message Refinement
+- **Summary**: 주식 스터디 NEW 뱃지 조건 오류 수정 및 포트폴리오 요약 일일 평가손익 분석줄 텍스트 개선
+- **Detail**:
+  - `useStudyNotification`에서 Supabase의 숫자 타입 `id`와 LocalStorage의 문자열을 엄격 비교(`!==`)하여 뱃지가 안 사라지거나 사라지는 버그 발생. `String(latest)` 캐스팅으로 정상 조건식 처리
+  - `StudyPage.tsx` 진입 시점에 무조건 `markAsRead` 처리되어 뱃지가 목록 화면에서도 즉시 지워지던 버그를 실제 개별 게시글(`handleSelectFile`)을 클릭했을 때만 지워지도록 로직 이관
+  - `PortfolioSummaryBlock.tsx` 내 평가손익 분석 문구를 사용자의 요청에 정확히 일치하도록 ("이익은 대부분 [OOOOO]에서 왔네요.") 심미성 개선
+- **Build Time**: 2026-03-10 17:05:00
+
 ## [Alpha V1.317] - 2026-03-10 16:50:00
 
 ### ✨ Daily PnL Analysis & NEW Badge Fix
