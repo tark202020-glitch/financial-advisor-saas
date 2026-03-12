@@ -1,3 +1,13 @@
+## [Alpha V1.322] - 2026-03-13 00:56:00
+
+### 🚑 Critical Fix: Google AI API 키 교체
+- **Summary**: 유출 감지로 차단된 Google AI API 키를 새 키로 교체하여 JUBOT 시장 브리핑 500 에러 해결
+- **Detail**:
+  - 기존 Google AI API 키가 GitHub 노출로 인해 Google에 의해 자동 차단 (`403 Forbidden: API key was reported as leaked`)
+  - 새 API 키로 `.env.local` 및 Vercel 환경변수 교체 후 프로덕션 재배포
+  - 브리핑 API(`/api/jubot/analyze/daily`) 정상 동작 확인 완료
+- **Build Time**: 2026-03-13 00:56:00
+
 ## [Alpha V1.321] - 2026-03-13 00:43:00
 
 ### 🔄 Build Update
