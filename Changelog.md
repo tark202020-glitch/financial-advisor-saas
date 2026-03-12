@@ -1,3 +1,12 @@
+## [Alpha V1.321] - 2026-03-13 00:43:00
+
+### 🔄 Build Update
+- **Summary**: Vercel 환경변수 전체 업데이트 및 프로덕션 재배포
+- **Detail**:
+  - `.env.local` 파일 업데이트에 따라 Vercel 환경변수 11개(SUPABASE, KIS, DART, GOOGLE AI, NAVER 등)를 최신 값으로 일괄 갱신
+  - 프로덕션 빌드 성공 및 배포 완료 (https://jubot.goraebang.com)
+- **Build Time**: 2026-03-13 00:43:00
+
 ## [Alpha V1.320] - 2026-03-10 17:25:00
 
 ### 🚑 Critical Fix: study/recent API 500 Error in Production
