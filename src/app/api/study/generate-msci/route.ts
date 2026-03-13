@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { getAccessToken } from "@/lib/kis/client";
 
 export const maxDuration = 60;
 
@@ -34,26 +35,7 @@ async function getKospiTotalMarketCap(token: string) {
     return 22000000;
 }
 
-async function getAccessToken() {
-    const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
-    const APP_KEY = process.env.KIS_APP_KEY;
-    const APP_SECRET = process.env.KIS_APP_SECRET;
-
-    if (!APP_KEY || !APP_SECRET) throw new Error("Missing KIS Keys");
-
-    const response = await fetch(`${BASE_URL}/oauth2/tokenP`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-            grant_type: "client_credentials",
-            appkey: APP_KEY,
-            appsecret: APP_SECRET,
-        }),
-    });
-    if (!response.ok) throw new Error("KIS Token Request Failed");
-    const data = await response.json();
-    return data.access_token;
-}
+// getAccessToken()은 client.ts의 공유 함수를 사용 (토큰 캐시 + 자동 복구 지원)
 
 async function getStockMarketCap(token: string, symbol: string) {
     const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
