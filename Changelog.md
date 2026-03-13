@@ -1,3 +1,14 @@
+## [Alpha V1.323] - 2026-03-13 09:41:00
+
+### 🚑 Critical Fix: KIS 토큰 자동 복구 + WebSocket 안정화
+- **Summary**: API 키 교체 후 주식 현재가 조회 전체 실패 문제 해결 및 KIS 공식 공지 대응 WebSocket 무한 재접속 방지
+- **Detail**:
+  - **원인**: Supabase `kis_tokens` 테이블에 이전 API 키의 토큰 43건 누적 → 새 키와 불일치 → `EGW00123` 에러
+  - `tokenManager.ts`: `clearStoredTokens()` 추가, `saveToken` 시 기존 토큰 삭제 (누적 방지)
+  - `client.ts`: `invalidateToken()` + `isTokenExpiredError()` 추가, `getDomesticPrice`/`getOverseasPrice`에 EGW00123 감지 → 자동 토큰 재발급 + 1회 재시도
+  - `WebSocketContext.tsx`: MAX_RETRY=5 제한, 로그인/랜딩/회원가입 페이지 Approval Key 요청 차단, 정상 종료 시 구독 해제 전송(`gracefulClose`), 비활성 탭 재접속 중지, cleanup 타이머 정리
+- **Build Time**: 2026-03-13 09:41:00
+
 ## [Alpha V1.322] - 2026-03-13 00:56:00
 
 ### 🚑 Critical Fix: Google AI API 키 교체

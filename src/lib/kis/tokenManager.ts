@@ -53,10 +53,14 @@ export async function getStoredToken(): Promise<string | null> {
 /**
  * Saves a new token to Supabase.
  * expires_in is in seconds (usually 86400).
+ * 기존 토큰을 모두 삭제 후 새로 저장하여 누적 방지.
  */
 export async function saveToken(token: string, expiresIn: number): Promise<void> {
     try {
         const expiresAt = new Date(Date.now() + (expiresIn * 1000));
+
+        // 기존 토큰 삭제 후 새로 저장 (누적 방지)
+        await supabase.from('kis_tokens').delete().neq('id', 0);
 
         const { error } = await supabase
             .from('kis_tokens')
@@ -72,5 +76,25 @@ export async function saveToken(token: string, expiresIn: number): Promise<void>
         }
     } catch (e) {
         console.error("[TokenManager] Exception saving token:", e);
+    }
+}
+
+/**
+ * Clears all stored tokens from Supabase.
+ * API 키 교체 시, 또는 토큰 만료 에러 발생 시 호출.
+ */
+export async function clearStoredTokens(): Promise<void> {
+    try {
+        const { error } = await supabase
+            .from('kis_tokens')
+            .delete()
+            .neq('id', 0);
+        if (error) {
+            console.error("[TokenManager] Failed to clear tokens:", error.message);
+        } else {
+            console.log("[TokenManager] All cached tokens cleared");
+        }
+    } catch (e) {
+        console.error("[TokenManager] Exception clearing tokens:", e);
     }
 }

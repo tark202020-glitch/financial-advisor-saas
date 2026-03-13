@@ -12,7 +12,7 @@ const ACNT_PRDT_CD = process.env.KIS_ACNT_PRDT_CD || "01";
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;
 
-import { getStoredToken, saveToken } from './tokenManager';
+import { getStoredToken, saveToken, clearStoredTokens } from './tokenManager';
 
 export async function getAccessToken(): Promise<string> {
     // 1. In-Memory Cache (Fastest)
@@ -75,7 +75,23 @@ export async function getAccessToken(): Promise<string> {
     return cachedToken;
 }
 
-export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice | null> {
+/**
+ * 토큰 무효화: 인메모리 캐시 + Supabase DB 토큰 모두 초기화.
+ * API 키 교체 또는 EGW00123 에러 시 호출.
+ */
+export async function invalidateToken(): Promise<void> {
+    console.log("[KIS] Invalidating cached token (memory + DB)...");
+    cachedToken = null;
+    tokenExpiresAt = 0;
+    await clearStoredTokens();
+}
+
+/** EGW00123 (만료된 토큰) 에러 감지 헬퍼 */
+function isTokenExpiredError(errorText: string): boolean {
+    return errorText.includes('EGW00123') || errorText.includes('만료된 token');
+}
+
+export async function getDomesticPrice(symbol: string, _retried = false): Promise<KisDomStockPrice | null> {
     const token = await getAccessToken();
 
     // Helper: fetch price with specific market code
@@ -93,13 +109,25 @@ export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice
 
         if (!response.ok) {
             const text = await response.text();
+            // 토큰 만료 에러 감지 시 자동 재발급
+            if (!_retried && isTokenExpiredError(text)) {
+                console.warn(`[KIS] Token expired for DOM ${symbol} (market=${marketCode}), invalidating...`);
+                await invalidateToken();
+                return null; // null 반환하여 상위에서 재시도
+            }
             throw new Error(`Failed to fetch DOM price for ${symbol} (market=${marketCode}): ${text}`);
         }
 
         const data: KisResponse<KisDomStockPrice> = await response.json();
         if (data.rt_cd !== "0") {
+            // 응답 성공이지만 에러 코드인 경우도 토큰 만료 체크
+            if (!_retried && isTokenExpiredError(data.msg1 || '')) {
+                console.warn(`[KIS] Token expired (rt_cd) for DOM ${symbol}, invalidating...`);
+                await invalidateToken();
+                return null;
+            }
             console.error(`KIS API Error (DOM, market=${marketCode}): ${data.msg1}`);
-            return null; // Return null instead of throwing for fallback support
+            return null;
         }
 
         return data.output;
@@ -108,24 +136,41 @@ export async function getDomesticPrice(symbol: string): Promise<KisDomStockPrice
     // 1차 시도: NXT(넥스트) 시세 - 실시간 가격 정확도 향상
     try {
         const nxtResult = await fetchWithMarketCode('NX');
+        // 토큰이 무효화된 경우 재시도
+        if (nxtResult === null && !_retried && cachedToken === null) {
+            return getDomesticPrice(symbol, true);
+        }
         const nxtPrice = parseFloat(nxtResult?.stck_prpr || '0');
         if (nxtResult && nxtPrice > 0) {
             return nxtResult;
         }
         // NXT에서 가격이 0이면 (ETF 등 NXT 미지원 종목) KRX로 폴백
         console.warn(`[KIS] NXT price=0 for ${symbol}, falling back to KRX(J)`);
-    } catch (e) {
+    } catch (e: any) {
+        // throw된 에러에서도 토큰 만료 체크
+        if (!_retried && isTokenExpiredError(e.message || '')) {
+            await invalidateToken();
+            return getDomesticPrice(symbol, true);
+        }
         console.warn(`[KIS] NXT fetch failed for ${symbol}, falling back to KRX(J):`, e);
     }
 
     // 2차 시도: KRX(J) 폴백 - ETF 등 NXT 미지원 종목 대응
     try {
         const krxResult = await fetchWithMarketCode('J');
+        // 토큰이 무효화된 경우 재시도
+        if (krxResult === null && !_retried && cachedToken === null) {
+            return getDomesticPrice(symbol, true);
+        }
         const krxPrice = parseFloat(krxResult?.stck_prpr || '0');
         if (krxResult && krxPrice > 0) {
             return krxResult;
         }
-    } catch (e) {
+    } catch (e: any) {
+        if (!_retried && isTokenExpiredError(e.message || '')) {
+            await invalidateToken();
+            return getDomesticPrice(symbol, true);
+        }
         console.error(`[KIS] KRX(J) fallback also failed for ${symbol}:`, e);
     }
 
@@ -261,7 +306,7 @@ export async function getGoldSpotPrice(): Promise<KisDomStockPrice | null> {
     return null;
 }
 
-export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice | null> {
+export async function getOverseasPrice(symbol: string, _retried = false): Promise<KisOvStockPrice | null> {
     const token = await getAccessToken();
     // Assuming NASDAQ (NAS) for US stocks simplification. Real implementation might need exchange code logic.
     // DNAS: Dollar NASDAQ
@@ -285,6 +330,13 @@ export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice 
     let response = await fetchPrice(exchangeCode);
     let data: KisResponse<KisOvStockPrice> = await response.json();
 
+    // 토큰 만료 에러 감지 시 자동 재발급 후 1회 재시도
+    if (!_retried && data.rt_cd !== "0" && isTokenExpiredError(data.msg1 || '')) {
+        console.warn(`[KIS] Token expired for OV ${symbol}, invalidating and retrying...`);
+        await invalidateToken();
+        return getOverseasPrice(symbol, true);
+    }
+
     // 2. Retry Logic (Aggressive)
     // Retry if:
     // a) rt_cd is 0 but output is empty (Success but no data)
@@ -299,16 +351,17 @@ export async function getOverseasPrice(symbol: string): Promise<KisOvStockPrice 
         const altResponse = await fetchPrice(altExchange);
         const altData: KisResponse<KisOvStockPrice> = await altResponse.json();
 
+        // 대체 거래소 응답에서도 토큰 만료 체크
+        if (!_retried && altData.rt_cd !== "0" && isTokenExpiredError(altData.msg1 || '')) {
+            console.warn(`[KIS] Token expired for OV ${symbol} (alt), invalidating and retrying...`);
+            await invalidateToken();
+            return getOverseasPrice(symbol, true);
+        }
+
         // If alt worked, use it. 
         // We accept altData if it is Success AND has data.
         if (altData.rt_cd === "0" && altData.output && altData.output.last) {
             data = altData;
-        } else {
-            // If alt also failed, logging it but we will return original error/empty below unless alt error is more descriptive?
-            // Let's keep original data if alt failed too, or maybe altData is better?
-            // If original was "Error" and alt is "Error", both are bad.
-            // If original was "Empty" and alt is "Error", probably original was better (wrong exchange but no error).
-            // Actually, if retry failed, we probably want to return null.
         }
     }
 

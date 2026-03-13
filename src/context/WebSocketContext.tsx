@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { getWSPrefix } from '@/lib/kis/exchange';
 
 // --- Types ---
-type WebSocketStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+type WebSocketStatus = 'disconnected' | 'connecting' | 'connected' | 'error' | 'max_retry';
 export type MarketType = 'KR' | 'US';
 
 interface RealtimeData {
@@ -27,6 +27,7 @@ interface WebSocketContextType {
 
 // --- Constants ---
 const WS_URL = "wss://ops.koreainvestment.com:21000";
+const MAX_RETRY_COUNT = 5; // KIS 차단 방지: 최대 재시도 5회
 
 // TR IDs
 const TR_ID_KR = "H0STCNT0"; // Domestic Realtime Price
@@ -36,7 +37,7 @@ const WebSocketContext = createContext<WebSocketContextType | undefined>(undefin
 
 export function WebSocketProvider({ children }: { children: ReactNode }) {
     // VERSION LOG FOR DEBUGGING DEPLOYMENT
-    useEffect(() => { console.log("[SYS] WebSocketProvider Mounted - Version: WSS_FIX_APPLIED_v2"); }, []);
+    useEffect(() => { console.log("[SYS] WebSocketProvider Mounted - Version: WSS_STABLE_v3"); }, []);
 
     const pathname = usePathname();
 
@@ -64,8 +65,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     // trType: '1' (Sub), '2' (Unsub)
     const sendRawSubscription = useCallback((symbol: string, marketType: MarketType, trType: '1' | '2') => {
         if (!ws.current || ws.current.readyState !== WebSocket.OPEN || !approvalKey) {
-            // If trying to subscribe but not ready, we rely on the Reconnector effect.
-            // But if trying to unsubscribe and not ready, we can't do much (connection dead anyway).
             return;
         }
 
@@ -102,8 +101,26 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         }
     }, [approvalKey, getUSExchangePrefix, addLog]);
 
-    // --- 1. Get Approval Key ---
+    // --- Helper: 정상 종료 시 모든 구독 해제 후 close ---
+    const gracefulClose = useCallback(() => {
+        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+            // 모든 구독 해제 메시지 전송
+            subscriptions.current.forEach(key => {
+                const [marketType, symbol] = key.split(':') as [MarketType, string];
+                sendRawSubscription(symbol, marketType, '2');
+            });
+            addLog(`[SYS] Sent ${subscriptions.current.size} unsubscribes before close`);
+        }
+        ws.current?.close();
+    }, [sendRawSubscription, addLog]);
+
+    // --- 1. Get Approval Key (조건부: 대시보드 페이지에서만) ---
     useEffect(() => {
+        // 로그인/랜딩 페이지에서는 불필요한 KIS API 호출 방지
+        if (pathname === '/login' || pathname === '/' || pathname === '/signup') {
+            return;
+        }
+
         const fetchKey = async () => {
             try {
                 const res = await fetch('/api/kis/ws-approval', { method: 'POST' });
@@ -118,7 +135,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             }
         };
         fetchKey();
-    }, [addLog]);
+    }, [addLog, pathname]);
 
 
     // 2.1 Reconnection Effect
@@ -127,35 +144,50 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         if (status === 'disconnected' || status === 'error') {
+            // 최대 재시도 횟수 제한 (KIS 무한 접속 차단 방지)
+            if (retryCount.current >= MAX_RETRY_COUNT) {
+                console.warn(`[WS] Max retry count (${MAX_RETRY_COUNT}) reached. Stopping reconnection.`);
+                addLog(`[SYS] 최대 재시도 ${MAX_RETRY_COUNT}회 도달. 재접속 중지.`);
+                setStatus('max_retry');
+                return;
+            }
+
             const delay = Math.min(1000 * (2 ** retryCount.current), 30000); // Max 30s
-            // addLog(`[SYS] Reconnecting in ${delay/1000}s...`);
 
             reconnectTimeout.current = setTimeout(() => {
                 retryCount.current++;
-                // Force trigger connect effect? 
-                // Actually the main connect effect depends on nothing dynamic that changes to trigger it.
-                // We need to trigger it.
-                // Let's move connect logic out or force a state update?
-                // Easier: Just reload the component? No.
-                // Let's toggle a 'retryTrigger' state.
                 setRetryTrigger(r => r + 1);
             }, delay);
         } else if (status === 'connected') {
             retryCount.current = 0;
             if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
         }
-    }, [status]);
+
+        // cleanup: 타이머 정리
+        return () => {
+            if (reconnectTimeout.current) {
+                clearTimeout(reconnectTimeout.current);
+                reconnectTimeout.current = null;
+            }
+        };
+    }, [status, addLog]);
 
     const [retryTrigger, setRetryTrigger] = useState(0);
 
     // Update main effect to depend on retryTrigger
     useEffect(() => {
-        if (!approvalKey || pathname === '/login' || pathname === '/') return;
+        if (!approvalKey || pathname === '/login' || pathname === '/' || pathname === '/signup') return;
 
         if (ws.current?.readyState === WebSocket.OPEN) return;
 
+        // 비활성 탭에서는 재접속 시도 중지
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+            addLog("[SYS] Tab hidden, skipping reconnect");
+            return;
+        }
+
         // Connect Logic...
-        const socket = new WebSocket("wss://ops.koreainvestment.com:21000");
+        const socket = new WebSocket(WS_URL);
         ws.current = socket;
 
         socket.onopen = () => {
@@ -171,8 +203,11 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             setStatus('error');
         };
 
-        return () => socket.close();
-    }, [approvalKey, pathname, retryTrigger]);
+        return () => {
+            // 정상 종료 절차: 구독 해제 후 close
+            gracefulClose();
+        };
+    }, [approvalKey, pathname, retryTrigger, addLog, gracefulClose]);
 
     // --- 2.5 Reconnection / Queue Processing ---
     // Whenever status becomes 'connected', re-send all active subscriptions.
@@ -250,7 +285,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         else if (p1 > 0 && p1 < 50000000) price = p1;
 
         if (price === 0) {
-            // addLog(`[KR-ZERO] ${realSymbol} P1=${p1} P2=${p2}`);
             return;
         }
 
@@ -262,12 +296,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             rate = parseFloat(values[offset + 3]);
         }
 
-        // DEBUG SIGN
-        // addLog(`[KR-SIGN] ${realSymbol} Sig=${sign} Dif=${diff} Rt=${rate}`);
-
         const change = (sign === '4' || sign === '5') ? -Math.abs(diff) : Math.abs(diff);
-
-        // addLog(`[KR-OK] ${realSymbol} ${price}`);
 
         updateData(realSymbol, {
             symbol: realSymbol,
@@ -289,9 +318,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         let rate = 0;
 
         if (values.length > 10) {
-            // Check indices for US (HDFSCNT0)
-            // Often: ...^Price(3)^... or Price(11)?
-            // Let's stick to previous generic logic for now but use realSymbol
             price = parseFloat(values[3]);
             const diff = parseFloat(values[5]);
             rate = parseFloat(values[6]);
@@ -330,14 +356,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             subscriptions.current.add(key);
             // Try to send immediately if connected
             sendRawSubscription(symbol, marketType, '1');
-        } else {
-            // Already in set, but maybe disconnected? 
-            // Logic in 'Reconnection Effect' ensures it sends if we reconnect.
-            // If we are already connected and called subscribe again, do we resend?
-            // Maybe safe to ignore if Set has it.
-
-            // BUT: If user refreshed or something, handle redundancy.
-            // Actually, checking Set existence is good enough.
         }
     }, [sendRawSubscription]);
 
