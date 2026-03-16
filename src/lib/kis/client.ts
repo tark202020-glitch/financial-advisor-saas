@@ -126,48 +126,117 @@ function isTokenExpiredError(errorText: string): boolean {
     return errorText.includes('EGW00123') || errorText.includes('만료된 token');
 }
 
+/**
+ * 현재 KST 시간에 따라 최적의 시장 코드를 결정합니다.
+ * - 08:00~09:00 프리마켓: NXT 우선 (NXT가 먼저 오픈, ETF는 KRX 폴백)
+ * - 09:00~15:20 정규장: KRX(J) 단일 (안정적, ETF 포함, WebSocket이 실시간 보완)
+ * - 15:30~20:00 애프터마켓: NXT 우선 (KRX 종가 vs NXT 실시간 → NXT가 정확, ETF는 KRX 폴백)
+ * - 그 외: KRX(J) 단일 (전일/당일 종가)
+ */
+function getOptimalMarketCode(): { primary: string; fallback: string | null } {
+    const now = new Date();
+    // KST = UTC+9
+    const kstHour = (now.getUTCHours() + 9) % 24;
+    const kstMinute = now.getUTCMinutes();
+    const kstTime = kstHour * 100 + kstMinute; // HHMM 형식
+
+    // 08:00~09:00 프리마켓 → NXT 우선
+    if (kstTime >= 800 && kstTime < 900) {
+        return { primary: 'NX', fallback: 'J' };
+    }
+
+    // 15:30~20:00 NXT 애프터마켓 → NXT 우선 (핵심 시간대)
+    if (kstTime >= 1530 && kstTime < 2000) {
+        return { primary: 'NX', fallback: 'J' };
+    }
+
+    // 나머지 시간 → KRX(J) 단일 (정규장 + 장 전/후)
+    return { primary: 'J', fallback: null };
+}
+
 export async function getDomesticPrice(symbol: string, _retried = false): Promise<KisDomStockPrice | null> {
     const token = await getAccessToken();
+    const { primary, fallback } = getOptimalMarketCode();
 
-    // KRX(J) 시장 단일 호출 — ETF/ETN 포함 모든 종목 지원
-    // (NXT는 ETF에서 가격 0을 반환하여 이중 호출 발생 → 제거)
-    // 실시간 시세는 WebSocket으로 별도 수신하므로 REST는 초기 로딩용으로 충분
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}`, {
-        method: "GET",
-        headers: {
-            "content-type": "application/json",
-            "authorization": `Bearer ${token}`,
-            "appkey": APP_KEY!,
-            "appsecret": APP_SECRET!,
-            "tr_id": "FHKST01010100",
-        },
-    }));
+    // Helper: 특정 시장 코드로 가격 조회
+    const fetchWithMarketCode = async (marketCode: string): Promise<KisDomStockPrice | null> => {
+        const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=${marketCode}&FID_INPUT_ISCD=${symbol}`, {
+            method: "GET",
+            headers: {
+                "content-type": "application/json",
+                "authorization": `Bearer ${token}`,
+                "appkey": APP_KEY!,
+                "appsecret": APP_SECRET!,
+                "tr_id": "FHKST01010100",
+            },
+        }));
 
-    if (!response.ok) {
-        const text = await response.text();
-        // 토큰 만료 에러 감지 시 자동 재발급 (1회만)
-        if (!_retried && isTokenExpiredError(text)) {
-            console.warn(`[KIS] Token expired for DOM ${symbol}, invalidating...`);
+        if (!response.ok) {
+            const text = await response.text();
+            if (!_retried && isTokenExpiredError(text)) {
+                console.warn(`[KIS] Token expired for ${symbol} (${marketCode}), invalidating...`);
+                await invalidateToken();
+                return null; // 상위에서 재시도 처리
+            }
+            console.error(`[KIS] Failed to fetch price for ${symbol} (${marketCode}): ${text.slice(0, 200)}`);
+            return null;
+        }
+
+        const data: KisResponse<KisDomStockPrice> = await response.json();
+        if (data.rt_cd !== "0") {
+            if (!_retried && isTokenExpiredError(data.msg1 || '')) {
+                console.warn(`[KIS] Token expired (rt_cd) for ${symbol}, invalidating...`);
+                await invalidateToken();
+                return null;
+            }
+            console.error(`[KIS] API Error for ${symbol} (${marketCode}): ${data.msg1}`);
+            return null;
+        }
+
+        return data.output;
+    };
+
+    // 1차: primary 시장 조회
+    try {
+        const result = await fetchWithMarketCode(primary);
+        // 토큰 무효화 시 재시도
+        if (result === null && !_retried && cachedToken === null) {
+            return getDomesticPrice(symbol, true);
+        }
+        const price = parseFloat(result?.stck_prpr || '0');
+        if (result && price > 0) {
+            return result;
+        }
+        // NXT에서 가격 0 (ETF 등) → fallback 시도
+        if (fallback && primary !== 'J') {
+            console.log(`[KIS] ${symbol}: ${primary} price=0, fallback to KRX(J)`);
+        }
+    } catch (e: any) {
+        if (!_retried && isTokenExpiredError(e.message || '')) {
             await invalidateToken();
             return getDomesticPrice(symbol, true);
         }
-        console.error(`[KIS] Failed to fetch price for ${symbol}: ${text.slice(0, 200)}`);
-        return null;
+        console.warn(`[KIS] ${primary} fetch failed for ${symbol}:`, e.message);
     }
 
-    const data: KisResponse<KisDomStockPrice> = await response.json();
-    if (data.rt_cd !== "0") {
-        // 응답 성공이지만 에러 코드인 경우도 토큰 만료 체크
-        if (!_retried && isTokenExpiredError(data.msg1 || '')) {
-            console.warn(`[KIS] Token expired (rt_cd) for DOM ${symbol}, invalidating...`);
-            await invalidateToken();
-            return getDomesticPrice(symbol, true);
+    // 2차: fallback 시장 조회 (NXT 시간대에서 ETF 대응)
+    if (fallback) {
+        try {
+            const result = await fetchWithMarketCode(fallback);
+            if (result === null && !_retried && cachedToken === null) {
+                return getDomesticPrice(symbol, true);
+            }
+            if (result) return result;
+        } catch (e: any) {
+            if (!_retried && isTokenExpiredError(e.message || '')) {
+                await invalidateToken();
+                return getDomesticPrice(symbol, true);
+            }
+            console.error(`[KIS] ${fallback} fallback also failed for ${symbol}:`, e.message);
         }
-        console.error(`[KIS] API Error for ${symbol}: ${data.msg1}`);
-        return null;
     }
 
-    return data.output;
+    return null;
 }
 
 // ---- KRX Gold Spot Price (금현물 시세) ----
