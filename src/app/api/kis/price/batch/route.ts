@@ -22,10 +22,10 @@ export async function GET(request: NextRequest) {
     const results: Record<string, any> = {};
     const fetcher = market === 'KR' ? getDomesticPrice : getOverseasPrice;
 
-    // KR: 3건씩 병렬 + 500ms 딜레이 (10종목 ≈ 2초, 속도 3배 개선)
-    // US: 1건씩 순차 + 350ms 딜레이 (해외 API는 더 보수적으로 처리)
-    const parallelSize = market === 'KR' ? 3 : 1;
-    const delayMs = market === 'KR' ? 500 : 350;
+    // KR: 2건씩 병렬 + 700ms 딜레이 (토큰 발급 한도 보호 — NXT 이중 호출 제거로 절반 감소)
+    // US: 1건씩 순차 + 400ms 딜레이 (해외 API는 보수적으로 처리)
+    const parallelSize = market === 'KR' ? 2 : 1;
+    const delayMs = market === 'KR' ? 700 : 400;
 
     for (let i = 0; i < symbols.length; i += parallelSize) {
         const group = symbols.slice(i, i + parallelSize);

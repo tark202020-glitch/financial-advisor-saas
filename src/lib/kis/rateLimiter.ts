@@ -4,7 +4,6 @@ export class RateLimiter {
     private lastRequestTime = 0;
     private readonly maxConcurrency: number;
     private readonly minInterval: number;
-    private isProcessing = false;
 
     constructor(maxConcurrency = 5, minInterval = 200) {
         this.maxConcurrency = maxConcurrency;
@@ -14,51 +13,46 @@ export class RateLimiter {
     async add<T>(task: () => Promise<T>): Promise<T> {
         return new Promise((resolve, reject) => {
             this.queue.push({ task, resolve, reject });
-            this.process();
+            this.processNext();
         });
     }
 
-    private async process() {
-        if (this.isProcessing) return;
-        this.isProcessing = true;
+    private async processNext() {
+        // 동시 실행 한도 초과 시 대기 (기존 작업 완료 시 자동 재호출)
+        if (this.activeCount >= this.maxConcurrency) {
+            return;
+        }
+
+        const item = this.queue.shift();
+        if (!item) return;
+
+        // Rate limit: 최소 간격 대기
+        const now = Date.now();
+        const timeSinceLast = now - this.lastRequestTime;
+        if (timeSinceLast < this.minInterval) {
+            const delay = this.minInterval - timeSinceLast;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        this.activeCount++;
+        this.lastRequestTime = Date.now();
 
         try {
-            while (this.queue.length > 0) {
-                if (this.activeCount >= this.maxConcurrency) {
-                    break;
-                }
-
-                const now = Date.now();
-                const timeSinceLast = now - this.lastRequestTime;
-
-                if (timeSinceLast < this.minInterval) {
-                    const delay = this.minInterval - timeSinceLast;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    // Re-evaluate time after delay
-                    continue;
-                }
-
-                const item = this.queue.shift();
-                if (!item) break;
-
-                this.activeCount++;
-                this.lastRequestTime = Date.now();
-
-                // Run task without awaiting it here (to allow concurrency)
-                item.task()
-                    .then(item.resolve)
-                    .catch(item.reject)
-                    .finally(() => {
-                        this.activeCount--;
-                        this.process(); // Trigger next item when one finishes
-                    });
-            }
+            const result = await item.task();
+            item.resolve(result);
+        } catch (e) {
+            item.reject(e);
         } finally {
-            this.isProcessing = false;
+            this.activeCount--;
+            // 작업 완료 후 큐에 대기 중인 다음 작업 처리
+            if (this.queue.length > 0) {
+                this.processNext();
+            }
         }
     }
 }
 
 // Global instance
-// Using 10 concurrent, 50ms interval => ~20 req/sec (KIS Standard limit)
-export const kisRateLimiter = new RateLimiter(10, 50);
+// maxConcurrency 5, minInterval 200ms => ~5 req/sec (KIS API 안정 범위)
+export const kisRateLimiter = new RateLimiter(5, 200);
+

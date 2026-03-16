@@ -1,3 +1,18 @@
+## [Alpha V1.324] - 2026-03-17 00:02:00
+
+### 🚑 Critical Fix: KIS 토큰 발급 한도 초과(EGW00103) + API 안정성 대폭 개선
+- **Summary**: 서버 로그에서 발생하던 `EGW00103 - 접근토큰 발급 잔여수가 없습니다` 오류를 근본적으로 해결하고, KIS API 호출 안정성을 전면 개선
+- **Detail**:
+  - **`getAccessToken()` Mutex 패턴**: 동시 요청 시 토큰 발급이 중복으로 실행되던 문제 해결. `pendingTokenRequest` Promise 공유로 같은 프로세스 내 동시 요청이 1건의 토큰 발급을 공유
+  - **EGW00103 에러 복구**: 토큰 발급 한도 초과 시 기존 캐시 토큰을 10분간 연장하여 재사용
+  - **Supabase 캐시 실패 복구**: DB 조회 실패 시에도 인메모리 토큰 폴백 사용
+  - **인메모리 캐시 연장**: Supabase 토큰 캐시 유효 시간을 5분→30분으로 증가하여 DB 조회 빈도 감소
+  - **RateLimiter 동시성 버그 수정**: `isProcessing` 플래그 기반에서 Promise 기반 대기로 변경, 큐 누락 방지
+  - **Rate Limit 보수적 조정**: maxConcurrency 10→5, minInterval 50ms→200ms (초당 ~5건)
+  - **`getDomesticPrice` 최적화**: NXT→KRX 이중 호출 제거, KRX(J) 단일 호출로 통일 (ETF/ETN 호환 + API 호출 50% 감소)
+  - **배치 라우트 안정화**: KR 병렬 3건→2건, 그룹 간 딜레이 500ms→700ms
+- **Build Time**: 2026-03-17 00:02:00
+
 ## [Alpha V1.323] - 2026-03-13 09:41:00
 
 ### 🚑 Critical Fix: KIS 토큰 자동 복구 + WebSocket 안정화

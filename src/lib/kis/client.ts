@@ -12,10 +12,13 @@ const ACNT_PRDT_CD = process.env.KIS_ACNT_PRDT_CD || "01";
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;
 
+// Mutex: 동시에 여러 요청이 토큰을 발급받으려 할 때, 하나의 Promise를 공유
+let pendingTokenRequest: Promise<string> | null = null;
+
 import { getStoredToken, saveToken, clearStoredTokens } from './tokenManager';
 
 export async function getAccessToken(): Promise<string> {
-    // 1. In-Memory Cache (Fastest)
+    // 1. In-Memory Cache (Fastest) — Vercel 같은 serverless에서도 같은 인스턴스 내에서는 유효
     if (cachedToken && Date.now() < tokenExpiresAt - 60000) {
         return cachedToken;
     }
@@ -24,23 +27,45 @@ export async function getAccessToken(): Promise<string> {
         throw new Error("KIS API Keys are missing in .env.local");
     }
 
-    // 2. Supabase Cache (Persistent)
-    const storedToken = await getStoredToken();
-    if (storedToken) {
-        // console.log("[KIS] Using Token from Supabase");
-        cachedToken = storedToken;
-        // Assume valid for at least 5 mins (buffer checked in manager)
-        // We don't know exact expiry here without querying DB again or changing manager return type.
-        // Let's set memory expiry to 5 mins to force re-check with DB occasionally, or just rely on DB check next time if memory invalid.
-        // Actually, if we just set cachedToken, we need tokenExpiresAt.
-        // Let's set it to Date.now() + 1 hour safely, or just 10 minutes to be safe.
-        // Better: Manager returns expiry? No, string.
-        // Let's just set it to +5 minutes so we re-verify with DB often enough but not every request.
-        tokenExpiresAt = Date.now() + (5 * 60 * 1000);
-        return cachedToken;
+    // 2. Supabase Cache (Persistent — serverless 인스턴스 간 공유)
+    try {
+        const storedToken = await getStoredToken();
+        if (storedToken) {
+            cachedToken = storedToken;
+            // 인메모리 캐시를 30분으로 설정하여 Supabase 조회 빈도 대폭 감소
+            tokenExpiresAt = Date.now() + (30 * 60 * 1000);
+            return cachedToken;
+        }
+    } catch (e) {
+        console.warn("[KIS] Supabase token lookup failed, checking in-memory fallback:", e);
+        // Supabase 조회 실패 시에도 인메모리에 유효한 토큰이 있으면 재사용
+        if (cachedToken) {
+            console.log("[KIS] Using stale in-memory token as fallback");
+            tokenExpiresAt = Date.now() + (5 * 60 * 1000);
+            return cachedToken;
+        }
     }
 
-    console.log("Fetching new KIS Access Token...");
+    // 3. Mutex: 이미 토큰 발급이 진행 중이면 해당 Promise를 공유 (중복 발급 방지)
+    if (pendingTokenRequest) {
+        console.log("[KIS] Waiting for pending token request...");
+        return pendingTokenRequest;
+    }
+
+    // 4. 새 토큰 발급 (단 한 건만 실행)
+    pendingTokenRequest = fetchNewToken();
+
+    try {
+        const token = await pendingTokenRequest;
+        return token;
+    } finally {
+        pendingTokenRequest = null;
+    }
+}
+
+/** 실제 KIS 토큰 발급 로직 (내부용) */
+async function fetchNewToken(): Promise<string> {
+    console.log("[KIS] Fetching new Access Token...");
 
     const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/oauth2/tokenP`, {
         method: "POST",
@@ -56,21 +81,31 @@ export async function getAccessToken(): Promise<string> {
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error("Failed to fetch token:", errorText);
-        throw new Error(`Failed to fetch KIS token: ${response.status} ${response.statusText}`);
+        console.error("[KIS] Failed to fetch token:", errorText);
+
+        // EGW00103: 토큰 발급 잔여수 초과 — 기존 캐시 토큰이 있으면 재사용
+        if (errorText.includes('EGW00103')) {
+            console.warn("[KIS] Token issuance limit exceeded (EGW00103)");
+            if (cachedToken) {
+                console.log("[KIS] Reusing stale cached token due to EGW00103");
+                tokenExpiresAt = Date.now() + (10 * 60 * 1000); // 10분 연장
+                return cachedToken;
+            }
+        }
+
+        throw new Error(`Failed to fetch KIS token: ${errorText}`);
     }
 
     const data: KisTokenResponse = await response.json();
 
     cachedToken = data.access_token;
-    // expires_in is usually seconds (86400).
+    // expires_in is usually seconds (86400 = 24h)
     const expiresIn = data.expires_in;
     tokenExpiresAt = Date.now() + (expiresIn * 1000);
 
-    // 3. Save to Supabase
-    // Run in background (don't await to speed up response?) 
-    // Vercel might kill bg tasks. Better await.
+    // Supabase에 저장 (serverless 인스턴스 간 공유)
     await saveToken(cachedToken, expiresIn);
+    console.log("[KIS] New token saved, expires in", Math.round(expiresIn / 3600), "hours");
 
     return cachedToken;
 }
@@ -94,88 +129,45 @@ function isTokenExpiredError(errorText: string): boolean {
 export async function getDomesticPrice(symbol: string, _retried = false): Promise<KisDomStockPrice | null> {
     const token = await getAccessToken();
 
-    // Helper: fetch price with specific market code
-    const fetchWithMarketCode = async (marketCode: string): Promise<KisDomStockPrice | null> => {
-        const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=${marketCode}&FID_INPUT_ISCD=${symbol}`, {
-            method: "GET",
-            headers: {
-                "content-type": "application/json",
-                "authorization": `Bearer ${token}`,
-                "appkey": APP_KEY!,
-                "appsecret": APP_SECRET!,
-                "tr_id": "FHKST01010100",
-            },
-        }));
+    // KRX(J) 시장 단일 호출 — ETF/ETN 포함 모든 종목 지원
+    // (NXT는 ETF에서 가격 0을 반환하여 이중 호출 발생 → 제거)
+    // 실시간 시세는 WebSocket으로 별도 수신하므로 REST는 초기 로딩용으로 충분
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "FHKST01010100",
+        },
+    }));
 
-        if (!response.ok) {
-            const text = await response.text();
-            // 토큰 만료 에러 감지 시 자동 재발급
-            if (!_retried && isTokenExpiredError(text)) {
-                console.warn(`[KIS] Token expired for DOM ${symbol} (market=${marketCode}), invalidating...`);
-                await invalidateToken();
-                return null; // null 반환하여 상위에서 재시도
-            }
-            throw new Error(`Failed to fetch DOM price for ${symbol} (market=${marketCode}): ${text}`);
-        }
-
-        const data: KisResponse<KisDomStockPrice> = await response.json();
-        if (data.rt_cd !== "0") {
-            // 응답 성공이지만 에러 코드인 경우도 토큰 만료 체크
-            if (!_retried && isTokenExpiredError(data.msg1 || '')) {
-                console.warn(`[KIS] Token expired (rt_cd) for DOM ${symbol}, invalidating...`);
-                await invalidateToken();
-                return null;
-            }
-            console.error(`KIS API Error (DOM, market=${marketCode}): ${data.msg1}`);
-            return null;
-        }
-
-        return data.output;
-    };
-
-    // 1차 시도: NXT(넥스트) 시세 - 실시간 가격 정확도 향상
-    try {
-        const nxtResult = await fetchWithMarketCode('NX');
-        // 토큰이 무효화된 경우 재시도
-        if (nxtResult === null && !_retried && cachedToken === null) {
-            return getDomesticPrice(symbol, true);
-        }
-        const nxtPrice = parseFloat(nxtResult?.stck_prpr || '0');
-        if (nxtResult && nxtPrice > 0) {
-            return nxtResult;
-        }
-        // NXT에서 가격이 0이면 (ETF 등 NXT 미지원 종목) KRX로 폴백
-        console.warn(`[KIS] NXT price=0 for ${symbol}, falling back to KRX(J)`);
-    } catch (e: any) {
-        // throw된 에러에서도 토큰 만료 체크
-        if (!_retried && isTokenExpiredError(e.message || '')) {
+    if (!response.ok) {
+        const text = await response.text();
+        // 토큰 만료 에러 감지 시 자동 재발급 (1회만)
+        if (!_retried && isTokenExpiredError(text)) {
+            console.warn(`[KIS] Token expired for DOM ${symbol}, invalidating...`);
             await invalidateToken();
             return getDomesticPrice(symbol, true);
         }
-        console.warn(`[KIS] NXT fetch failed for ${symbol}, falling back to KRX(J):`, e);
+        console.error(`[KIS] Failed to fetch price for ${symbol}: ${text.slice(0, 200)}`);
+        return null;
     }
 
-    // 2차 시도: KRX(J) 폴백 - ETF 등 NXT 미지원 종목 대응
-    try {
-        const krxResult = await fetchWithMarketCode('J');
-        // 토큰이 무효화된 경우 재시도
-        if (krxResult === null && !_retried && cachedToken === null) {
-            return getDomesticPrice(symbol, true);
-        }
-        const krxPrice = parseFloat(krxResult?.stck_prpr || '0');
-        if (krxResult && krxPrice > 0) {
-            return krxResult;
-        }
-    } catch (e: any) {
-        if (!_retried && isTokenExpiredError(e.message || '')) {
+    const data: KisResponse<KisDomStockPrice> = await response.json();
+    if (data.rt_cd !== "0") {
+        // 응답 성공이지만 에러 코드인 경우도 토큰 만료 체크
+        if (!_retried && isTokenExpiredError(data.msg1 || '')) {
+            console.warn(`[KIS] Token expired (rt_cd) for DOM ${symbol}, invalidating...`);
             await invalidateToken();
             return getDomesticPrice(symbol, true);
         }
-        console.error(`[KIS] KRX(J) fallback also failed for ${symbol}:`, e);
+        console.error(`[KIS] API Error for ${symbol}: ${data.msg1}`);
+        return null;
     }
 
-    // 두 시장 모두 실패
-    throw new Error(`Failed to fetch price for ${symbol} from both NXT and KRX`);
+    return data.output;
 }
 
 // ---- KRX Gold Spot Price (금현물 시세) ----
