@@ -127,31 +127,18 @@ function isTokenExpiredError(errorText: string): boolean {
 }
 
 /**
- * 현재 KST 시간에 따라 최적의 시장 코드를 결정합니다.
- * - 08:00~09:00 프리마켓: NXT 우선 (NXT가 먼저 오픈, ETF는 KRX 폴백)
- * - 09:00~15:20 정규장: KRX(J) 단일 (안정적, ETF 포함, WebSocket이 실시간 보완)
- * - 15:30~20:00 애프터마켓: NXT 우선 (KRX 종가 vs NXT 실시간 → NXT가 정확, ETF는 KRX 폴백)
- * - 그 외: KRX(J) 단일 (전일/당일 종가)
+ * 최적의 시장 코드를 결정합니다.
+ * 
+ * NXT(넥스트레이드)는 장외 시간(20:00 이후)에도 **마지막 체결가**를 반환합니다.
+ * 실제 확인: SK스퀘어 KRX=562,000 vs NXT=569,000 (00:33 KST, +1.25% 차이)
+ * 
+ * 따라서 **항상 NXT를 우선 시도**하고, ETF/ETN(NXT 미지원, 가격 0)일 때만 KRX 폴백합니다.
+ * - NXT: 프리마켓(08:00)~애프터마켓(20:00) 거래 + 마감 후에도 최종 체결가 반환
+ * - KRX: ETF/ETN 전용 (NXT에서 가격 0 반환 시 폴백)
  */
-function getOptimalMarketCode(): { primary: string; fallback: string | null } {
-    const now = new Date();
-    // KST = UTC+9
-    const kstHour = (now.getUTCHours() + 9) % 24;
-    const kstMinute = now.getUTCMinutes();
-    const kstTime = kstHour * 100 + kstMinute; // HHMM 형식
-
-    // 08:00~09:00 프리마켓 → NXT 우선
-    if (kstTime >= 800 && kstTime < 900) {
-        return { primary: 'NX', fallback: 'J' };
-    }
-
-    // 15:30~20:00 NXT 애프터마켓 → NXT 우선 (핵심 시간대)
-    if (kstTime >= 1530 && kstTime < 2000) {
-        return { primary: 'NX', fallback: 'J' };
-    }
-
-    // 나머지 시간 → KRX(J) 단일 (정규장 + 장 전/후)
-    return { primary: 'J', fallback: null };
+function getOptimalMarketCode(): { primary: string; fallback: string } {
+    // 항상 NXT 우선, ETF 폴백으로 KRX
+    return { primary: 'NX', fallback: 'J' };
 }
 
 export async function getDomesticPrice(symbol: string, _retried = false): Promise<KisDomStockPrice | null> {
