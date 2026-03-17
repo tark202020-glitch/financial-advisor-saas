@@ -1,3 +1,18 @@
+## [Alpha V1.327] - 2026-03-18 01:10:00
+
+### 🔒 Feature: Vercel 다중 인스턴스 간 분산 토큰 잠금 (EGW00103 근본 해결)
+- **Summary**: Vercel serverless의 다중 인스턴스가 동시에 토큰을 발급하여 일일 한도를 소진하는 근본 원인 해결
+- **Detail**:
+  - **tokenManager.ts 전면 개선**:
+    - `getStoredToken()`: 만료 토큰도 `{ token, isExpired }` 형태로 반환 → 만료 토큰이라도 폴백 사용 가능
+    - `shouldRefreshToken()`: Supabase `created_at` 기반 5분 쿨다운 → 다른 인스턴스 갱신 중이면 차단
+    - `markRefreshAttempt()`: 갱신 시도 시각 기록 → 인스턴스 간 잠금 역할
+  - **client.ts getAccessToken 개선**:
+    - 만료 토큰도 인메모리 저장 → EGW00103 시 폴백 가능
+    - 분산 잠금 체크 → 다른 인스턴스 갱신 중이면 캐시 토큰 사용
+    - 발급 실패 시에도 기존 캐시 토큰으로 서비스 지속
+- **Build Time**: 2026-03-18 01:10:00
+
 ## [Alpha V1.326] - 2026-03-17 00:35:00
 
 ### 🚑 Critical Fix: NXT 항상 우선 조회로 변경 — 장외 시간 가격 차이 해결

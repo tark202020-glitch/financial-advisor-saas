@@ -15,7 +15,7 @@ let tokenExpiresAt: number = 0;
 // Mutex: 동시에 여러 요청이 토큰을 발급받으려 할 때, 하나의 Promise를 공유
 let pendingTokenRequest: Promise<string> | null = null;
 
-import { getStoredToken, saveToken, clearStoredTokens } from './tokenManager';
+import { getStoredToken, saveToken, clearStoredTokens, shouldRefreshToken, markRefreshAttempt } from './tokenManager';
 
 export async function getAccessToken(): Promise<string> {
     // 1. In-Memory Cache (Fastest) — Vercel 같은 serverless에서도 같은 인스턴스 내에서는 유효
@@ -28,17 +28,24 @@ export async function getAccessToken(): Promise<string> {
     }
 
     // 2. Supabase Cache (Persistent — serverless 인스턴스 간 공유)
+    //    변경: 만료된 토큰도 반환됨 (isExpired 플래그)
     try {
-        const storedToken = await getStoredToken();
-        if (storedToken) {
-            cachedToken = storedToken;
-            // 인메모리 캐시를 30분으로 설정하여 Supabase 조회 빈도 대폭 감소
-            tokenExpiresAt = Date.now() + (30 * 60 * 1000);
-            return cachedToken;
+        const stored = await getStoredToken();
+        if (stored) {
+            cachedToken = stored.token;
+
+            if (!stored.isExpired) {
+                // 유효한 토큰 → 인메모리 캐시 30분 설정
+                tokenExpiresAt = Date.now() + (30 * 60 * 1000);
+                return cachedToken;
+            }
+
+            // 만료된 토큰이지만, 일단 인메모리에 저장 (EGW00103 폴백용)
+            console.log("[KIS] Supabase token expired, will try refresh...");
+            tokenExpiresAt = Date.now() + (5 * 60 * 1000); // 5분간 폴백 사용 가능
         }
     } catch (e) {
-        console.warn("[KIS] Supabase token lookup failed, checking in-memory fallback:", e);
-        // Supabase 조회 실패 시에도 인메모리에 유효한 토큰이 있으면 재사용
+        console.warn("[KIS] Supabase token lookup failed:", e);
         if (cachedToken) {
             console.log("[KIS] Using stale in-memory token as fallback");
             tokenExpiresAt = Date.now() + (5 * 60 * 1000);
@@ -46,18 +53,42 @@ export async function getAccessToken(): Promise<string> {
         }
     }
 
-    // 3. Mutex: 이미 토큰 발급이 진행 중이면 해당 Promise를 공유 (중복 발급 방지)
+    // 3. 분산 잠금: 다른 인스턴스가 최근 5분 내에 갱신 시도했으면 → 기존 토큰 재사용
+    const canRefresh = await shouldRefreshToken();
+    if (!canRefresh) {
+        if (cachedToken) {
+            console.log("[KIS] Another instance recently refreshed. Using cached token.");
+            return cachedToken;
+        }
+        // 캐시 토큰도 없으면 Supabase 재조회 (다른 인스턴스가 이미 갱신 완료했을 수 있음)
+        const retryStored = await getStoredToken();
+        if (retryStored) {
+            cachedToken = retryStored.token;
+            tokenExpiresAt = Date.now() + (30 * 60 * 1000);
+            return cachedToken;
+        }
+    }
+
+    // 4. Mutex (같은 인스턴스 내): 이미 토큰 발급이 진행 중이면 해당 Promise를 공유
     if (pendingTokenRequest) {
         console.log("[KIS] Waiting for pending token request...");
         return pendingTokenRequest;
     }
 
-    // 4. 새 토큰 발급 (단 한 건만 실행)
+    // 5. 새 토큰 발급 (단 한 건만 실행)
     pendingTokenRequest = fetchNewToken();
 
     try {
         const token = await pendingTokenRequest;
         return token;
+    } catch (e: any) {
+        // 발급 실패해도 기존 캐시 토큰이 있으면 사용
+        if (cachedToken) {
+            console.warn("[KIS] Token fetch failed, using cached token:", e.message);
+            tokenExpiresAt = Date.now() + (5 * 60 * 1000);
+            return cachedToken;
+        }
+        throw e;
     } finally {
         pendingTokenRequest = null;
     }
@@ -65,6 +96,8 @@ export async function getAccessToken(): Promise<string> {
 
 /** 실제 KIS 토큰 발급 로직 (내부용) */
 async function fetchNewToken(): Promise<string> {
+    // 분산 잠금: Supabase에 갱신 시도를 기록 (다른 인스턴스의 동시 발급 차단)
+    await markRefreshAttempt();
     console.log("[KIS] Fetching new Access Token...");
 
     const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/oauth2/tokenP`, {
@@ -99,7 +132,6 @@ async function fetchNewToken(): Promise<string> {
     const data: KisTokenResponse = await response.json();
 
     cachedToken = data.access_token;
-    // expires_in is usually seconds (86400 = 24h)
     const expiresIn = data.expires_in;
     tokenExpiresAt = Date.now() + (expiresIn * 1000);
 
