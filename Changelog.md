@@ -1,3 +1,15 @@
+## [Alpha V1.329] - 2026-03-18 02:10:00
+
+### 🆕 Feature: MSCI → Google Sheets 일일 자동 누적 저장
+- **Summary**: MSCI Cron이 매일 KST 07:00에 산출 데이터를 Google Sheets에 자동 누적 저장
+- **Detail**:
+  - **Google Sheets 헬퍼** (`src/lib/googleSheets.ts`): 서비스 계정 JWT 인증 + append 함수
+  - **Cron API 개선** (`/api/cron/update-msci`): generate-msci 동일 정밀 산출 로직 + Sheets 누적
+  - **시트 구조**: 날짜 | 종목명 | 종목코드 | MSCI비중 | 시총 | KOSPI보정비율 | 차이 (매일 11행 추가)
+  - **의존성**: `googleapis` 추가
+  - Google Sheets 쓰기 테스트 성공 확인
+- **Build Time**: 2026-03-18 02:10:00
+
 ## [Alpha V1.328] - 2026-03-18 01:42:00
 
 ### 🆕 Feature: 종목 마스터 자동 갱신 시스템 (신규 ETF 지원)
