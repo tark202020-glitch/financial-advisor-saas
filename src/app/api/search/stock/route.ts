@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 interface StockResult {
     symbol: string;
@@ -12,50 +14,7 @@ interface StockResult {
     exchange?: string;
 }
 
-interface StockMasterLocal {
-    symbol: string;
-    name: string;
-    standard_code?: string;
-    group_code?: string;
-    market?: string;
-}
-
-// ---- Local Master Data Cache ----
-let cachedLocalData: StockMasterLocal[] | null = null;
-let lastCacheTime = 0;
-
-function loadLocalMasterData(): StockMasterLocal[] {
-    const CACHE_TTL = 3600 * 1000; // 1 hour
-    const now = Date.now();
-
-    if (cachedLocalData && (now - lastCacheTime < CACHE_TTL)) {
-        return cachedLocalData;
-    }
-
-    try {
-        // Try unified file first, then fallback to kospi only
-        const unifiedPath = path.join(process.cwd(), 'public', 'data', 'all_stocks_master.json');
-        const kospiPath = path.join(process.cwd(), 'public', 'data', 'kospi_master.json');
-
-        let rawData = '';
-        if (fs.existsSync(unifiedPath)) {
-            rawData = fs.readFileSync(unifiedPath, 'utf-8');
-        } else if (fs.existsSync(kospiPath)) {
-            rawData = fs.readFileSync(kospiPath, 'utf-8');
-        } else {
-            return [];
-        }
-
-        cachedLocalData = JSON.parse(rawData);
-        lastCacheTime = now;
-        return cachedLocalData || [];
-    } catch (e) {
-        console.error('Failed to load local master data:', e);
-        return [];
-    }
-}
-
-// ---- Yahoo Finance Server-Side Search ----
+// ---- Yahoo Finance Server-Side Search (해외 주식용) ----
 async function searchYahooFinance(query: string): Promise<StockResult[]> {
     try {
         const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0&listsCount=0`;
@@ -63,7 +22,7 @@ async function searchYahooFinance(query: string): Promise<StockResult[]> {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             },
-            signal: AbortSignal.timeout(3000), // 3 second timeout
+            signal: AbortSignal.timeout(3000),
         });
 
         if (!res.ok) return [];
@@ -75,7 +34,6 @@ async function searchYahooFinance(query: string): Promise<StockResult[]> {
             .filter((q: any) => q.quoteType === 'EQUITY' || q.quoteType === 'ETF')
             .map((q: any) => {
                 const symbol = q.symbol || '';
-                // Determine market
                 const exchange = q.exchange || '';
                 const isKR = symbol.endsWith('.KS') || symbol.endsWith('.KQ');
                 const cleanSymbol = isKR ? symbol.replace(/\.(KS|KQ)$/, '') : symbol;
@@ -89,7 +47,6 @@ async function searchYahooFinance(query: string): Promise<StockResult[]> {
                 } as StockResult;
             });
     } catch (e) {
-        // Silent failure - Yahoo may be rate limited or unreachable
         console.warn('Yahoo Finance search failed:', e);
         return [];
     }
@@ -119,37 +76,43 @@ export async function GET(request: Request) {
         });
     }
 
-    // 1. Search local master data (KOSPI, and KOSDAQ/overseas if all_stocks_master.json is available)
-    const localData = loadLocalMasterData();
-    const localResults: StockResult[] = [];
+    // 1. Supabase stock_master 테이블에서 검색
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let localResults: StockResult[] = [];
 
-    for (const stock of localData) {
-        const stockName = (stock.name || '').toLowerCase().replace(/\s/g, '');
-        const stockSymbol = (stock.symbol || '').toLowerCase();
+    try {
+        // 종목명 또는 종목코드로 검색 (ilike = case-insensitive LIKE)
+        const { data, error } = await supabase
+            .from('stock_master')
+            .select('symbol, name, market')
+            .or(`name.ilike.%${q.trim()}%,symbol.ilike.%${q.trim()}%`)
+            .limit(limit);
 
-        if (stockName.includes(term) || stockSymbol.includes(term)) {
-            const mkt = (stock.market === 'US') ? 'US' : 'KR';
-            localResults.push({
+        if (!error && data) {
+            localResults = data.map(stock => ({
                 symbol: stock.symbol,
                 name: stock.name,
-                market: mkt as 'KR' | 'US',
-                flag: mkt === 'US' ? '🇺🇸' : '🇰🇷',
-            });
-            if (localResults.length >= limit) break;
+                market: (stock.market === 'US' ? 'US' : 'KR') as 'KR' | 'US',
+                flag: stock.market === 'US' ? '🇺🇸' : '🇰🇷',
+            }));
+        } else if (error) {
+            console.warn('[Search] Supabase query failed:', error.message);
+            // Supabase 실패 시 정적 파일 폴백은 제거 (DB 우선 정책)
         }
+    } catch (e) {
+        console.warn('[Search] Supabase exception:', e);
     }
 
-    // 2. If local results are limited (especially for overseas), fetch from Yahoo Finance
+    // 2. 해외 주식: Yahoo Finance에서 보충 검색
     let yahooResults: StockResult[] = [];
     const hasEnoughLocal = localResults.length >= 5;
     const isAlphabetic = /^[a-zA-Z]/.test(q.trim());
 
-    // Search Yahoo if: not enough local results, or query looks English (likely overseas ticker)
     if (!hasEnoughLocal || isAlphabetic) {
         yahooResults = await searchYahooFinance(q.trim());
     }
 
-    // 3. Merge results: gold first, then local, then Yahoo (avoiding duplicates)
+    // 3. 결과 병합: 금현물 → 국내(Supabase) → 해외(Yahoo) 순서
     const seen = new Set(localResults.map(r => r.symbol));
     const merged = [...goldResults, ...localResults];
     goldResults.forEach(g => seen.add(g.symbol));

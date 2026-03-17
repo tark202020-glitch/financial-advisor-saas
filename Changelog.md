@@ -1,3 +1,16 @@
+## [Alpha V1.328] - 2026-03-18 01:42:00
+
+### 🆕 Feature: 종목 마스터 자동 갱신 시스템 (신규 ETF 지원)
+- **Summary**: KIS 공식 마스터 ZIP에서 KOSPI+KOSDAQ 전 종목을 Supabase DB로 매일 자동 갱신
+- **Detail**:
+  - **Cron API** (`/api/cron/update-stocks`): KIS 마스터 ZIP 다운로드 → EUC-KR 파싱 → Supabase upsert
+  - **검색 API** (`/api/search/stock`): 정적 JSON → Supabase `stock_master` 테이블 조회로 전환
+  - **Vercel Cron**: 매일 UTC 21:00 (KST 06:00) 자동 실행
+  - **종목 수**: KOSPI 2,493 + KOSDAQ 1,821 = 4,314종목 로딩 완료
+  - **신규 ETF**: KoAct 코스닥액티브 등 22개 신규 ETF 포함 확인
+  - **의존성**: `jszip` 추가 (ZIP 파싱)
+- **Build Time**: 2026-03-18 01:42:00
+
 ## [Alpha V1.327] - 2026-03-18 01:10:00
 
 ### 🔒 Feature: Vercel 다중 인스턴스 간 분산 토큰 잠금 (EGW00103 근본 해결)
