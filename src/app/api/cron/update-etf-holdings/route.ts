@@ -49,15 +49,28 @@ function getSheetsClient() {
 
 async function ensureETFSheet(
     sheets: ReturnType<typeof google.sheets>,
-    sheetId: string
+    sheetId: string,
+    reset: boolean = false
 ): Promise<boolean> {
     const SHEET_NAME = 'ETF보유종목';
     try {
         // 시트 목록 조회
         const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
-        const tabs = meta.data.sheets?.map(s => s.properties?.title) || [];
+        const existingSheet = meta.data.sheets?.find(s => s.properties?.title === SHEET_NAME);
 
-        if (!tabs.includes(SHEET_NAME)) {
+        // reset 모드: 기존 시트 삭제
+        if (reset && existingSheet && existingSheet.properties?.sheetId !== undefined) {
+            await sheets.spreadsheets.batchUpdate({
+                spreadsheetId: sheetId,
+                requestBody: {
+                    requests: [{ deleteSheet: { sheetId: existingSheet.properties.sheetId } }],
+                },
+            });
+            console.log(`[Sheets] '${SHEET_NAME}' 기존 시트 삭제 완료`);
+        }
+
+        // 시트가 없거나 삭제된 경우 새로 생성
+        if (!existingSheet || reset) {
             // 탭 생성
             await sheets.spreadsheets.batchUpdate({
                 spreadsheetId: sheetId,
@@ -214,7 +227,10 @@ function detectChanges(etfSymbol: string, etfName: string, prev: HoldingItem[], 
 // ======== 메인 핸들러 ========
 export async function GET(request: NextRequest) {
     try {
-        console.log('[ETF Cron] Starting...');
+        const { searchParams } = new URL(request.url);
+        const resetSheets = searchParams.get('reset') === 'true';
+
+        console.log(`[ETF Cron] Starting...${resetSheets ? ' (RESET SHEETS)' : ''}`);
         const startTime = Date.now();
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const today = new Date().toISOString().slice(0, 10);
@@ -241,7 +257,7 @@ export async function GET(request: NextRequest) {
         const sheetsClient = getSheetsClient();
         let sheetsReady = false;
         if (sheetsClient) {
-            sheetsReady = await ensureETFSheet(sheetsClient.sheets, sheetsClient.sheetId);
+            sheetsReady = await ensureETFSheet(sheetsClient.sheets, sheetsClient.sheetId, resetSheets);
         }
 
         let totalHoldings = 0, totalChanges = 0, processedCount = 0, errorCount = 0, sheetsCount = 0;
