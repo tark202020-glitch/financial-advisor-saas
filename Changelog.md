@@ -1,3 +1,14 @@
+## [Alpha V1.331] - 2026-03-18 12:56:00
+
+### 🐛 Fix + ✨ Feature: ETF 보유종목 수집 수정 및 Google Sheets 연동
+- **Summary**: KIS API 필드명 불일치로 보유종목 0건이던 문제 수정 + Google Sheets 누적 저장 기능 추가
+- **Detail**:
+  - **API 필드 수정**: `stck_weit`→`etf_cnfg_issu_rlim` (비중%), `stck_hkor_iscd`→`hts_kor_isnm` (종목명)
+  - **Google Sheets 연동**: MSCI와 같은 시트에 `ETF보유종목` 탭 자동 생성 → 매일 누적 저장
+  - **시트 컬럼**: 날짜 | ETF명 | ETF코드 | 카테고리 | 구성종목코드 | 구성종목명 | 비중(%) | 순위
+  - **테스트 결과**: 34개 ETF 중 25개 성공, 515개 보유종목 수집, Sheets 25건 저장 (53초)
+- **Build Time**: 2026-03-18 12:56:00
+
 ## [Alpha V1.330] - 2026-03-18 12:17:00
 
 ### 🆕 Feature: ETF 분석기 대시보드 (보유종목 추적 시스템)
