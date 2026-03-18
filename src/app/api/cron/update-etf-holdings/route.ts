@@ -24,18 +24,67 @@ interface HoldingItem {
 }
 
 // ======== Google Sheets ========
-function getSheetsAuth() {
+function getSheetsClient() {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
     const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    if (!email || !privateKey) return null;
-    return new google.auth.JWT({
-        email,
-        key: privateKey,
-        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
+    const sheetId = process.env.MSCI_GOOGLE_SHEET_ID;
+
+    if (!email || !privateKey || !sheetId) {
+        console.warn('[Sheets] Google Sheets 환경변수 누락, 스킵');
+        return null;
+    }
+
+    try {
+        const auth = new google.auth.JWT({
+            email,
+            key: privateKey,
+            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        });
+        return { sheets: google.sheets({ version: 'v4', auth }), sheetId };
+    } catch (e: any) {
+        console.error('[Sheets] 인증 실패:', e.message);
+        return null;
+    }
 }
 
-async function appendETFHoldingsToSheets(
+async function ensureETFSheet(
+    sheets: ReturnType<typeof google.sheets>,
+    sheetId: string
+): Promise<boolean> {
+    const SHEET_NAME = 'ETF보유종목';
+    try {
+        // 시트 목록 조회
+        const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+        const tabs = meta.data.sheets?.map(s => s.properties?.title) || [];
+
+        if (!tabs.includes(SHEET_NAME)) {
+            // 탭 생성
+            await sheets.spreadsheets.batchUpdate({
+                spreadsheetId: sheetId,
+                requestBody: {
+                    requests: [{ addSheet: { properties: { title: SHEET_NAME } } }],
+                },
+            });
+            // 헤더 추가
+            await sheets.spreadsheets.values.update({
+                spreadsheetId: sheetId,
+                range: `'${SHEET_NAME}'!A1:H1`,
+                valueInputOption: 'RAW',
+                requestBody: {
+                    values: [['날짜', 'ETF명', 'ETF코드', '카테고리', '구성종목코드', '구성종목명', '비중(%)', '순위']],
+                },
+            });
+            console.log(`[Sheets] '${SHEET_NAME}' 시트 생성 완료`);
+        }
+        return true;
+    } catch (e: any) {
+        console.error('[Sheets] 시트 확인/생성 실패:', e.message);
+        return false;
+    }
+}
+
+async function appendETFToSheets(
+    sheets: ReturnType<typeof google.sheets>,
     sheetId: string,
     etfName: string,
     etfSymbol: string,
@@ -43,56 +92,8 @@ async function appendETFHoldingsToSheets(
     holdings: HoldingItem[],
     dateStr: string
 ) {
-    const auth = getSheetsAuth();
-    if (!auth) {
-        console.warn('[Sheets] Google Sheets 인증 없음, 스킵');
-        return;
-    }
-
+    const SHEET_NAME = 'ETF보유종목';
     try {
-        const sheets = google.sheets({ version: 'v4', auth });
-        const sheetName = 'ETF보유종목';
-
-        // 헤더 확인/생성
-        try {
-            const headerCheck = await sheets.spreadsheets.values.get({
-                spreadsheetId: sheetId,
-                range: `'${sheetName}'!A1:H1`,
-            });
-            if (!headerCheck.data.values || headerCheck.data.values.length === 0) {
-                await sheets.spreadsheets.values.update({
-                    spreadsheetId: sheetId,
-                    range: `'${sheetName}'!A1:H1`,
-                    valueInputOption: 'RAW',
-                    requestBody: {
-                        values: [['날짜', 'ETF명', 'ETF코드', '카테고리', '구성종목코드', '구성종목명', '비중(%)', '순위']],
-                    },
-                });
-            }
-        } catch {
-            // 시트가 없으면 생성
-            try {
-                await sheets.spreadsheets.batchUpdate({
-                    spreadsheetId: sheetId,
-                    requestBody: {
-                        requests: [{ addSheet: { properties: { title: sheetName } } }],
-                    },
-                });
-                await sheets.spreadsheets.values.update({
-                    spreadsheetId: sheetId,
-                    range: `'${sheetName}'!A1:H1`,
-                    valueInputOption: 'RAW',
-                    requestBody: {
-                        values: [['날짜', 'ETF명', 'ETF코드', '카테고리', '구성종목코드', '구성종목명', '비중(%)', '순위']],
-                    },
-                });
-            } catch (e: any) {
-                console.error('[Sheets] 시트 생성 실패:', e.message);
-                return;
-            }
-        }
-
-        // 데이터 행 구성
         const rows = holdings.map((h, i) => [
             dateStr,
             etfName,
@@ -104,18 +105,17 @@ async function appendETFHoldingsToSheets(
             (i + 1).toString(),
         ]);
 
-        // Append
         await sheets.spreadsheets.values.append({
             spreadsheetId: sheetId,
-            range: `'${sheetName}'!A:H`,
+            range: `'${SHEET_NAME}'!A:H`,
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             requestBody: { values: rows },
         });
-
-        console.log(`[Sheets] ${etfName}: ${rows.length}행 저장`);
-    } catch (error: any) {
-        console.error(`[Sheets] ${etfName} 저장 실패:`, error.message);
+        return true;
+    } catch (e: any) {
+        console.error(`[Sheets] ${etfName} append 실패:`, e.message);
+        return false;
     }
 }
 
@@ -138,26 +138,20 @@ async function fetchETFHoldings(etfSymbol: string, token: string): Promise<Holdi
                 'tr_id': 'FHKST121600C0',
                 'custtype': 'P',
             },
-            signal: AbortSignal.timeout(10000),
+            signal: AbortSignal.timeout(8000),
         });
 
         if (!res.ok) {
-            console.warn(`[ETF Holdings] ${etfSymbol}: HTTP ${res.status}`);
+            console.warn(`[ETF] ${etfSymbol}: HTTP ${res.status}`);
             return [];
         }
 
         const data = await res.json();
-
         if (data.rt_cd !== '0') {
-            console.warn(`[ETF Holdings] ${etfSymbol}: ${data.msg1}`);
+            console.warn(`[ETF] ${etfSymbol}: ${data.msg1}`);
             return [];
         }
 
-        // output2에 구성종목 정보
-        // 실제 KIS 응답 필드:
-        //   stck_shrn_iscd: 종목코드
-        //   hts_kor_isnm: 종목명(한글)
-        //   etf_cnfg_issu_rlim: ETF 구성종목 비율(%)
         const output2 = data.output2 || [];
         const holdings: HoldingItem[] = [];
 
@@ -167,88 +161,65 @@ async function fetchETFHoldings(etfSymbol: string, token: string): Promise<Holdi
             const weight = parseFloat(item.etf_cnfg_issu_rlim || '0');
 
             if (symbol && name && weight > 0) {
-                holdings.push({
-                    holding_symbol: symbol,
-                    holding_name: name,
-                    weight_pct: weight,
-                });
+                holdings.push({ holding_symbol: symbol, holding_name: name, weight_pct: weight });
             }
         }
 
-        // 비중 순 정렬
         holdings.sort((a, b) => b.weight_pct - a.weight_pct);
 
-        return holdings;
+        // 상위 10개만 반환 (데이터 양 최적화)
+        return holdings.slice(0, 10);
     } catch (e: any) {
-        console.error(`[ETF Holdings] ${etfSymbol} 실패:`, e.message);
+        console.error(`[ETF] ${etfSymbol} fetch 실패:`, e.message);
         return [];
     }
 }
 
 // ======== 전일 대비 변경 감지 ========
-function detectChanges(
-    etfSymbol: string,
-    etfName: string,
-    prevHoldings: HoldingItem[],
-    currHoldings: HoldingItem[]
-) {
+function detectChanges(etfSymbol: string, etfName: string, prev: HoldingItem[], curr: HoldingItem[]) {
     const changes: any[] = [];
     const today = new Date().toISOString().slice(0, 10);
+    const prevMap = new Map(prev.map(h => [h.holding_symbol, h]));
+    const currMap = new Map(curr.map(h => [h.holding_symbol, h]));
 
-    const prevMap = new Map(prevHoldings.map(h => [h.holding_symbol, h]));
-    const currMap = new Map(currHoldings.map(h => [h.holding_symbol, h]));
-
-    // 신규 편입
-    for (const [sym, curr] of currMap) {
+    for (const [sym, c] of currMap) {
         if (!prevMap.has(sym)) {
-            changes.push({
-                etf_symbol: etfSymbol, etf_name: etfName, change_date: today,
-                change_type: 'added', holding_symbol: sym, holding_name: curr.holding_name,
-                prev_weight: null, curr_weight: curr.weight_pct, weight_diff: curr.weight_pct,
-            });
+            changes.push({ etf_symbol: etfSymbol, etf_name: etfName, change_date: today,
+                change_type: 'added', holding_symbol: sym, holding_name: c.holding_name,
+                prev_weight: null, curr_weight: c.weight_pct, weight_diff: c.weight_pct });
         }
     }
-
-    // 편출
-    for (const [sym, prev] of prevMap) {
+    for (const [sym, p] of prevMap) {
         if (!currMap.has(sym)) {
-            changes.push({
-                etf_symbol: etfSymbol, etf_name: etfName, change_date: today,
-                change_type: 'removed', holding_symbol: sym, holding_name: prev.holding_name,
-                prev_weight: prev.weight_pct, curr_weight: null, weight_diff: -prev.weight_pct,
-            });
+            changes.push({ etf_symbol: etfSymbol, etf_name: etfName, change_date: today,
+                change_type: 'removed', holding_symbol: sym, holding_name: p.holding_name,
+                prev_weight: p.weight_pct, curr_weight: null, weight_diff: -p.weight_pct });
         }
     }
-
-    // 비중 변경 (±1% 이상)
-    for (const [sym, curr] of currMap) {
-        const prev = prevMap.get(sym);
-        if (prev) {
-            const diff = curr.weight_pct - prev.weight_pct;
+    for (const [sym, c] of currMap) {
+        const p = prevMap.get(sym);
+        if (p) {
+            const diff = c.weight_pct - p.weight_pct;
             if (Math.abs(diff) >= 1.0) {
-                changes.push({
-                    etf_symbol: etfSymbol, etf_name: etfName, change_date: today,
-                    change_type: 'weight_changed', holding_symbol: sym, holding_name: curr.holding_name,
-                    prev_weight: prev.weight_pct, curr_weight: curr.weight_pct,
-                    weight_diff: parseFloat(diff.toFixed(4)),
-                });
+                changes.push({ etf_symbol: etfSymbol, etf_name: etfName, change_date: today,
+                    change_type: 'weight_changed', holding_symbol: sym, holding_name: c.holding_name,
+                    prev_weight: p.weight_pct, curr_weight: c.weight_pct,
+                    weight_diff: parseFloat(diff.toFixed(4)) });
             }
         }
     }
-
     return changes;
 }
 
 // ======== 메인 핸들러 ========
 export async function GET(request: NextRequest) {
     try {
-        console.log('[ETF Cron] Starting ETF holdings update...');
+        console.log('[ETF Cron] Starting...');
         const startTime = Date.now();
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         const today = new Date().toISOString().slice(0, 10);
-        const etfSheetId = process.env.MSCI_GOOGLE_SHEET_ID; // MSCI와 같은 시트 재활용
 
-        // 1. 추적 대상 ETF 목록 로드
+        // 1. 추적 대상 ETF 로드
         const { data: trackedETFs, error: listError } = await supabase
             .from('etf_tracked_list')
             .select('symbol, name, category')
@@ -257,95 +228,83 @@ export async function GET(request: NextRequest) {
         if (listError || !trackedETFs || trackedETFs.length === 0) {
             return NextResponse.json({
                 success: false,
-                error: listError?.message || 'No tracked ETFs found. Run /api/etf/select-active first.'
+                error: listError?.message || 'No tracked ETFs. Run /api/etf/select-active first.'
             });
         }
 
-        console.log(`[ETF Cron] ${trackedETFs.length} ETFs to process`);
+        console.log(`[ETF Cron] ${trackedETFs.length} ETFs`);
 
-        // 2. KIS 토큰 획득
+        // 2. KIS 토큰
         const token = await getAccessToken();
 
-        let totalHoldings = 0;
-        let totalChanges = 0;
-        let processedCount = 0;
-        let errorCount = 0;
-        let sheetsCount = 0;
+        // 3. Sheets 클라이언트 (한 번만 인증)
+        const sheetsClient = getSheetsClient();
+        let sheetsReady = false;
+        if (sheetsClient) {
+            sheetsReady = await ensureETFSheet(sheetsClient.sheets, sheetsClient.sheetId);
+        }
 
-        // 3. 각 ETF에 대해 보유종목 수집
+        let totalHoldings = 0, totalChanges = 0, processedCount = 0, errorCount = 0, sheetsCount = 0;
+
+        // 4. 각 ETF 수집 (500ms 간격 — 속도 최적화)
         for (const etf of trackedETFs) {
             try {
-                // Rate limit: 1초 간격
                 if (processedCount > 0) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(r => setTimeout(r, 500));
                 }
 
                 const holdings = await fetchETFHoldings(etf.symbol, token);
+                processedCount++;
 
                 if (holdings.length === 0) {
-                    console.log(`  [${etf.symbol}] ${etf.name}: 보유종목 없음 (스킵)`);
                     errorCount++;
-                    processedCount++;
                     continue;
                 }
 
-                // 4. Supabase에 오늘 스냅샷 저장
-                const holdingRecords = holdings.map(h => ({
-                    etf_symbol: etf.symbol,
-                    snapshot_date: today,
-                    holding_symbol: h.holding_symbol,
-                    holding_name: h.holding_name,
-                    weight_pct: h.weight_pct,
+                // DB 저장
+                const records = holdings.map(h => ({
+                    etf_symbol: etf.symbol, snapshot_date: today,
+                    holding_symbol: h.holding_symbol, holding_name: h.holding_name, weight_pct: h.weight_pct,
                 }));
 
-                const { error: insertError } = await supabase
+                const { error: dbErr } = await supabase
                     .from('etf_holdings')
-                    .upsert(holdingRecords, {
-                        onConflict: 'etf_symbol,snapshot_date,holding_symbol'
-                    });
+                    .upsert(records, { onConflict: 'etf_symbol,snapshot_date,holding_symbol' });
 
-                if (insertError) {
-                    console.error(`  [${etf.symbol}] DB Insert failed:`, insertError.message);
+                if (dbErr) {
+                    console.error(`  [${etf.symbol}] DB:`, dbErr.message);
                     errorCount++;
                 } else {
                     totalHoldings += holdings.length;
                 }
 
-                // 5. Google Sheets에 누적 저장
-                if (etfSheetId) {
-                    await appendETFHoldingsToSheets(
-                        etfSheetId, etf.name, etf.symbol,
-                        etf.category, holdings, today
+                // Sheets 저장
+                if (sheetsReady && sheetsClient) {
+                    const ok = await appendETFToSheets(
+                        sheetsClient.sheets, sheetsClient.sheetId,
+                        etf.name.trim(), etf.symbol, etf.category, holdings, today
                     );
-                    sheetsCount++;
+                    if (ok) sheetsCount++;
                 }
 
-                // 6. 전일 데이터 조회하여 변경 감지
+                // 변경 감지
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayStr = yesterday.toISOString().slice(0, 10);
-
                 const { data: prevHoldings } = await supabase
                     .from('etf_holdings')
                     .select('holding_symbol, holding_name, weight_pct')
                     .eq('etf_symbol', etf.symbol)
-                    .eq('snapshot_date', yesterdayStr);
+                    .eq('snapshot_date', yesterday.toISOString().slice(0, 10));
 
                 if (prevHoldings && prevHoldings.length > 0) {
                     const changes = detectChanges(etf.symbol, etf.name, prevHoldings, holdings);
                     if (changes.length > 0) {
-                        const { error: changeError } = await supabase
-                            .from('etf_changes')
-                            .insert(changes);
-
-                        if (!changeError) {
-                            totalChanges += changes.length;
-                        }
+                        const { error: chErr } = await supabase.from('etf_changes').insert(changes);
+                        if (!chErr) totalChanges += changes.length;
                     }
                 }
 
-                processedCount++;
-                console.log(`  [${processedCount}/${trackedETFs.length}] ${etf.symbol} ${etf.name}: ${holdings.length}개 보유종목`);
+                console.log(`  [${processedCount}/${trackedETFs.length}] ${etf.symbol} ${etf.name.trim()}: ${holdings.length}개`);
 
             } catch (e: any) {
                 console.error(`  [${etf.symbol}] Error:`, e.message);
@@ -354,8 +313,8 @@ export async function GET(request: NextRequest) {
             }
         }
 
-        const elapsedMs = Date.now() - startTime;
-        console.log(`[ETF Cron] Complete: ${processedCount} processed, ${errorCount} errors, ${totalHoldings} holdings, ${totalChanges} changes, ${sheetsCount} sheets, ${elapsedMs}ms`);
+        const ms = Date.now() - startTime;
+        console.log(`[ETF Cron] Done: ${processedCount}/${trackedETFs.length}, db:${totalHoldings}, sheets:${sheetsCount}, chg:${totalChanges}, err:${errorCount}, ${ms}ms`);
 
         return NextResponse.json({
             success: true,
@@ -364,7 +323,8 @@ export async function GET(request: NextRequest) {
             total_holdings: totalHoldings,
             total_changes: totalChanges,
             sheets_saved: sheetsCount,
-            elapsed_ms: elapsedMs,
+            sheets_ready: sheetsReady,
+            elapsed_ms: ms,
         });
 
     } catch (error: any) {
