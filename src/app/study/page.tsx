@@ -6,6 +6,7 @@ import SidebarLayout from "@/components/SidebarLayout";
 import JubotPageGuide from "@/components/common/JubotPageGuide";
 import { createClient } from "@/utils/supabase/client";
 import { useStudyNotification } from "@/hooks/useStudyNotification";
+import ETFDashboard from "@/components/study/ETFDashboard";
 import React from "react";
 
 type Topic = "msci" | "dividend" | "etf";
@@ -195,8 +196,7 @@ export default function StudyPage() {
 
     const handleGenerateInfo = async () => {
         if (topic === "etf") {
-            alert("해당 주제의 생성 기능은 현재 준비 중입니다.");
-            return;
+            return; // ETF는 전용 대시보드 사용
         }
 
         setIsGenerating(true);
@@ -412,6 +412,38 @@ export default function StudyPage() {
             alert("저장 중 오류가 발생했습니다.");
         }
     };
+
+    // ETF 탭: 전용 대시보드 렌더링
+    if (topic === "etf") {
+        return (
+            <SidebarLayout>
+                <div className="flex bg-[#121212] h-[calc(100vh-4rem)] text-white w-full">
+                    {/* 카테고리 탭 영역 */}
+                    <div className="w-48 border-r border-[#333] bg-[#1A1A1A] flex flex-col p-4 rounded-tl-2xl">
+                        <h2 className="text-gray-400 text-xs font-bold mb-4 uppercase tracking-widest px-2">주식 스터디 영역</h2>
+                        <ul className="space-y-2">
+                            {(Object.keys(TOPIC_CONFIG) as Topic[]).map((t) => (
+                                <li key={t}>
+                                    <button
+                                        onClick={() => setTopic(t)}
+                                        className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-colors flex items-center gap-3 font-medium
+                                            ${topic === t ? "bg-[#333] text-white border-l-2 border-[#F7D047]" : "text-gray-400 hover:bg-[#252525] hover:text-gray-200"}`}
+                                    >
+                                        {TOPIC_CONFIG[t].icon}
+                                        {TOPIC_CONFIG[t].title}
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    {/* ETF 전용 대시보드 */}
+                    <div className="flex-1 overflow-hidden">
+                        <ETFDashboard isAdmin={isAdmin} />
+                    </div>
+                </div>
+            </SidebarLayout>
+        );
+    }
 
     return (
         <SidebarLayout>

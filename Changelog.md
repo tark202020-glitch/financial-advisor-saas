@@ -1,3 +1,16 @@
+## [Alpha V1.330] - 2026-03-18 12:17:00
+
+### 🆕 Feature: ETF 분석기 대시보드 (보유종목 추적 시스템)
+- **Summary**: 주식 스터디에 ETF 분석기 탭 추가. 국내 액티브 ETF 자동 선정 + 보유종목 일일 수집 + 변경 감지
+- **Detail**:
+  - **ETF 자동 선정** (`/api/etf/select-active`): stock_master에서 "액티브" ETF 필터링 → AI/전략/배당 카테고리 분류 → etf_tracked_list 저장
+  - **보유종목 수집 Cron** (`/api/cron/update-etf-holdings`): KIS API `FHKST121600C0` → 구성종목/비중 수집 → 전일 대비 변경 감지 (편입/편출/비중변경±1%)
+  - **조회 API** (`/api/etf/holdings`): 보유종목 스냅샷 + 변경 이력 조회
+  - **ETF 대시보드** (`ETFDashboard.tsx`): 카테고리 필터, 보유종목 테이블(비중% 바 차트), 변경 이력(🟢편입/🔴편출/🔷비중변경)
+  - **Supabase 테이블 3개**: `etf_tracked_list`, `etf_holdings`, `etf_changes`
+  - **Vercel Cron**: 평일 16:30 KST (UTC 07:30) 자동 수집
+- **Build Time**: 2026-03-18 12:17:00
+
 ## [Alpha V1.329] - 2026-03-18 02:10:00
 
 ### 🆕 Feature: MSCI → Google Sheets 일일 자동 누적 저장
