@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAccessToken, BASE_URL, APP_KEY, APP_SECRET } from '@/lib/kis/client';
-import { google } from 'googleapis';
+import { appendETFHoldingsHorizontal } from '@/lib/googleSheets';
 
 /**
  * /api/cron/update-etf-holdings
@@ -23,114 +23,7 @@ interface HoldingItem {
     weight_pct: number;
 }
 
-// ======== Google Sheets ========
-function getSheetsClient() {
-    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    const sheetId = process.env.MSCI_GOOGLE_SHEET_ID;
-
-    if (!email || !privateKey || !sheetId) {
-        console.warn('[Sheets] Google Sheets 환경변수 누락, 스킵');
-        return null;
-    }
-
-    try {
-        const auth = new google.auth.JWT({
-            email,
-            key: privateKey,
-            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-        });
-        return { sheets: google.sheets({ version: 'v4', auth }), sheetId };
-    } catch (e: any) {
-        console.error('[Sheets] 인증 실패:', e.message);
-        return null;
-    }
-}
-
-async function ensureETFSheet(
-    sheets: ReturnType<typeof google.sheets>,
-    sheetId: string,
-    reset: boolean = false
-): Promise<boolean> {
-    const SHEET_NAME = 'ETF보유종목';
-    try {
-        // 시트 목록 조회
-        const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
-        const existingSheet = meta.data.sheets?.find(s => s.properties?.title === SHEET_NAME);
-
-        // reset 모드: 기존 시트 삭제
-        if (reset && existingSheet && existingSheet.properties?.sheetId !== undefined) {
-            await sheets.spreadsheets.batchUpdate({
-                spreadsheetId: sheetId,
-                requestBody: {
-                    requests: [{ deleteSheet: { sheetId: existingSheet.properties.sheetId } }],
-                },
-            });
-            console.log(`[Sheets] '${SHEET_NAME}' 기존 시트 삭제 완료`);
-        }
-
-        // 시트가 없거나 삭제된 경우 새로 생성
-        if (!existingSheet || reset) {
-            // 탭 생성
-            await sheets.spreadsheets.batchUpdate({
-                spreadsheetId: sheetId,
-                requestBody: {
-                    requests: [{ addSheet: { properties: { title: SHEET_NAME } } }],
-                },
-            });
-            // 헤더 추가
-            await sheets.spreadsheets.values.update({
-                spreadsheetId: sheetId,
-                range: `'${SHEET_NAME}'!A1:H1`,
-                valueInputOption: 'RAW',
-                requestBody: {
-                    values: [['날짜', 'ETF명', 'ETF코드', '카테고리', '구성종목코드', '구성종목명', '비중(%)', '순위']],
-                },
-            });
-            console.log(`[Sheets] '${SHEET_NAME}' 시트 생성 완료`);
-        }
-        return true;
-    } catch (e: any) {
-        console.error('[Sheets] 시트 확인/생성 실패:', e.message);
-        return false;
-    }
-}
-
-async function appendETFToSheets(
-    sheets: ReturnType<typeof google.sheets>,
-    sheetId: string,
-    etfName: string,
-    etfSymbol: string,
-    category: string,
-    holdings: HoldingItem[],
-    dateStr: string
-) {
-    const SHEET_NAME = 'ETF보유종목';
-    try {
-        const rows = holdings.map((h, i) => [
-            dateStr,
-            etfName,
-            etfSymbol,
-            category,
-            h.holding_symbol,
-            h.holding_name,
-            h.weight_pct.toFixed(2),
-            (i + 1).toString(),
-        ]);
-
-        await sheets.spreadsheets.values.append({
-            spreadsheetId: sheetId,
-            range: `'${SHEET_NAME}'!A:H`,
-            valueInputOption: 'RAW',
-            insertDataOption: 'INSERT_ROWS',
-            requestBody: { values: rows },
-        });
-        return true;
-    } catch (e: any) {
-        console.error(`[Sheets] ${etfName} append 실패:`, e.message);
-        return false;
-    }
-}
+// Google Sheets 가로 누적은 googleSheets.ts의 appendETFHoldingsHorizontal() 사용
 
 // ======== KIS API: ETF 구성종목 조회 ========
 async function fetchETFHoldings(etfSymbol: string, token: string): Promise<HoldingItem[]> {
@@ -253,16 +146,17 @@ export async function GET(request: NextRequest) {
         // 2. KIS 토큰
         const token = await getAccessToken();
 
-        // 3. Sheets 클라이언트 (한 번만 인증)
-        const sheetsClient = getSheetsClient();
-        let sheetsReady = false;
-        if (sheetsClient) {
-            sheetsReady = await ensureETFSheet(sheetsClient.sheets, sheetsClient.sheetId, resetSheets);
-        }
+        let totalHoldings = 0, totalChanges = 0, processedCount = 0, errorCount = 0;
 
-        let totalHoldings = 0, totalChanges = 0, processedCount = 0, errorCount = 0, sheetsCount = 0;
+        // Google Sheets 가로 누적을 위해 ETF별 데이터를 수집
+        const sheetsDataList: Array<{
+            etfName: string;
+            etfSymbol: string;
+            category: string;
+            holdings: HoldingItem[];
+        }> = [];
 
-        // 4. 각 ETF 수집 (500ms 간격 — 속도 최적화)
+        // 3. 각 ETF 수집 (500ms 간격 — 속도 최적화)
         for (const etf of trackedETFs) {
             try {
                 if (processedCount > 0) {
@@ -294,14 +188,13 @@ export async function GET(request: NextRequest) {
                     totalHoldings += holdings.length;
                 }
 
-                // Sheets 저장
-                if (sheetsReady && sheetsClient) {
-                    const ok = await appendETFToSheets(
-                        sheetsClient.sheets, sheetsClient.sheetId,
-                        etf.name.trim(), etf.symbol, etf.category, holdings, today
-                    );
-                    if (ok) sheetsCount++;
-                }
+                // Sheets 데이터 수집 (나중에 일괄 저장)
+                sheetsDataList.push({
+                    etfName: etf.name.trim(),
+                    etfSymbol: etf.symbol,
+                    category: etf.category,
+                    holdings,
+                });
 
                 // 변경 감지
                 const yesterday = new Date();
@@ -329,8 +222,29 @@ export async function GET(request: NextRequest) {
             }
         }
 
+        // 4. Google Sheets 가로 누적 저장 (수집 완료 후 일괄)
+        let sheetsResult = { success: false, updatedCells: 0, error: 'skipped' };
+        if (sheetsDataList.length > 0) {
+            try {
+                const result = await appendETFHoldingsHorizontal(sheetsDataList, today, resetSheets);
+                sheetsResult = {
+                    success: result.success,
+                    updatedCells: result.updatedCells || 0,
+                    error: result.error || '',
+                };
+                if (result.success) {
+                    console.log(`[ETF Cron] Sheets 가로 누적 완료: ${result.updatedCells}셀`);
+                } else {
+                    console.warn(`[ETF Cron] Sheets 실패: ${result.error}`);
+                }
+            } catch (e: any) {
+                console.error('[ETF Cron] Sheets error:', e.message);
+                sheetsResult = { success: false, updatedCells: 0, error: e.message };
+            }
+        }
+
         const ms = Date.now() - startTime;
-        console.log(`[ETF Cron] Done: ${processedCount}/${trackedETFs.length}, db:${totalHoldings}, sheets:${sheetsCount}, chg:${totalChanges}, err:${errorCount}, ${ms}ms`);
+        console.log(`[ETF Cron] Done: ${processedCount}/${trackedETFs.length}, db:${totalHoldings}, sheets:${sheetsResult.updatedCells}cells, chg:${totalChanges}, err:${errorCount}, ${ms}ms`);
 
         return NextResponse.json({
             success: true,
@@ -338,8 +252,7 @@ export async function GET(request: NextRequest) {
             errors: errorCount,
             total_holdings: totalHoldings,
             total_changes: totalChanges,
-            sheets_saved: sheetsCount,
-            sheets_ready: sheetsReady,
+            google_sheets: sheetsResult,
             elapsed_ms: ms,
         });
 
