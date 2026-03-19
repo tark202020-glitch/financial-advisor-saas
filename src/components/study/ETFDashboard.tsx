@@ -34,7 +34,7 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string; bg: string
     ai: { label: 'AI·테크', color: 'text-blue-400', bg: 'bg-blue-900/30 border-blue-800' },
     strategy: { label: '전략', color: 'text-purple-400', bg: 'bg-purple-900/30 border-purple-800' },
     dividend: { label: '배당', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border-emerald-800' },
-    etc: { label: '기타', color: 'text-gray-400', bg: 'bg-gray-900/30 border-gray-700' },
+
 };
 
 export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
@@ -110,13 +110,13 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
 
     // ETF 자동 선정 실행
     const handleAutoSelect = async () => {
-        if (!confirm('stock_master에서 액티브 ETF를 자동 선정합니다. 기존 목록이 교체됩니다.')) return;
+        if (!confirm('stock_master에서 새 기준으로 ETF를 선정합니다. 기존 목록·보유종목·변경이력이 모두 삭제됩니다.')) return;
         setIsSelecting(true);
         try {
             const res = await fetch('/api/etf/select-active', { method: 'POST' });
             const data = await res.json();
             if (data.success) {
-                alert(`ETF 선정 완료: 총 ${data.total}개 (AI: ${data.categories.ai}, 전략: ${data.categories.strategy}, 배당: ${data.categories.dividend})`);
+                alert(`ETF 선정 완료: 총 ${data.total}개 (AI-테크: ${data.categories.ai}, 배당: ${data.categories.dividend}, 전략: ${data.categories.strategy})`);
                 fetchTrackedList();
             } else {
                 alert(`선정 실패: ${data.error}`);

@@ -7,33 +7,33 @@ import { createClient } from '@supabase/supabase-js';
  * stock_master 테이블에서 "액티브" ETF를 자동 선정하여
  * etf_tracked_list 테이블에 저장합니다.
  *
- * 필터: "액티브" 포함, "커버드콜" 제외, 해외 제외
- * 카테고리: AI, 전략, 배당 (각 최대 10개)
+ * 필터: "액티브" 포함 + 제외 키워드 18개 적용
+ * 카테고리: AI-테크(ai), 배당(dividend), 전략(strategy)
  */
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// 해외 ETF 제외 키워드
-const FOREIGN_KEYWORDS = [
-    '미국', '나스닥', 'S&P', '글로벌', '차이나', '일본', '유럽',
-    '인도', '베트남', '해외', 'MSCI', '항셍', '니케이', '중국',
-    '대만', '원유', '달러', '엔화', '유로', '브라질'
+// 제외 키워드 (통합)
+const EXCLUDE_KEYWORDS = [
+    '메타버스', 'ESG', 'China', '부동산', '채권', 'TDF', 'ACE',
+    '회사채', '머니마켓', '바이오', '샤오미', '브로드컴', '팔란티어',
+    '커버드콜', '글로벌', '차이나', '인도', '미국'
 ];
 
 // 카테고리 키워드 정의
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-    ai: ['AI', '인공지능', '로봇', '자율주행', '빅데이터', '클라우드',
-         '반도체', '메타버스', '디지털', '소프트웨어', '테크', '양자',
-         '데이터', 'ICT', '사이버', 'K로봇'],
-    strategy: ['전략', '모멘텀', '밸류', '퀄리티', '성장', '멀티팩터',
-               '스마트', '코스닥', '중소형', 'K수출', 'TOP', '핵심기업',
-               '그로스', '코리아', '가치'],
-    dividend: ['배당', '고배당', '월배당', '인컴', '리츠', 'REIT',
-               '현금흐름', '이자']
+    ai: ['AI', '자율주행', '반도체'],
+    dividend: ['배당'],
+    strategy: ['수출', '전략', '코스닥', '포커스', '에너지', '밸류업'],
 };
 
-function categorize(name: string): string {
+function shouldExclude(name: string): boolean {
+    const upper = name.toUpperCase();
+    return EXCLUDE_KEYWORDS.some(kw => upper.includes(kw.toUpperCase()));
+}
+
+function categorize(name: string): string | null {
     const upper = name.toUpperCase();
     for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
         for (const kw of keywords) {
@@ -42,11 +42,7 @@ function categorize(name: string): string {
             }
         }
     }
-    return 'etc';
-}
-
-function isForeign(name: string): boolean {
-    return FOREIGN_KEYWORDS.some(kw => name.includes(kw));
+    return null; // 미분류 → 선정 제외
 }
 
 export async function POST(request: NextRequest) {
@@ -69,36 +65,36 @@ export async function POST(request: NextRequest) {
 
         console.log(`[ETF Select] stock_master에서 "액티브" 포함: ${stocks.length}개`);
 
-        // 2. 필터링: 커버드콜 제외, 해외 제외
-        const filtered = stocks.filter(s => {
-            if (s.name.includes('커버드콜')) return false;
-            if (isForeign(s.name)) return false;
-            return true;
-        });
+        // 2. 제외 키워드 필터링
+        const afterExclude = stocks.filter(s => !shouldExclude(s.name));
+        console.log(`[ETF Select] 제외 키워드 적용 후: ${afterExclude.length}개`);
 
-        console.log(`[ETF Select] 필터 후: ${filtered.length}개 (커버드콜/해외 제외)`);
-
-        // 3. 카테고리 분류
-        const categorized: Record<string, typeof filtered> = { ai: [], strategy: [], dividend: [], etc: [] };
-        for (const stock of filtered) {
+        // 3. 카테고리 분류 (미분류는 선정 제외)
+        const categorized: Record<string, typeof afterExclude> = { ai: [], strategy: [], dividend: [] };
+        for (const stock of afterExclude) {
             const cat = categorize(stock.name);
-            categorized[cat].push(stock);
+            if (cat && categorized[cat]) {
+                categorized[cat].push(stock);
+            }
         }
 
-        // 4. 카테고리당 최대 10개
+        // 4. 전체 매칭 종목 선정 (카테고리당 제한 없음)
         const selected: Array<{ symbol: string; name: string; category: string }> = [];
         for (const [category, list] of Object.entries(categorized)) {
-            const top = list.slice(0, 10);
-            for (const s of top) {
+            for (const s of list) {
                 selected.push({ symbol: s.symbol, name: s.name, category });
             }
         }
 
-        console.log(`[ETF Select] 선정: AI=${categorized.ai.length}, 전략=${categorized.strategy.length}, 배당=${categorized.dividend.length}, 기타=${categorized.etc.length}`);
+        console.log(`[ETF Select] 선정: AI-테크=${categorized.ai.length}, 배당=${categorized.dividend.length}, 전략=${categorized.strategy.length}, 합계=${selected.length}`);
 
-        // 5. etf_tracked_list 갱신 (기존 삭제 → 재삽입)
+        // 5. 기존 데이터 전체 리셋 (tracked_list + holdings + changes)
+        await supabase.from('etf_changes').delete().neq('id', 0);
+        await supabase.from('etf_holdings').delete().neq('id', 0);
         await supabase.from('etf_tracked_list').delete().neq('symbol', '');
+        console.log('[ETF Select] 기존 데이터 전체 삭제 완료');
 
+        // 6. 새 목록 삽입
         const records = selected.map(s => ({
             symbol: s.symbol,
             name: s.name,
@@ -122,9 +118,8 @@ export async function POST(request: NextRequest) {
                 ai: categorized.ai.length,
                 strategy: categorized.strategy.length,
                 dividend: categorized.dividend.length,
-                etc: categorized.etc.length,
             },
-            selected: selected.slice(0, 30), // 미리보기
+            selected,
         });
 
     } catch (error: any) {
