@@ -1,3 +1,13 @@
+## [Alpha V1.338] - 2026-03-21 02:33:00
+
+### 🐛 Fix: ETF 편입/편출 변경 감지 누락 수정
+- **Summary**: 전일 데이터 비교를 `어제 날짜 고정`에서 `가장 최근 이전 스냅샷`으로 변경, KST 날짜 기준 사용
+- **Detail**:
+  - 전일 데이터: `yesterday` 고정 → `snapshot_date < today ORDER BY desc LIMIT 1` (주말/공휴일 대응)
+  - today 날짜: UTC → KST(+9) 기준
+  - `detectChanges()`: 외부에서 KST dateStr 파라미터 전달
+- **Build Time**: 2026-03-21 02:33:00
+
 ## [Alpha V1.337] - 2026-03-21 02:11:00
 
 ### ♻️ Refactor: Google Sheets ETF 보유종목 저장 V2
