@@ -144,7 +144,24 @@ export async function GET(request: NextRequest) {
         console.log(`[ETF Cron] ${trackedETFs.length} ETFs`);
 
         // 2. KIS 토큰
-        const token = await getAccessToken();
+        let token: string;
+        try {
+            token = await getAccessToken();
+        } catch (tokenError: any) {
+            const errorMsg = tokenError.message || '';
+            const isBlocked = errorMsg.includes('EGW00103') || errorMsg.includes('유효하지 않은');
+            console.error(`[ETF Cron] 토큰 발급 실패: ${errorMsg}`);
+            return NextResponse.json({
+                success: false,
+                error: errorMsg,
+                diagnosis: isBlocked 
+                    ? 'KIS AppKey/IP가 일시 차단된 것으로 보입니다. KIS Developers에서 확인 후 Vercel 환경변수를 점검해주세요.'
+                    : '토큰 발급에 실패했습니다. KIS API 키 설정을 확인해주세요.',
+                recommendation: isBlocked
+                    ? '1) KIS Developers 포털에서 AppKey 상태 확인, 2) 차단 해제 후 Vercel 환경변수 업데이트, 3) 재배포'
+                    : '1) Vercel 환경변수 KIS_APP_KEY/KIS_APP_SECRET 확인, 2) 재배포',
+            });
+        }
 
         let totalHoldings = 0, totalChanges = 0, processedCount = 0, errorCount = 0;
 

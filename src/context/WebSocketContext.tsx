@@ -27,17 +27,22 @@ interface WebSocketContextType {
 
 // --- Constants ---
 const WS_URL = "wss://ops.koreainvestment.com:21000";
-const MAX_RETRY_COUNT = 5; // KIS 차단 방지: 최대 재시도 5회
+const MAX_RETRY_COUNT = 3; // KIS 차단 방지: 최대 재시도 3회 (5→3으로 축소)
+const MIN_RETRY_DELAY = 5000; // 최소 재시도 간격 5초 (1초→5초로 강화)
+const MAX_RETRY_DELAY = 60000; // 최대 재시도 간격 60초 (30초→60초로 강화)
 
 // TR IDs
 const TR_ID_KR = "H0STCNT0"; // Domestic Realtime Price
 const TR_ID_US = "HDFSCNT0"; // Overseas Realtime Price
 
+// WS 불필요 페이지 (로그인/랜딩)
+const EXCLUDED_PATHS = ['/login', '/', '/signup'];
+
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
 export function WebSocketProvider({ children }: { children: ReactNode }) {
     // VERSION LOG FOR DEBUGGING DEPLOYMENT
-    useEffect(() => { console.log("[SYS] WebSocketProvider Mounted - Version: WSS_STABLE_v3"); }, []);
+    useEffect(() => { console.log("[SYS] WebSocketProvider Mounted - Version: WSS_STABLE_v4_ANTI_BLOCK"); }, []);
 
     const pathname = usePathname();
 
@@ -51,6 +56,12 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     // Subscriptions
     const subscriptions = useRef<Set<string>>(new Set());
+
+    // 접속 제외 페이지 여부 (ref로 추적 — effect 의존성에 넣지 않음)
+    const isExcludedPage = useRef(EXCLUDED_PATHS.includes(pathname));
+    useEffect(() => {
+        isExcludedPage.current = EXCLUDED_PATHS.includes(pathname);
+    }, [pathname]);
 
     const addLog = useCallback((msg: string) => {
         setDebugLogs(prev => [msg, ...prev].slice(0, 30));
@@ -112,12 +123,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             addLog(`[SYS] Sent ${subscriptions.current.size} unsubscribes before close`);
         }
         ws.current?.close();
+        ws.current = null;
     }, [sendRawSubscription, addLog]);
 
-    // --- 1. Get Approval Key (조건부: 대시보드 페이지에서만) ---
+    // --- 1. Get Approval Key (최초 1회만, 제외 페이지 아닐 때) ---
+    const approvalKeyFetched = useRef(false);
     useEffect(() => {
-        // 로그인/랜딩 페이지에서는 불필요한 KIS API 호출 방지
-        if (pathname === '/login' || pathname === '/' || pathname === '/signup') {
+        // 이미 가져왔거나 제외 페이지면 스킵
+        if (approvalKeyFetched.current || EXCLUDED_PATHS.includes(pathname)) {
             return;
         }
 
@@ -127,6 +140,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
                 const data = await res.json();
                 if (data.approval_key) {
                     setApprovalKey(data.approval_key);
+                    approvalKeyFetched.current = true;
                     addLog("[SYS] Approval Key Fetched");
                 }
             } catch (e) {
@@ -138,7 +152,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     }, [addLog, pathname]);
 
 
-    // 2.1 Reconnection Effect
+    // --- 2.1 Reconnection Effect (강화) ---
     const reconnectTimeout = useRef<NodeJS.Timeout | null>(null);
     const retryCount = useRef(0);
 
@@ -152,7 +166,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
                 return;
             }
 
-            const delay = Math.min(1000 * (2 ** retryCount.current), 30000); // Max 30s
+            // 강화된 지수 백오프: 5초 → 10초 → 20초 → 40초 → 60초
+            const delay = Math.min(MIN_RETRY_DELAY * (2 ** retryCount.current), MAX_RETRY_DELAY);
+            addLog(`[SYS] 재접속 대기 ${Math.round(delay / 1000)}초 (시도 ${retryCount.current + 1}/${MAX_RETRY_COUNT})`);
 
             reconnectTimeout.current = setTimeout(() => {
                 retryCount.current++;
@@ -174,11 +190,13 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     const [retryTrigger, setRetryTrigger] = useState(0);
 
-    // Update main effect to depend on retryTrigger
+    // --- 2.2 Main WebSocket Connection (pathname 의존성 제거!) ---
+    // approvalKey가 설정되면 한 번만 접속하고, 페이지 이동과 무관하게 유지
     useEffect(() => {
-        if (!approvalKey || pathname === '/login' || pathname === '/' || pathname === '/signup') return;
+        if (!approvalKey) return;
 
-        if (ws.current?.readyState === WebSocket.OPEN) return;
+        // 이미 연결 중이면 스킵
+        if (ws.current?.readyState === WebSocket.OPEN || ws.current?.readyState === WebSocket.CONNECTING) return;
 
         // 비활성 탭에서는 재접속 시도 중지
         if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
@@ -186,7 +204,12 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             return;
         }
 
-        // Connect Logic...
+        // 접속 제외 페이지에선 스킵 (ref로 체크, 의존성에 넣지 않음)
+        if (isExcludedPage.current) return;
+
+        // Connect Logic
+        setStatus('connecting');
+        addLog("[SYS] Connecting...");
         const socket = new WebSocket(WS_URL);
         ws.current = socket;
 
@@ -195,19 +218,50 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             addLog("[SYS] Connected");
         };
 
-        socket.onclose = () => {
+        socket.onclose = (ev) => {
+            addLog(`[SYS] Disconnected (code: ${ev.code})`);
+            ws.current = null;
             setStatus('disconnected');
         };
 
         socket.onerror = () => {
+            addLog("[SYS] Connection Error");
             setStatus('error');
         };
 
+        // onmessage 등록
+        socket.onmessage = (event) => {
+            handleMessageRef.current(event.data as string);
+        };
+
+        // ⚠️ cleanup: 컴포넌트 언마운트 시에만 정상 종료
+        // pathname 변경으로 인한 cleanup은 발생하지 않음 (의존성에서 제거)
         return () => {
-            // 정상 종료 절차: 구독 해제 후 close
             gracefulClose();
         };
-    }, [approvalKey, pathname, retryTrigger, addLog, gracefulClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [approvalKey, retryTrigger]); // pathname 제거!
+
+    // --- 2.3 Visibility Change 핸들러 (탭 비활성/활성) ---
+    useEffect(() => {
+        const handleVisibility = () => {
+            if (document.visibilityState === 'hidden') {
+                // 탭이 비활성화되면 WebSocket 정상 종료 (불필요한 접속 유지 방지)
+                addLog("[SYS] Tab hidden → closing WebSocket");
+                gracefulClose();
+            } else if (document.visibilityState === 'visible') {
+                // 탭이 다시 활성화되면 재접속 (제외 페이지 아닌 경우에만)
+                if (!isExcludedPage.current && approvalKey && (!ws.current || ws.current.readyState !== WebSocket.OPEN)) {
+                    addLog("[SYS] Tab visible → reconnecting");
+                    retryCount.current = 0; // 재시도 카운트 리셋
+                    setRetryTrigger(r => r + 1);
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => document.removeEventListener('visibilitychange', handleVisibility);
+    }, [approvalKey, gracefulClose, addLog]);
 
     // --- 2.5 Reconnection / Queue Processing ---
     // Whenever status becomes 'connected', re-send all active subscriptions.
@@ -225,7 +279,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
 
     // --- 3. Message Handling (The Core) ---
-    const handleMessage = (rawData: string) => {
+    // useRef로 최신 핸들러 참조 유지 (onmessage 등록 시점과 분리)
+    const handleMessageRef = useRef((rawData: string) => {});
+
+    handleMessageRef.current = (rawData: string) => {
         const firstChar = rawData.charAt(0);
 
         // System Messages (PING/PONG/Subscription Ack)

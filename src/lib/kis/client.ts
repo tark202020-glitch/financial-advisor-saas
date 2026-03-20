@@ -524,9 +524,13 @@ export async function getDomesticIndexHistory(symbol: string, startDate: string,
 }
 
 let cachedApprovalKey: string | null = null;
+let approvalKeyExpiresAt: number = 0;
+const APPROVAL_KEY_TTL = 30 * 60 * 1000; // 30분 TTL
 
 export async function getWebSocketApprovalKey(): Promise<string> {
-    if (cachedApprovalKey) {
+    // TTL 기반 인메모리 캐시 (KIS API 호출 최소화)
+    if (cachedApprovalKey && Date.now() < approvalKeyExpiresAt) {
+        console.log("[KIS] Using cached WS Approval Key");
         return cachedApprovalKey;
     }
 
@@ -553,6 +557,8 @@ export async function getWebSocketApprovalKey(): Promise<string> {
 
     const data: KisWebSocketApprovalResponse = await response.json();
     cachedApprovalKey = data.approval_key;
+    approvalKeyExpiresAt = Date.now() + APPROVAL_KEY_TTL;
+    console.log("[KIS] New WS Approval Key cached for 30min");
     return cachedApprovalKey;
 }
 

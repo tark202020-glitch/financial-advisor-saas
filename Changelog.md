@@ -1,3 +1,18 @@
+## [Alpha V1.335] - 2026-03-20 19:12:00
+
+### 🔒 Critical Fix: KIS WebSocket 무한 재접속 차단 + ETF Cron 안정화
+- **Summary**: KIS 공식 경고(무한 접속 반복 시 IP/AppKey 일시 차단)에 대응하여 WebSocket 접속 패턴 전면 개선 및 ETF Cron 에러 핸들링 강화
+- **Detail**:
+  - **WebSocketContext.tsx (v3→v4_ANTI_BLOCK)**:
+    - `pathname` 의존성 제거 → 페이지 이동 시 WebSocket 끊김/재접속 반복 완전 차단
+    - MAX_RETRY 5→3으로 축소, 재시도 간격 1초→5초 최소, 30초→60초 최대 (지수 백오프)
+    - Visibility API 핸들러 강화: 탭 비활성 시 WebSocket 종료, 활성화 시에만 재접속
+    - Approval Key fetch 1회 제한 (approvalKeyFetched ref)
+    - onmessage를 useRef 패턴으로 변경하여 stale closure 방지
+  - **client.ts**: `getWebSocketApprovalKey()` 30분 TTL 인메모리 캐시 추가 (KIS Approval API 호출 최소화)
+  - **update-etf-holdings/route.ts**: 토큰 발급 실패 시 KIS 차단 여부 감지(`EGW00103`/`유효하지 않은`) + 구체적 진단 메시지 및 복구 가이드 반환
+- **Build Time**: 2026-03-20 19:12:00
+
 ## [Alpha V1.334] - 2026-03-19 19:48:00
 
 ### ✨ Feature: ETF 보유종목 Google Sheets 가로 누적 추적
