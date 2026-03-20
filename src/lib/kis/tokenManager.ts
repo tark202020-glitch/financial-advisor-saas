@@ -80,7 +80,7 @@ export async function shouldRefreshToken(): Promise<boolean> {
             .single();
 
         if (error || !data) {
-            // 토큰 자체가 없으면 갱신 필요
+            // 토큰 자체가 없으면 갱신 필요 (만료 토큰이 삭제된 경우 포함)
             return true;
         }
 
@@ -93,9 +93,9 @@ export async function shouldRefreshToken(): Promise<boolean> {
             return false;
         }
 
-        // 만료됐지만, 최근 5분 내에 생성/갱신된 토큰이면 다른 인스턴스가 방금 갱신 시도한 것
-        // → 재시도 방지 (쿨다운)
-        const cooldownMs = 5 * 60 * 1000; // 5분
+        // 만료됐지만, 최근 2분 내에 생성/갱신된 토큰이면 다른 인스턴스가 방금 갱신 시도한 것
+        // → 재시도 방지 (쿨다운) — 5분→2분으로 단축
+        const cooldownMs = 2 * 60 * 1000; // 2분
         if (now.getTime() - createdAt.getTime() < cooldownMs) {
             console.log("[TokenManager] Token refresh cooldown active (created", 
                 Math.round((now.getTime() - createdAt.getTime()) / 1000), "sec ago)");

@@ -28,45 +28,41 @@ export async function getAccessToken(): Promise<string> {
     }
 
     // 2. Supabase Cache (Persistent — serverless 인스턴스 간 공유)
-    //    변경: 만료된 토큰도 반환됨 (isExpired 플래그)
     try {
         const stored = await getStoredToken();
         if (stored) {
-            cachedToken = stored.token;
-
             if (!stored.isExpired) {
-                // 유효한 토큰 → 인메모리 캐시 30분 설정
-                tokenExpiresAt = Date.now() + (30 * 60 * 1000);
+                // 유효한 토큰 → 인메모리 캐시 설정 (실제 만료시간 기반)
+                cachedToken = stored.token;
+                tokenExpiresAt = stored.expiresAt.getTime();
+                console.log("[KIS] Valid token from Supabase, expires:", stored.expiresAt.toISOString());
                 return cachedToken;
             }
 
-            // 만료된 토큰이지만, 일단 인메모리에 저장 (EGW00103 폴백용)
-            console.log("[KIS] Supabase token expired, will try refresh...");
-            tokenExpiresAt = Date.now() + (5 * 60 * 1000); // 5분간 폴백 사용 가능
+            // ✅ 핵심 변경: 만료된 토큰은 즉시 삭제 → 새 토큰 발급으로 진행
+            console.log("[KIS] Supabase token EXPIRED at", stored.expiresAt.toISOString(), "→ clearing and refreshing...");
+            await clearStoredTokens();
+            cachedToken = null;
+            tokenExpiresAt = 0;
         }
     } catch (e) {
         console.warn("[KIS] Supabase token lookup failed:", e);
-        if (cachedToken) {
-            console.log("[KIS] Using stale in-memory token as fallback");
-            tokenExpiresAt = Date.now() + (5 * 60 * 1000);
-            return cachedToken;
-        }
     }
 
-    // 3. 분산 잠금: 다른 인스턴스가 최근 5분 내에 갱신 시도했으면 → 기존 토큰 재사용
+    // 3. 분산 잠금: 다른 인스턴스가 최근 2분 내에 갱신했으면 → 잠시 대기 후 Supabase 재조회
     const canRefresh = await shouldRefreshToken();
     if (!canRefresh) {
-        if (cachedToken) {
-            console.log("[KIS] Another instance recently refreshed. Using cached token.");
-            return cachedToken;
-        }
-        // 캐시 토큰도 없으면 Supabase 재조회 (다른 인스턴스가 이미 갱신 완료했을 수 있음)
+        // 다른 인스턴스가 방금 갱신 완료했을 수 있으므로 Supabase 재조회
+        console.log("[KIS] Cooldown active, checking if another instance saved a new token...");
         const retryStored = await getStoredToken();
-        if (retryStored) {
+        if (retryStored && !retryStored.isExpired) {
             cachedToken = retryStored.token;
-            tokenExpiresAt = Date.now() + (30 * 60 * 1000);
+            tokenExpiresAt = retryStored.expiresAt.getTime();
+            console.log("[KIS] Got fresh token from another instance");
             return cachedToken;
         }
+        // 쿨다운 중인데 유효 토큰이 없으면 → 쿨다운 무시하고 직접 발급 (데드락 방지)
+        console.warn("[KIS] Cooldown active but NO valid token found → forcing refresh");
     }
 
     // 4. Mutex (같은 인스턴스 내): 이미 토큰 발급이 진행 중이면 해당 Promise를 공유
@@ -82,12 +78,6 @@ export async function getAccessToken(): Promise<string> {
         const token = await pendingTokenRequest;
         return token;
     } catch (e: any) {
-        // 발급 실패해도 기존 캐시 토큰이 있으면 사용
-        if (cachedToken) {
-            console.warn("[KIS] Token fetch failed, using cached token:", e.message);
-            tokenExpiresAt = Date.now() + (5 * 60 * 1000);
-            return cachedToken;
-        }
         throw e;
     } finally {
         pendingTokenRequest = null;
@@ -116,14 +106,12 @@ async function fetchNewToken(): Promise<string> {
         const errorText = await response.text();
         console.error("[KIS] Failed to fetch token:", errorText);
 
-        // EGW00103: 토큰 발급 잔여수 초과 — 기존 캐시 토큰이 있으면 재사용
+        // EGW00103: "유효하지 않은 AppKey" 또는 "토큰 발급 잔여수 초과"
         if (errorText.includes('EGW00103')) {
-            console.warn("[KIS] Token issuance limit exceeded (EGW00103)");
-            if (cachedToken) {
-                console.log("[KIS] Reusing stale cached token due to EGW00103");
-                tokenExpiresAt = Date.now() + (10 * 60 * 1000); // 10분 연장
-                return cachedToken;
-            }
+            // ✅ 만료 토큰 폴백 제거: 만료 토큰으로 계속 시도해봤자 무의미
+            // 대신 명확한 에러 메시지를 throw하여 상위에서 처리
+            console.error("[KIS] EGW00103 - AppKey invalid or daily limit exceeded");
+            await clearStoredTokens(); // DB의 만료 토큰도 정리
         }
 
         throw new Error(`Failed to fetch KIS token: ${errorText}`);
@@ -137,7 +125,7 @@ async function fetchNewToken(): Promise<string> {
 
     // Supabase에 저장 (serverless 인스턴스 간 공유)
     await saveToken(cachedToken, expiresIn);
-    console.log("[KIS] New token saved, expires in", Math.round(expiresIn / 3600), "hours");
+    console.log("[KIS] ✅ New token issued, expires in", Math.round(expiresIn / 3600), "hours");
 
     return cachedToken;
 }

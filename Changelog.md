@@ -1,3 +1,16 @@
+## [Alpha V1.336] - 2026-03-20 20:09:00
+
+### 🔒 Critical Fix: KIS 토큰 24시간 만료 후 자동 갱신 데드락 해결
+- **Summary**: 토큰 만료 시 Supabase의 오래된 토큰을 자동 삭제하고 새 토큰을 발급하여, 매일 수동으로 DB를 비워야 하던 문제를 근본적으로 해결
+- **Detail**:
+  - **client.ts `getAccessToken()` 전면 개선**:
+    - 만료 토큰 감지 시 `clearStoredTokens()` → `fetchNewToken()` 자동 진행 (이전: 만료 토큰을 폴백으로 5분간 재사용하며 무한 루프)
+    - 쿨다운 중 유효 토큰이 없으면 쿨다운 무시 → 데드락 방지 (`forcing refresh` 로직)
+    - EGW00103 시 만료 토큰 폴백 제거 (기존: 만료 토큰 10분 연장 → 무의미한 API 호출 반복)
+    - 인메모리 캐시 만료시간을 고정 30분 대신 실제 `expiresAt` 기반으로 설정
+  - **tokenManager.ts**: 분산 잠금 쿨다운 5분→2분 단축
+- **Build Time**: 2026-03-20 20:09:00
+
 ## [Alpha V1.335] - 2026-03-20 19:12:00
 
 ### 🔒 Critical Fix: KIS WebSocket 무한 재접속 차단 + ETF Cron 안정화
