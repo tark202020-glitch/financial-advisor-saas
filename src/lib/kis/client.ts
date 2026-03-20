@@ -3,11 +3,12 @@ import { getUSExchangeCode } from './exchange';
 import { kisRateLimiter } from './rateLimiter';
 export { kisRateLimiter };
 
-export const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").replace(/\/$/, "");
-export const APP_KEY = process.env.KIS_APP_KEY;
-export const APP_SECRET = process.env.KIS_APP_SECRET;
-const CANO = process.env.KIS_CANO;
-const ACNT_PRDT_CD = process.env.KIS_ACNT_PRDT_CD || "01";
+// ✅ 환경변수 trim: Vercel 환경변수에 줄바꿈(\r\n)이 포함될 수 있어 제거 필수
+export const BASE_URL = (process.env.KIS_BASE_URL || "https://openapi.koreainvestment.com:9443").trim().replace(/\/$/, "");
+export const APP_KEY = process.env.KIS_APP_KEY?.trim();
+export const APP_SECRET = process.env.KIS_APP_SECRET?.trim();
+const CANO = process.env.KIS_CANO?.trim();
+const ACNT_PRDT_CD = (process.env.KIS_ACNT_PRDT_CD || "01").trim();
 
 let cachedToken: string | null = null;
 let tokenExpiresAt: number = 0;
