@@ -136,15 +136,23 @@ interface ETFHoldingData {
 /**
  * ETF 보유종목 데이터를 Google Sheets에 가로(횡방향)으로 누적 저장합니다.
  *
- * 구조:
- *   행(Row) = 구성종목 (ETF별 블록으로 구분)
- *   열(Col) = 날짜별 비중
+ * ★ 새 구조 (V2 — 셀분리 + 편입/편출 자동 표현):
+ *
+ *   A열: 종목명 (또는 ETF 헤더)
+ *   B열: 종목코드
+ *   C열~: 날짜별 비중 (숫자, 단위 없음)
+ *
+ *   - 편입: 이전 날짜 빈칸 → 오늘 값 출현
+ *   - 편출: 이전 날짜 값 → 오늘 빈칸 (행 유지, 값 안 씀)
+ *   - 비중변동: 날짜별 숫자 비교로 파악 가능
  *
  * 예시:
- *   | ETF명: TIGER AI (123456) [AI·테크] |            |            |
- *   | 구성종목                            | 2026-03-19 | 2026-03-20 |
- *   | 삼성전자 (005930)                   | 15.20%     | 15.80%     |
- *   | SK하이닉스 (000660)                 | 12.50%     | 11.90%     |
+ *   | A: 종목명        | B: 코드  | C: 03-19 | D: 03-20 | E: 03-21 |
+ *   |------------------|----------|----------|----------|----------|
+ *   | ■ TIGER AI (448570) [AI·테크] |   |          |          |          |
+ *   | 삼성전자          | 005930   | 19.77    | 19.81    | 20.10    |
+ *   | SK하이닉스        | 000660   | 11.62    | 11.64    |          | ← 편출
+ *   | 대덕전자          | 353200   |          | 4.74     | 4.80     | ← 편입
  */
 export async function appendETFHoldingsHorizontal(
     etfDataList: ETFHoldingData[],
@@ -160,7 +168,7 @@ export async function appendETFHoldingsHorizontal(
         const auth = getAuth();
         const sheets = google.sheets({ version: 'v4', auth });
 
-        // 1. 시트 존재 확인 및 생성 (reset이면 삭제 후 재생성)
+        // 1. 시트 존재 확인 및 생성
         await ensureETFHoldingsSheet(sheets, sheetId, reset);
 
         // 2. 시트 전체 데이터 읽기
@@ -174,7 +182,7 @@ export async function appendETFHoldingsHorizontal(
 
         // 3. 시트가 비어있으면 전체 새로 작성
         if (grid.length === 0) {
-            const allRows = buildFullSheet(etfDataList, dateStr);
+            const allRows = buildFullSheetV2(etfDataList, dateStr);
             await sheets.spreadsheets.values.update({
                 spreadsheetId: sheetId,
                 range: `'${ETF_SHEET_NAME}'!A1`,
@@ -186,8 +194,8 @@ export async function appendETFHoldingsHorizontal(
             return { success: true, updatedCells };
         }
 
-        // 4. 기존 시트에 날짜 열 추가/업데이트
-        const result = await updateExistingSheet(sheets, sheetId, grid, etfDataList, dateStr);
+        // 4. 기존 시트에 날짜 열 추가/업데이트 (V2)
+        const result = await updateExistingSheetV2(sheets, sheetId, grid, etfDataList, dateStr);
         return result;
 
     } catch (error: any) {
@@ -206,7 +214,6 @@ async function ensureETFHoldingsSheet(
         const meta = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
         const existingSheet = meta.data.sheets?.find(s => s.properties?.title === ETF_SHEET_NAME);
 
-        // reset 모드: 기존 시트 삭제
         if (reset && existingSheet && existingSheet.properties?.sheetId !== undefined) {
             await sheets.spreadsheets.batchUpdate({
                 spreadsheetId: sheetId,
@@ -217,7 +224,6 @@ async function ensureETFHoldingsSheet(
             console.log(`[Sheets ETF] '${ETF_SHEET_NAME}' 기존 시트 삭제 완료`);
         }
 
-        // 시트가 없거나 삭제된 경우 새로 생성
         if (!existingSheet || reset) {
             await sheets.spreadsheets.batchUpdate({
                 spreadsheetId: sheetId,
@@ -234,28 +240,33 @@ async function ensureETFHoldingsSheet(
     }
 }
 
-/** 빈 시트에 전체 구조 새로 작성 */
-function buildFullSheet(etfDataList: ETFHoldingData[], dateStr: string): string[][] {
+/** ★ V2: 빈 시트에 전체 구조 새로 작성 (셀 분리) */
+function buildFullSheetV2(etfDataList: ETFHoldingData[], dateStr: string): string[][] {
     const rows: string[][] = [];
 
     for (let i = 0; i < etfDataList.length; i++) {
         const etf = etfDataList[i];
 
-        // ETF 구분용 빈 행 (첫 ETF 제외)
+        // ETF 블록 구분용 빈 행 (첫 ETF 제외)
         if (i > 0) rows.push([]);
 
-        // ETF 헤더 행
+        // ETF 헤더 행: A열에 ETF 식별 문자열, B열에 코드(파싱용)
         const catLabel = getCategoryLabel(etf.category);
-        rows.push([`■ ${etf.etfName} (${etf.etfSymbol}) [${catLabel}]`]);
+        rows.push([
+            `■ ${etf.etfName}`,
+            `EF ${etf.etfSymbol}`,
+            catLabel,
+        ]);
 
-        // 열 헤더: 구성종목 | 날짜1 | 날짜2 ...
-        rows.push(['구성종목', dateStr]);
+        // 열 헤더: A=종목명, B=코드, C~=날짜
+        rows.push(['구성종목', '코드', dateStr]);
 
-        // 보유종목 행
+        // 보유종목 행: A=이름, B=코드, C=비중(숫자)
         for (const h of etf.holdings) {
             rows.push([
-                `${h.holding_name} (${h.holding_symbol})`,
-                `${h.weight_pct.toFixed(2)}%`,
+                h.holding_name,
+                h.holding_symbol,
+                h.weight_pct.toFixed(2),
             ]);
         }
     }
@@ -263,8 +274,8 @@ function buildFullSheet(etfDataList: ETFHoldingData[], dateStr: string): string[
     return rows;
 }
 
-/** 기존 시트에 날짜 열 추가/업데이트 */
-async function updateExistingSheet(
+/** ★ V2: 기존 시트에 날짜 열 추가/업데이트 */
+async function updateExistingSheetV2(
     sheets: ReturnType<typeof google.sheets>,
     sheetId: string,
     grid: string[][],
@@ -272,32 +283,28 @@ async function updateExistingSheet(
     dateStr: string
 ): Promise<{ success: boolean; updatedCells?: number; error?: string }> {
 
-    // 기존 grid를 복사하여 수정
     const newGrid = grid.map(row => [...row]);
     let updatedCells = 0;
 
     // 각 ETF 블록의 시작 행 인덱스를 찾기
-    const blockMap = findETFBlocks(newGrid);
+    const blockMap = findETFBlocksV2(newGrid);
 
     for (const etf of etfDataList) {
         const blockKey = etf.etfSymbol;
         const block = blockMap.get(blockKey);
 
         if (block) {
-            // 기존 블록에 날짜 열 추가/업데이트
-            updatedCells += updateBlock(newGrid, block, etf, dateStr);
+            updatedCells += updateBlockV2(newGrid, block, etf, dateStr);
         } else {
-            // 신규 ETF: 시트 하단에 새 블록 추가
-            updatedCells += appendNewBlock(newGrid, etf, dateStr);
+            updatedCells += appendNewBlockV2(newGrid, etf, dateStr);
             // 새로 추가된 블록 반영을 위해 blockMap 재구축
-            const newBlockMap = findETFBlocks(newGrid);
+            const newBlockMap = findETFBlocksV2(newGrid);
             for (const [k, v] of newBlockMap) blockMap.set(k, v);
         }
     }
 
-    // 전체 시트 덮어쓰기 (범위 자동 계산)
-    const maxCols = Math.max(...newGrid.map(r => r.length));
-    // 모든 행의 길이를 맞추기
+    // 전체 시트 덮어쓰기 (열 길이 균등화)
+    const maxCols = Math.max(...newGrid.map(r => r.length), 1);
     for (const row of newGrid) {
         while (row.length < maxCols) row.push('');
     }
@@ -313,26 +320,26 @@ async function updateExistingSheet(
     return { success: true, updatedCells };
 }
 
-interface ETFBlock {
-    headerRow: number;   // "■ ETF명..." 행
-    colHeaderRow: number; // "구성종목 | 날짜1 | 날짜2" 행
+interface ETFBlockV2 {
+    headerRow: number;       // "■ ETF명" 행
+    colHeaderRow: number;    // "구성종목 | 코드 | 날짜1 | 날짜2" 행
     holdingStartRow: number; // 첫 보유종목 행
     holdingEndRow: number;   // 마지막 보유종목 행 (exclusive)
     etfSymbol: string;
 }
 
-/** 시트에서 ETF 블록 위치 파악 */
-function findETFBlocks(grid: string[][]): Map<string, ETFBlock> {
-    const blocks = new Map<string, ETFBlock>();
+/** ★ V2: 시트에서 ETF 블록 위치 파악 (B열의 "EF xxxxxx" 패턴으로 감지) */
+function findETFBlocksV2(grid: string[][]): Map<string, ETFBlockV2> {
+    const blocks = new Map<string, ETFBlockV2>();
     let i = 0;
 
     while (i < grid.length) {
-        const cell = (grid[i]?.[0] || '').trim();
+        const cellA = (grid[i]?.[0] || '').trim();
+        const cellB = (grid[i]?.[1] || '').trim();
 
-        // ETF 헤더 행 감지: "■ " 로 시작
-        if (cell.startsWith('■ ')) {
-            // 심볼 추출: "(123456)" 패턴
-            const symMatch = cell.match(/\((\d{6})\)/);
+        // ETF 헤더 행 감지: A열이 "■"로 시작하고 B열이 "EF xxxxxx" 패턴
+        if (cellA.startsWith('■')) {
+            const symMatch = cellB.match(/^EF\s*(\d{6})/);
             if (symMatch) {
                 const etfSymbol = symMatch[1];
                 const headerRow = i;
@@ -342,9 +349,10 @@ function findETFBlocks(grid: string[][]): Map<string, ETFBlock> {
                 // 보유종목 행의 끝 탐색
                 let endRow = holdingStartRow;
                 while (endRow < grid.length) {
-                    const nextCell = (grid[endRow]?.[0] || '').trim();
+                    const nextA = (grid[endRow]?.[0] || '').trim();
+                    const nextB = (grid[endRow]?.[1] || '').trim();
                     // 빈 행이거나 다른 ETF 헤더면 종료
-                    if (nextCell === '' || nextCell.startsWith('■ ')) break;
+                    if ((nextA === '' && nextB === '') || nextA.startsWith('■')) break;
                     endRow++;
                 }
 
@@ -366,17 +374,23 @@ function findETFBlocks(grid: string[][]): Map<string, ETFBlock> {
     return blocks;
 }
 
-/** 기존 블록에 날짜 열 추가/업데이트 */
-function updateBlock(grid: string[][], block: ETFBlock, etf: ETFHoldingData, dateStr: string): number {
+/** ★ V2: 기존 블록에 날짜 열 추가/업데이트 */
+function updateBlockV2(grid: string[][], block: ETFBlockV2, etf: ETFHoldingData, dateStr: string): number {
     let updatedCells = 0;
 
-    // 열 헤더 행에서 날짜 위치 확인
-    const colHeaderRow = grid[block.colHeaderRow] || ['구성종목'];
+    // 열 헤더 행에서 날짜 위치 확인 (C열부터 날짜)
+    const colHeaderRow = grid[block.colHeaderRow] || ['구성종목', '코드'];
+    // 열 헤더 길이 보장
+    while (colHeaderRow.length < 2) colHeaderRow.push('');
 
-    // 날짜 열 인덱스 찾기 (이미 있으면 해당 열, 없으면 새 열)
-    let dateColIndex = colHeaderRow.findIndex(
-        (val, idx) => idx > 0 && val.trim() === dateStr
-    );
+    // 날짜 열 인덱스 찾기 (C열=index2 부터)
+    let dateColIndex = -1;
+    for (let c = 2; c < colHeaderRow.length; c++) {
+        if (colHeaderRow[c]?.trim() === dateStr) {
+            dateColIndex = c;
+            break;
+        }
+    }
 
     if (dateColIndex === -1) {
         // 새 날짜 열 추가
@@ -386,13 +400,12 @@ function updateBlock(grid: string[][], block: ETFBlock, etf: ETFHoldingData, dat
         updatedCells++;
     }
 
-    // 기존 보유종목의 심볼 → 행 인덱스 맵
+    // 기존 보유종목의 코드 → 행 인덱스 맵 (B열 기반)
     const existingHoldingRows = new Map<string, number>();
     for (let r = block.holdingStartRow; r < block.holdingEndRow; r++) {
-        const cellVal = (grid[r]?.[0] || '').trim();
-        const match = cellVal.match(/\((\d{6})\)/);
-        if (match) {
-            existingHoldingRows.set(match[1], r);
+        const code = (grid[r]?.[1] || '').trim();
+        if (code && /^\d{6}$/.test(code)) {
+            existingHoldingRows.set(code, r);
         }
     }
 
@@ -403,48 +416,69 @@ function updateBlock(grid: string[][], block: ETFBlock, etf: ETFHoldingData, dat
         if (rowIdx !== undefined) {
             // 기존 종목: 해당 날짜 열에 비중 업데이트
             while (grid[rowIdx].length <= dateColIndex) grid[rowIdx].push('');
-            grid[rowIdx][dateColIndex] = `${h.weight_pct.toFixed(2)}%`;
+            grid[rowIdx][dateColIndex] = h.weight_pct.toFixed(2);
             updatedCells++;
         } else {
-            // 신규 종목: 블록 끝에 행 삽입
-            const newRow: string[] = [`${h.holding_name} (${h.holding_symbol})`];
+            // ★ 편입 종목: 블록 끝에 행 삽입
+            const newRow: string[] = [h.holding_name, h.holding_symbol];
+            // 이전 날짜 열은 빈칸 유지 (편입 표시: 이전 빈→오늘 값)
             while (newRow.length <= dateColIndex) newRow.push('');
-            newRow[dateColIndex] = `${h.weight_pct.toFixed(2)}%`;
+            newRow[dateColIndex] = h.weight_pct.toFixed(2);
 
             grid.splice(block.holdingEndRow, 0, newRow);
             block.holdingEndRow++;
-
-            // 삽입으로 인해 이후 블록들의 행 인덱스 조정 필요
-            // (updateExistingSheet에서 전체 grid를 덮어쓰므로 OK)
             updatedCells++;
         }
     }
 
+    // ★ 편출 종목 처리: block 내 기존 종목 중 오늘 데이터에 없는 종목 → 해당 날짜 셀 비워둠
+    // (아무것도 안 쓰면 자동으로 빈칸 = 편출)
+    // 이미 위에서 해당 종목 행에 값을 안 쓰면 빈칸으로 남으므로 추가 처리 불필요
+
     return updatedCells;
 }
 
-/** 신규 ETF 블록을 시트 하단에 추가 */
-function appendNewBlock(grid: string[][], etf: ETFHoldingData, dateStr: string): number {
+/** ★ V2: 신규 ETF 블록을 시트 하단에 추가 */
+function appendNewBlockV2(grid: string[][], etf: ETFHoldingData, dateStr: string): number {
     let updatedCells = 0;
+
+    // 기존 시트의 날짜 열들을 파악 (첫 번째 블록의 열 헤더에서)
+    const existingDates: string[] = [];
+    for (const row of grid) {
+        if ((row[0] || '').trim() === '구성종목') {
+            for (let c = 2; c < row.length; c++) {
+                const d = (row[c] || '').trim();
+                if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                    existingDates.push(d);
+                }
+            }
+            break;
+        }
+    }
+
+    // 전체 날짜 목록 = 기존 + 오늘 (중복 제거)
+    const allDates = [...existingDates];
+    if (!allDates.includes(dateStr)) allDates.push(dateStr);
 
     // 빈 구분 행
     if (grid.length > 0) grid.push([]);
 
     // ETF 헤더
     const catLabel = getCategoryLabel(etf.category);
-    grid.push([`■ ${etf.etfName} (${etf.etfSymbol}) [${catLabel}]`]);
+    grid.push([`■ ${etf.etfName}`, `EF ${etf.etfSymbol}`, catLabel]);
     updatedCells++;
 
-    // 열 헤더
-    grid.push(['구성종목', dateStr]);
+    // 열 헤더 (기존 날짜 + 오늘)
+    grid.push(['구성종목', '코드', ...allDates]);
     updatedCells++;
 
-    // 보유종목 행
+    // 보유종목 행 (오늘 날짜 열 위치에만 값, 이전 날짜는 빈칸)
+    const todayColIndex = allDates.indexOf(dateStr) + 2; // A=0, B=1, C~=2+
     for (const h of etf.holdings) {
-        grid.push([
-            `${h.holding_name} (${h.holding_symbol})`,
-            `${h.weight_pct.toFixed(2)}%`,
-        ]);
+        const row: string[] = [h.holding_name, h.holding_symbol];
+        while (row.length <= todayColIndex) row.push('');
+        row[todayColIndex] = h.weight_pct.toFixed(2);
+        grid.push(row);
         updatedCells++;
     }
 
