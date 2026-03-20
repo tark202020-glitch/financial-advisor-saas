@@ -82,9 +82,9 @@ async function fetchETFHoldings(etfSymbol: string, token: string): Promise<Holdi
 }
 
 // ======== 전일 대비 변경 감지 ========
-function detectChanges(etfSymbol: string, etfName: string, prev: HoldingItem[], curr: HoldingItem[]) {
+function detectChanges(etfSymbol: string, etfName: string, prev: HoldingItem[], curr: HoldingItem[], dateStr: string) {
     const changes: any[] = [];
-    const today = new Date().toISOString().slice(0, 10);
+    const today = dateStr;
     const prevMap = new Map(prev.map(h => [h.holding_symbol, h]));
     const currMap = new Map(curr.map(h => [h.holding_symbol, h]));
 
@@ -126,7 +126,9 @@ export async function GET(request: NextRequest) {
         console.log(`[ETF Cron] Starting...${resetSheets ? ' (RESET SHEETS)' : ''}`);
         const startTime = Date.now();
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const today = new Date().toISOString().slice(0, 10);
+        // KST 기준 날짜 (UTC+9)
+        const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        const today = kstNow.toISOString().slice(0, 10);
 
         // 1. 추적 대상 ETF 로드
         const { data: trackedETFs, error: listError } = await supabase
@@ -213,20 +215,32 @@ export async function GET(request: NextRequest) {
                     holdings,
                 });
 
-                // 변경 감지
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const { data: prevHoldings } = await supabase
+                // 변경 감지: "가장 최근 이전 스냅샷"과 비교 (주말/공휴일 대응)
+                const { data: prevSnapshot } = await supabase
                     .from('etf_holdings')
-                    .select('holding_symbol, holding_name, weight_pct')
+                    .select('snapshot_date')
                     .eq('etf_symbol', etf.symbol)
-                    .eq('snapshot_date', yesterday.toISOString().slice(0, 10));
+                    .lt('snapshot_date', today)
+                    .order('snapshot_date', { ascending: false })
+                    .limit(1)
+                    .single();
 
-                if (prevHoldings && prevHoldings.length > 0) {
-                    const changes = detectChanges(etf.symbol, etf.name, prevHoldings, holdings);
-                    if (changes.length > 0) {
-                        const { error: chErr } = await supabase.from('etf_changes').insert(changes);
-                        if (!chErr) totalChanges += changes.length;
+                if (prevSnapshot?.snapshot_date) {
+                    const { data: prevHoldings } = await supabase
+                        .from('etf_holdings')
+                        .select('holding_symbol, holding_name, weight_pct')
+                        .eq('etf_symbol', etf.symbol)
+                        .eq('snapshot_date', prevSnapshot.snapshot_date);
+
+                    if (prevHoldings && prevHoldings.length > 0) {
+                        const changes = detectChanges(etf.symbol, etf.name, prevHoldings, holdings, today);
+                        if (changes.length > 0) {
+                            const { error: chErr } = await supabase.from('etf_changes').insert(changes);
+                            if (!chErr) {
+                                totalChanges += changes.length;
+                                console.log(`  [${etf.symbol}] 변경 감지 ${changes.length}건 (vs ${prevSnapshot.snapshot_date})`);
+                            }
+                        }
                     }
                 }
 
