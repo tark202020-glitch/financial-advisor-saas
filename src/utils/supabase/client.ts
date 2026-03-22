@@ -10,7 +10,7 @@ export function createClient() {
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             {
                 auth: {
-                    detectSessionInUrl: false,
+                    detectSessionInUrl: true,
                     persistSession: true,
                     autoRefreshToken: true,
                     flowType: 'pkce'

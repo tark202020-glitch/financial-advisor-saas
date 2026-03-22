@@ -1,3 +1,15 @@
+## [Alpha V1.339] - 2026-03-22 16:08:00
+
+### 🔧 Fix: 회원가입 프로세스 전면 재구축
+- **Summary**: 회원가입이 동작하지 않던 문제를 해결 — Server Action 방식 전환 + 인증 콜백 라우트 신규 생성
+- **Detail**:
+  - **`/auth/callback/route.ts` [신규]**: Supabase 이메일 인증 완료 후 code→세션 교환 콜백 라우트 생성
+  - **`/register/actions.ts` [신규]**: 회원가입을 Server Action으로 구현 (서버 사이드 signUp + emailRedirectTo 설정 + 중복 이메일 감지)
+  - **`/register/page.tsx` [수정]**: 클라이언트 사이드 signUp → useActionState 기반 Server Action 연동으로 전환, 한글 UI 적용
+  - **`client.ts` [수정]**: `detectSessionInUrl: false` → `true` 변경 (URL 기반 인증 토큰 감지 활성화)
+  - **`forgot-password/page.tsx` [수정]**: 비밀번호 재설정 redirectTo를 `/auth/callback?next=/update-password`로 변경
+- **Build Time**: 2026-03-22 16:08:00
+
 ## [Alpha V1.338] - 2026-03-21 02:33:00
 
 ### 🐛 Fix: ETF 편입/편출 변경 감지 누락 수정
