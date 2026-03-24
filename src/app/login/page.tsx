@@ -74,9 +74,12 @@ export default function LoginPage() {
                         </button>
                     </form>
 
-                    <div className="mt-6 text-center">
+                    <div className="mt-6 text-center space-y-4">
+                        <Link href="/register" className="block text-slate-500 hover:text-slate-700 text-sm font-medium transition">
+                            계정이 없으신가요? <span className="text-emerald-600 font-bold">회원가입</span>
+                        </Link>
                         <Link href="/" className="text-slate-400 hover:text-slate-600 text-sm flex items-center justify-center gap-1 transition">
-                            <ArrowLeft size={14} /> Back to Dashboard
+                            <ArrowLeft size={14} /> 홈으로 돌아가기
                         </Link>
                     </div>
                 </div>
