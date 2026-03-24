@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getDividendRateRanking, getKsdinfoDividend, getDomesticPrice, getStockInfo } from "@/lib/kis/client";
+import { fetchDividendDisclosures } from "@/lib/opendart";
 
 function formatNumber(num: number): string {
     return num.toLocaleString('ko-KR');
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
         const stockRankings = await getDividendRateRanking({
             gb1: '1',       // 코스피만
             upjong: '0001', // 종합
-            gb2: '6',       // 보통주만
+            gb2: '0',       // 전체 (보통주+우선주)
             gb3: '2',       // 현금배당
             f_dt: rankFromDate,
             t_dt: todayStr,
@@ -114,7 +115,11 @@ export async function POST(req: NextRequest) {
             const recordDate = latestDividend.record_date || '';
             const dividendKind = latestDividend.divi_kind || '';
 
-            console.log(`  [${stockName}(${code})] 최근배당: ${actualDividendAmount}원, 기준일: ${recordDate}, 지급일: ${dividendPayDate}, 종류: ${dividendKind}`);
+            // 배당 횟수: 최근 2년간 유효 배당 지급 횟수
+            const frequency = sortedDividends.length;
+            const frequencyPerYear = Math.ceil(frequency / 2); // 2년 기준 → 연간 횟수 추정
+
+            console.log(`  [${stockName}(${code})] 최근배당: ${actualDividendAmount}원, 기준일: ${recordDate}, 지급일: ${dividendPayDate}, 종류: ${dividendKind}, 2년간 횟수: ${frequency}`);
 
             // 2-3) 현재가(종가) 조회
             await new Promise(r => setTimeout(r, 200));
@@ -148,6 +153,8 @@ export async function POST(req: NextRequest) {
                 yieldRate,
                 dividendKind,
                 virtualDividend,
+                frequency,
+                frequencyPerYear,
             });
         }
 
@@ -161,36 +168,64 @@ export async function POST(req: NextRequest) {
         markdown += `> 📅 작성일시: ${displayDate} ${displayTime} | 📊 데이터: KIS API 실시간 조회\n\n`;
         markdown += `---\n\n`;
 
-        markdown += `## 국내 주식 배당 수익률 TOP 10 (코스피)\n\n`;
+        markdown += `## 국내 주식 배당 수익률 TOP 10 (코스피, 보통주+우선주)\n\n`;
         if (stockResults.length > 0) {
             const avgRate = (stockResults.reduce((sum, s) => sum + s.yieldRate, 0) / stockResults.length).toFixed(2);
-            markdown += `> 현재 기준 배당수익률 상위 50개 종목을 선정한 후, 실제 지급된 현금배당 내역을 확인하여 정리한 리포트입니다. 수익률은 현재 종가 대비로 산출하였습니다. (평균 ${avgRate}%)\n\n`;
+            markdown += `> 현재 기준 배당수익률 상위 50개 종목(보통주+우선주)을 선정한 후, 실제 지급된 현금배당 내역을 확인하여 정리한 리포트입니다. 수익률은 현재 종가 대비로 산출하였습니다. (평균 ${avgRate}%)\n\n`;
 
-            markdown += `| 종목 | 종가 | 주당배당금 | 수익률 | 최근배당일 | 가상배당금 |\n`;
-            markdown += `|------|------|-----------|--------|-----------|----------|\n`;
+            markdown += `| 종목 | 종가 | 주당배당금 | 수익률 | 횟수 | 최근배당일 | 가상배당금 |\n`;
+            markdown += `|------|------|-----------|--------|------|-----------|----------|\n`;
 
             for (const s of stockResults) {
                 const nameDisplay = s.name;
                 const priceDisplay = `${formatNumber(s.price)}원`;
-                // 주당배당금: 실제 금액 + 지급 시기
                 const payDateFormatted = formatDate(s.dividendPayDate || s.recordDate);
                 const divDisplay = `${formatNumber(s.dividendAmount)}원 (${payDateFormatted})`;
-                // 수익률: 종가 대비
                 const rateDisplay = `${s.yieldRate.toFixed(2)}%`;
-                // 최근배당일
+                const freqDisplay = `${s.frequencyPerYear}회/년 (${s.frequency}건)`;
                 const dateDisplay = formatDate(s.recordDate);
                 const virtualDisplay = `${formatNumber(Math.round(s.virtualDividend))}원`;
 
-                markdown += `| ${nameDisplay} | ${priceDisplay} | ${divDisplay} | ${rateDisplay} | ${dateDisplay} | ${virtualDisplay} |\n`;
+                markdown += `| ${nameDisplay} | ${priceDisplay} | ${divDisplay} | ${rateDisplay} | ${freqDisplay} | ${dateDisplay} | ${virtualDisplay} |\n`;
             }
         } else {
             markdown += `> 조회된 데이터가 없습니다.\n`;
         }
 
+        // ====================================================================
+        // 배당 관련 DART 공시 링크
+        // ====================================================================
+        markdown += `\n---\n\n`;
+        markdown += `## 📋 배당 관련 공시\n\n`;
+
+        let hasAnyDisclosure = false;
+        for (const s of stockResults) {
+            try {
+                const disclosures = await fetchDividendDisclosures(s.code);
+                if (disclosures.length > 0) {
+                    hasAnyDisclosure = true;
+                    markdown += `### ${s.name} (${s.code})\n`;
+                    for (const d of disclosures) {
+                        markdown += `- ${d.date} | [${d.title}](${d.url})\n`;
+                    }
+                    markdown += `\n`;
+                }
+            } catch (e) {
+                console.warn(`[공시조회] ${s.name} 실패:`, e);
+            }
+            await new Promise(r => setTimeout(r, 200));
+        }
+
+        if (!hasAnyDisclosure) {
+            markdown += `> 최근 12개월 내 "배당" 관련 공시가 없습니다.\n`;
+        }
+
         markdown += `\n---\n\n`;
         markdown += `*본 리포트는 KIS(한국투자증권) API 실시간 데이터를 기반으로 자동 생성되었습니다.*\n`;
         markdown += `*주당배당금은 가장 최근 실제 지급된 금액이며, 수익률은 현재 종가 대비로 산출했습니다.*\n`;
+        markdown += `*횟수는 최근 2년간 실제 배당 지급 건수이며, 연간 횟수는 추정치입니다.*\n`;
         markdown += `*가상배당금은 1,000만원 투자 시 연간 예상 배당금입니다.*\n`;
+        markdown += `*공시 링크는 DART(전자공시시스템)에서 "배당" 키워드가 포함된 최신 공시입니다.*\n`;
 
         // ====================================================================
         // 4. Supabase 저장

@@ -1,3 +1,14 @@
+## [Alpha V1.341] - 2026-03-24 17:10:41
+
+### ✨ Feature: 배당 분석 리포트 고도화
+- **Summary**: 배당주 TOP10에 우선주 포함, 배당 ETF 제외 키워드 추가, 리포트 하단에 DART 배당 공시 링크 추가
+- **Detail**:
+  - **`generate-dividend/route.ts` [수정]**: `GB2: '6'`(보통주) → `'0'`(전체, 우선주 포함), 횟수 컬럼 추가 (2년간 배당 건수 + 연간 추정), DART 배당 공시 링크 섹션 추가
+  - **`generate-dividend-etf/route.ts` [수정]**: 제외 키워드에 `'채권'`, `'미국'` 추가, DART 배당 공시 링크 섹션 추가
+  - **`opendart.ts` [수정]**: `fetchDividendDisclosures()` 함수 신규 — DART `list.json` API로 배당 키워드 공시 필터링 + `rcept_no` 기반 공시 링크 생성 (종목당 최대 3건)
+  - **`doc/배당주_분석_로직_문서.md` [신규]**: 배당주/ETF 분석 전체 로직 문서화
+- **Build Time**: 2026-03-24 17:10:41
+
 ## [Alpha V1.340] - 2026-03-24 14:22:12
 
 ### 🔧 Fix: 로그인 페이지에 회원가입 링크 추가

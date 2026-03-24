@@ -303,3 +303,44 @@ export async function fetchDisclosures(stockCode: string): Promise<{
     }
 }
 
+/**
+ * 배당 관련 공시만 조회 (최근 12개월, "배당" 키워드 필터)
+ * 리포트 하단 공시 링크 용도
+ */
+export async function fetchDividendDisclosures(stockCode: string): Promise<{
+    title: string;
+    date: string;
+    url: string;
+}[]> {
+    if (!DART_API_KEY) return [];
+
+    const corpCode = getCorpCode(stockCode);
+    if (!corpCode) return [];
+
+    try {
+        const now = new Date();
+        const twelveMonthsAgo = new Date(now);
+        twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+        const beginDate = twelveMonthsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+        const endDate = now.toISOString().slice(0, 10).replace(/-/g, '');
+
+        const url = `${DART_BASE_URL}/list.json?crtfc_key=${DART_API_KEY}&corp_code=${corpCode}&bgn_de=${beginDate}&end_de=${endDate}&page_count=30&sort=date&sort_mth=desc`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.status !== '000' || !data.list) return [];
+
+        return data.list
+            .filter((d: any) => (d.report_nm || '').includes('배당'))
+            .slice(0, 3)
+            .map((d: any) => ({
+                title: d.report_nm || '',
+                date: d.rcept_dt ? `${d.rcept_dt.slice(0, 4)}-${d.rcept_dt.slice(4, 6)}-${d.rcept_dt.slice(6, 8)}` : '',
+                url: `https://dart.fss.or.kr/dsaf001/main.do?rcept_no=${d.rcept_no}`,
+            }));
+    } catch (e) {
+        console.warn(`[DART] DividendDisclosures fetch failed for ${stockCode}:`, e);
+        return [];
+    }
+}
+

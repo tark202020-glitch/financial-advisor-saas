@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getDividendRateRanking, getKsdinfoDividend, getEtfPrice, getStockInfo } from "@/lib/kis/client";
+import { fetchDividendDisclosures } from "@/lib/opendart";
 
 import fs from 'fs';
 import path from 'path';
@@ -8,7 +9,7 @@ import path from 'path';
 export const maxDuration = 60; // Allow 60 seconds execution limit
 
 // 커버드콜 ETF 필터링 키워드
-const COVERED_CALL_KEYWORDS = ['커버드콜', '커버드', 'COVERED', 'CC', '프리미엄', 'PREMIUM', '인컴', 'INCOME'];
+const COVERED_CALL_KEYWORDS = ['커버드콜', '커버드', 'COVERED', 'CC', '프리미엄', 'PREMIUM', '인컴', 'INCOME', '채권', '미국'];
 
 // 원하는 키워드 및 식별용 브랜드
 const TARGET_KEYWORDS = ['배당', '액티브', '보험', '은행'];
@@ -241,9 +242,39 @@ export async function POST(req: NextRequest) {
         }
 
         markdown += `\n---\n\n`;
+
+        // ====================================================================
+        // 배당 관련 DART 공시 링크
+        // ====================================================================
+        markdown += `## 📋 배당 관련 공시\n\n`;
+
+        let hasAnyDisclosure = false;
+        for (const s of top10Etfs) {
+            try {
+                const disclosures = await fetchDividendDisclosures(s.code);
+                if (disclosures.length > 0) {
+                    hasAnyDisclosure = true;
+                    markdown += `### ${s.name} (${s.code})\n`;
+                    for (const d of disclosures) {
+                        markdown += `- ${d.date} | [${d.title}](${d.url})\n`;
+                    }
+                    markdown += `\n`;
+                }
+            } catch (e) {
+                console.warn(`[공시조회] ${s.name} 실패:`, e);
+            }
+            await new Promise(r => setTimeout(r, 200));
+        }
+
+        if (!hasAnyDisclosure) {
+            markdown += `> 최근 12개월 내 "배당" 관련 공시가 없습니다.\n`;
+        }
+
+        markdown += `\n---\n\n`;
         markdown += `*본 리포트는 KIS(한국투자증권) API 실시간 데이터를 기반으로 자동 생성되었습니다.*\n`;
         markdown += `*주당배당금은 가장 최근 실제 지급된 금액이며, 수익률은 현재 종가 대비로 산출했습니다.*\n`;
         markdown += `*가상배당금은 1,000만원 투자 시 연간 예상 배당금입니다.*\n`;
+        markdown += `*공시 링크는 DART(전자공시시스템)에서 "배당" 키워드가 포함된 최신 공시입니다.*\n`;
 
         // ====================================================================
         // 5. Supabase 저장
