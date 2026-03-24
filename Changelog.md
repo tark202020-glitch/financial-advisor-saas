@@ -1,3 +1,12 @@
+## [Alpha V1.342] - 2026-03-24 17:46:05
+
+### 🔧 Fix: 배당 ETF 브랜드 목록 대폭 확대
+- **Summary**: ETF 브랜드 20개 → 33개로 확대, 누락되던 ETF 후보군 확보율 향상
+- **Detail**:
+  - **추가 브랜드 13개**: `RISE`(구 KBSTAR), `TIME KOREA`, `KIWOOM`, `DAISHIN`, `TRUSTON`, `FOCUS`, `ITF`, `UNICORN`, `VITA`, `WON`, `신한`, `마이다스`, `에셋플러스`, `더제이`
+  - 마스터 데이터(`all_stocks_master.json`)에서 배당/액티브/보험/은행 키워드 종목의 실제 브랜드를 분석하여 누락 항목 식별
+- **Build Time**: 2026-03-24 17:46:05
+
 ## [Alpha V1.341] - 2026-03-24 17:10:41
 
 ### ✨ Feature: 배당 분석 리포트 고도화
