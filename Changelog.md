@@ -1,4 +1,18 @@
-## [Alpha V1.342] - 2026-03-24 17:46:05
+## [Alpha V1.343] - 2026-03-31 17:49:30
+
+### ♻️ Refactor: ETF Google Sheets 저장 로직 V3 전면 재구축
+- **Summary**: ETF 보유종목 Google Sheets 저장 구조를 V2(행=종목, 열=날짜)에서 V3(행=날짜, 열=종목, ETF별 개별 탭)으로 전면 재구축
+- **Detail**:
+  - **구조 변경**: 행=종목/열=날짜 → **행=날짜/열=종목** 전환 (가독성 대폭 향상)
+  - **ETF별 개별 시트 탭**: 기존 단일 `ETF보유종목` 시트 → ETF 1개당 1개 탭 (예: `TIGER AI반도체_365040`)
+  - **20개 종목 슬롯**: 종목당 3열(종목명, 코드, 비중%) × 20슬롯 = 61열 고정 (현재 TOP10, 여유 확보)
+  - **동일 날짜 덮어쓰기**: 같은 날짜에 재실행 시 중복 없이 기존 행 업데이트
+  - **V2 함수 전체 제거**: `findETFBlocksV2`, `updateBlockV2`, `appendNewBlockV2`, `buildFullSheetV2`, `updateExistingSheetV2`
+  - **V3 함수 신규**: `getETFSheetName`, `buildHeaderRow`, `buildDateRow`, `ensureETFSheet`, `appendETFHoldingsHorizontal` (리팩터링)
+  - **cron 핸들러 호환**: 함수 시그니처 동일, `route.ts` 변경 불필요
+- **Build Time**: 2026-03-31 17:49:30
+
+
 
 ### 🔧 Fix: 배당 ETF 브랜드 목록 대폭 확대
 - **Summary**: ETF 브랜드 20개 → 33개로 확대, 누락되던 ETF 후보군 확보율 향상
