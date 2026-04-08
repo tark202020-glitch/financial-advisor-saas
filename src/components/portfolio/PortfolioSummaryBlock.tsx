@@ -2,7 +2,7 @@
 
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2, Coins, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2, Coins, RefreshCw, ChevronDown } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency } from '@/utils/format';
 
@@ -195,6 +195,7 @@ export default function PortfolioSummaryBlock() {
     } = usePortfolio();
 
     const [view, setView] = useState<ViewMode>('all');
+    const [isDividendExpanded, setIsDividendExpanded] = useState(false);
 
     const isLoading = isContextLoading || krLoading || usLoading || goldLoading;
     const hasError = krHasError || usHasError;
@@ -280,6 +281,49 @@ export default function PortfolioSummaryBlock() {
 
         return result;
     }, [assets, getKrData, getUsData, view, exchangeRate]);
+
+    // ===== Dividend Gains (All Positions) =====
+    const dividendGains = useMemo(() => {
+        let totalDividend = 0;
+        const items: { name: string; symbol: string; category: string; dividendInUsd: number; dividendInKrw: number }[] = [];
+
+        assets
+            .filter(a => {
+                if (view === 'all') return true;
+                if (view === 'kr' && (a.category === 'KR' || a.category === 'GOLD')) return true;
+                if (view === 'us' && a.category === 'US') return true;
+                return false;
+            })
+            .forEach(a => {
+                const tDividend = (a.trades || [])
+                    .filter(t => t.type === 'DIVIDEND')
+                    .reduce((sum, t) => sum + (t.price * t.quantity), 0);
+                
+                if (tDividend > 0) {
+                    const exRate = exchangeRate || 1350;
+                    const isUs = a.category === 'US';
+                    const dividendKRW = isUs ? tDividend * exRate : tDividend;
+                    
+                    totalDividend += dividendKRW;
+                    items.push({
+                        name: a.name,
+                        symbol: a.symbol,
+                        category: a.category,
+                        dividendInUsd: isUs ? tDividend : 0,
+                        dividendInKrw: dividendKRW
+                    });
+                }
+            });
+
+        // Sort by dividend descending
+        items.sort((a, b) => b.dividendInKrw - a.dividendInKrw);
+
+        return {
+            totalDividend,
+            items,
+            count: items.length
+        };
+    }, [assets, view, exchangeRate]);
 
     // ===== Daily Profit/Loss Analysis =====
     const dailyAnalysis = useMemo(() => {
@@ -506,10 +550,16 @@ export default function PortfolioSummaryBlock() {
                                                 {isPositive ? '▲ ' : '▼ '}{fmtRate(current.rate)}%
                                             </div>
                                         </div>
-                                        {current.dividend > 0 && (
-                                            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-yellow-500 mt-2">
-                                                <Coins size={14} className="opacity-80" />
-                                                <span>총 {fmtValue(current.dividend, view)}</span>
+                                        {dividendGains.totalDividend > 0 && (
+                                            <div 
+                                                className="flex flex-col sm:flex-row sm:items-center gap-1.5 text-xs sm:text-sm font-bold text-yellow-500 mt-2 cursor-pointer hover:bg-yellow-500/10 transition-colors w-fit px-2.5 py-1.5 rounded-lg border border-yellow-500/20 shadow-sm"
+                                                onClick={() => setIsDividendExpanded(!isDividendExpanded)}
+                                            >
+                                                <div className="flex items-center gap-1.5">
+                                                    <Coins size={14} className="opacity-80" />
+                                                    <span>총 누적 배당금액 {fmtValue(dividendGains.totalDividend, view)}</span>
+                                                    <ChevronDown size={14} className={`transform transition-transform duration-300 ${isDividendExpanded ? 'rotate-180' : ''}`} />
+                                                </div>
                                             </div>
                                         )}
                                         {dailyAnalysis.hasData && dailyAnalysis.totalDailyProfit !== 0 && (
@@ -533,6 +583,38 @@ export default function PortfolioSummaryBlock() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* 2. Dividend BreakDown Block (Expandable) */}
+                        {isDividendExpanded && dividendGains.count > 0 && (
+                            <div className="bg-[#1a1a1a] border border-yellow-500/20 rounded-xl p-5 mb-6 animate-in slide-in-from-top-4 shadow-inner">
+                                <div className="text-sm font-bold text-yellow-500 mb-4 flex items-center gap-2">
+                                    <Coins size={16} /> 상세 누적 배당금 구성내역 ({dividendGains.count}종목)
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
+                                    {dividendGains.items.map((item, idx) => (
+                                        <div key={idx} className="flex items-center justify-between bg-[#252525] hover:bg-[#2a2a2a] transition-colors rounded-lg p-3.5 border border-[#333] hover:border-yellow-500/30">
+                                            <div className="flex-1 min-w-0 flex items-center gap-3">
+                                                <span className="text-xs font-black text-yellow-500/50 w-4 shrink-0">{idx + 1}</span>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="text-sm font-bold text-gray-200 truncate">{item.name}</div>
+                                                    <div className="text-[10px] text-gray-500 truncate mt-0.5">{item.symbol} | {item.category}</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right ml-4 shrink-0">
+                                                <div className="text-sm font-black text-yellow-500">
+                                                    {fmtValue(item.dividendInKrw, 'kr')}
+                                                </div>
+                                                {item.category === 'US' && item.dividendInUsd > 0 && (
+                                                    <div className="text-[10px] text-yellow-500/60 font-medium mt-0.5 tracking-tight">
+                                                        +${(item.dividendInUsd).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Dashboard Grid Container (Split Layout) */}
                         <div className="flex flex-col xl:flex-row gap-6">
