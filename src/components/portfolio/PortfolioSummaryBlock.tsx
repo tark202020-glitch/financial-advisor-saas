@@ -285,7 +285,18 @@ export default function PortfolioSummaryBlock() {
     // ===== Dividend Gains (All Positions) =====
     const dividendGains = useMemo(() => {
         let totalDividend = 0;
-        const items: { name: string; symbol: string; category: string; dividendInUsd: number; dividendInKrw: number }[] = [];
+        const items: { 
+            name: string; 
+            symbol: string; 
+            category: string; 
+            dividendInUsd: number; 
+            dividendInKrw: number;
+            currentPrice: number;
+            quantity: number;
+            dividendPerShare: number;
+            dividendRate: number;
+            totalAmount: number;
+        }[] = [];
 
         assets
             .filter(a => {
@@ -295,14 +306,18 @@ export default function PortfolioSummaryBlock() {
                 return false;
             })
             .forEach(a => {
-                const tDividend = (a.trades || [])
-                    .filter(t => t.type === 'DIVIDEND')
-                    .reduce((sum, t) => sum + (t.price * t.quantity), 0);
+                const dividendTrades = (a.trades || []).filter(t => t.type === 'DIVIDEND');
+                const tDividend = dividendTrades.reduce((sum, t) => sum + (t.price * t.quantity), 0);
+                const dividendPerShare = dividendTrades.reduce((sum, t) => sum + t.price, 0);
                 
                 if (tDividend > 0) {
                     const exRate = exchangeRate || 1350;
                     const isUs = a.category === 'US';
                     const dividendKRW = isUs ? tDividend * exRate : tDividend;
+
+                    // 현재가 (거래완료 종목도 매입가 기반으로 fallback)
+                    const currentPrice = getPrice(a) || a.pricePerShare;
+                    const dividendRate = currentPrice > 0 ? (dividendPerShare / currentPrice) * 100 : 0;
                     
                     totalDividend += dividendKRW;
                     items.push({
@@ -310,7 +325,12 @@ export default function PortfolioSummaryBlock() {
                         symbol: a.symbol,
                         category: a.category,
                         dividendInUsd: isUs ? tDividend : 0,
-                        dividendInKrw: dividendKRW
+                        dividendInKrw: dividendKRW,
+                        currentPrice,
+                        quantity: a.quantity,
+                        dividendPerShare,
+                        dividendRate,
+                        totalAmount: tDividend
                     });
                 }
             });
@@ -590,28 +610,64 @@ export default function PortfolioSummaryBlock() {
                                 <div className="text-sm font-bold text-yellow-500 mb-4 flex items-center gap-2">
                                     <Coins size={16} /> 상세 누적 배당금 구성내역 ({dividendGains.count}종목)
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
-                                    {dividendGains.items.map((item, idx) => (
-                                        <div key={idx} className="flex items-center justify-between bg-[#252525] hover:bg-[#2a2a2a] transition-colors rounded-lg p-3.5 border border-[#333] hover:border-yellow-500/30">
-                                            <div className="flex-1 min-w-0 flex items-center gap-3">
-                                                <span className="text-xs font-black text-yellow-500/50 w-4 shrink-0">{idx + 1}</span>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="text-sm font-bold text-gray-200 truncate">{item.name}</div>
-                                                    <div className="text-[10px] text-gray-500 truncate mt-0.5">{item.symbol} | {item.category}</div>
-                                                </div>
-                                            </div>
-                                            <div className="text-right ml-4 shrink-0">
-                                                <div className="text-sm font-black text-yellow-500">
-                                                    {fmtValue(item.dividendInKrw, 'kr')}
-                                                </div>
-                                                {item.category === 'US' && item.dividendInUsd > 0 && (
-                                                    <div className="text-[10px] text-yellow-500/60 font-medium mt-0.5 tracking-tight">
-                                                        +${(item.dividendInUsd).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div className="overflow-x-auto hide-scrollbar">
+                                    <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap min-w-[600px]">
+                                        <thead>
+                                            <tr className="border-b border-[#333] text-gray-500">
+                                                <th className="pb-3 font-semibold px-2">종목</th>
+                                                <th className="pb-3 text-right font-semibold px-2">현재 가격</th>
+                                                <th className="pb-3 text-right font-semibold px-2">수량</th>
+                                                <th className="pb-3 text-right font-semibold px-2">주당 배당금</th>
+                                                <th className="pb-3 text-right font-semibold px-2">배당률</th>
+                                                <th className="pb-3 text-right font-semibold px-2">총액</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[#222]">
+                                            {dividendGains.items.map((item, idx) => (
+                                                <tr key={idx} className="hover:bg-yellow-500/5 transition-colors group">
+                                                    <td className="py-3 px-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-black text-yellow-500/30 w-3 inline-block">{idx + 1}</span>
+                                                            <div>
+                                                                <div className="font-bold text-gray-200">{item.name}</div>
+                                                                <div className="text-[10px] text-gray-500">{item.symbol} | {item.category}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 text-right px-2">
+                                                        <div className="text-gray-300 font-medium">
+                                                            {item.category === 'US' ? `$${item.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${item.currentPrice.toLocaleString()}원`}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 text-right px-2">
+                                                        {item.quantity > 0 ? (
+                                                            <div className="text-gray-300 font-medium">{item.quantity.toLocaleString()}주</div>
+                                                        ) : (
+                                                            <div className="text-[10px] bg-[#333] text-gray-400 px-1.5 py-0.5 rounded w-fit ml-auto">거래완료</div>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 text-right px-2">
+                                                        <div className="text-gray-300 font-medium">
+                                                            {item.category === 'US' ? `$${item.dividendPerShare.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${item.dividendPerShare.toLocaleString()}원`}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 text-right px-2">
+                                                        <div className="text-yellow-500/80 font-bold">{item.dividendRate > 0 ? `${item.dividendRate.toFixed(2)}%` : '-'}</div>
+                                                    </td>
+                                                    <td className="py-3 text-right px-2">
+                                                        <div className="text-yellow-500 font-black">
+                                                            {item.category === 'US' ? `$${item.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${item.totalAmount.toLocaleString()}원`}
+                                                        </div>
+                                                        {item.category === 'US' && item.dividendInUsd > 0 && (
+                                                            <div className="text-[10px] text-yellow-500/60 font-medium mt-0.5">
+                                                                {fmtValue(item.dividendInKrw, 'kr')}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         )}
