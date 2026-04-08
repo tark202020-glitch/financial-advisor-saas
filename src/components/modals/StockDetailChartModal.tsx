@@ -459,15 +459,15 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
     };
 
     const handleSaveTrade = async () => {
-        if (!newTrade.price || (newTrade.type !== 'DIVIDEND' && !newTrade.quantity)) {
-            alert('가격과 수량(배당금 제외)을 모두 입력해주세요.');
+        if (!newTrade.price || !newTrade.quantity) {
+            alert('가격(주당 배당금)과 수량을 모두 입력해주세요.');
             return;
         }
         const tradeData = {
             date: newTrade.date,
             type: newTrade.type,
             price: Number(newTrade.price),
-            quantity: newTrade.type === 'DIVIDEND' && !newTrade.quantity ? 1 : Number(newTrade.quantity),
+            quantity: Number(newTrade.quantity),
             kospiIndex: newTrade.kospiIndex ? Number(newTrade.kospiIndex) : undefined,
             memo: newTrade.memo
         };
@@ -1031,11 +1031,20 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-[10px] text-gray-500 mb-1 block">가격</label>
+                                    <label className="text-[10px] text-gray-500 mb-1 block">
+                                        {newTrade.type === 'DIVIDEND' ? '주당 배당금' : '가격'}
+                                    </label>
                                     <input type="number" placeholder="0" value={newTrade.price} onChange={e => setNewTrade({ ...newTrade, price: e.target.value })} className="w-full h-9 px-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs" />
                                 </div>
-                                <div>
-                                    <label className="text-[10px] text-gray-500 mb-1 block">수량</label>
+                                <div className="relative">
+                                    <label className="text-[10px] text-gray-500 mb-1 flex justify-between">
+                                        <span>수량</span>
+                                        {newTrade.type === 'DIVIDEND' && newTrade.price && newTrade.quantity && (
+                                            <span className="text-yellow-500 font-bold ml-1 hidden lg:inline">
+                                                총 {formatPrice(Number(newTrade.price) * Number(newTrade.quantity))}
+                                            </span>
+                                        )}
+                                    </label>
                                     <input type="number" placeholder="0" value={newTrade.quantity} onChange={e => setNewTrade({ ...newTrade, quantity: e.target.value })} className="w-full h-9 px-2 rounded-lg bg-[#121212] border border-[#333] text-white text-xs" />
                                 </div>
                                 <div className="col-span-2">
@@ -1095,6 +1104,7 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-white text-base">{formatPrice(trade.price)}</span>
                                                         <span className="text-gray-500 text-sm">x {trade.quantity}</span>
+                                                        {trade.type === 'DIVIDEND' && <span className="text-sm font-bold text-yellow-400 ml-2">= {formatPrice(trade.price * trade.quantity)}</span>}
                                                     </div>
                                                     <div className="text-[10px] text-gray-500 font-mono">
                                                         지수: {trade.kospiIndex ? Number(trade.kospiIndex).toLocaleString() : (kospiMap[trade.date] ? Number(kospiMap[trade.date]).toLocaleString() : '-')}
@@ -1115,8 +1125,11 @@ export default function StockDetailModal({ isOpen, onClose, asset, viewOnly = fa
                                                         {trade.type === 'BUY' ? '매수' : trade.type === 'SELL' ? '매도' : '배당'}
                                                     </span>
                                                 </div>
-                                                <div className="font-medium text-white">{formatPrice(trade.price)}</div>
-                                                <div className="text-gray-500 font-mono text-[10px]">
+                                                <div className="font-medium text-white">
+                                                    {formatPrice(trade.price)}
+                                                    {trade.type === 'DIVIDEND' && <span className="text-[9px] text-yellow-500/80 block -mt-1">총 {formatPrice(trade.price * trade.quantity)}</span>}
+                                                </div>
+                                                <div className="text-gray-500 font-mono text-[10px] flex items-center">
                                                     {trade.kospiIndex ? (
                                                         <span>{Number(trade.kospiIndex).toLocaleString()}</span>
                                                     ) : (kospiMap[trade.date] ? (

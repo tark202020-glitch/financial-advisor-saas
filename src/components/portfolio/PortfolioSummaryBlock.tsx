@@ -296,6 +296,7 @@ export default function PortfolioSummaryBlock() {
             dividendPerShare: number;
             dividendRate: number;
             totalAmount: number;
+            tradeMemo: string;
         }[] = [];
 
         assets
@@ -309,6 +310,7 @@ export default function PortfolioSummaryBlock() {
                 const dividendTrades = (a.trades || []).filter(t => t.type === 'DIVIDEND');
                 const tDividend = dividendTrades.reduce((sum, t) => sum + (t.price * t.quantity), 0);
                 const dividendPerShare = dividendTrades.reduce((sum, t) => sum + t.price, 0);
+                const tradeMemo = Array.from(new Set(dividendTrades.map(t => t.memo).filter(m => m && m.trim() !== ''))).join(' / ');
                 
                 if (tDividend > 0) {
                     const exRate = exchangeRate || 1350;
@@ -330,7 +332,8 @@ export default function PortfolioSummaryBlock() {
                         quantity: a.quantity,
                         dividendPerShare,
                         dividendRate,
-                        totalAmount: tDividend
+                        totalAmount: tDividend,
+                        tradeMemo
                     });
                 }
             });
@@ -615,6 +618,7 @@ export default function PortfolioSummaryBlock() {
                                         <thead>
                                             <tr className="border-b border-[#333] text-gray-500">
                                                 <th className="pb-3 font-semibold px-2">종목</th>
+                                                <th className="pb-3 font-semibold px-2">메모</th>
                                                 <th className="pb-3 text-right font-semibold px-2">현재 가격</th>
                                                 <th className="pb-3 text-right font-semibold px-2">수량</th>
                                                 <th className="pb-3 text-right font-semibold px-2">주당 배당금</th>
@@ -632,6 +636,11 @@ export default function PortfolioSummaryBlock() {
                                                                 <div className="font-bold text-gray-200">{item.name}</div>
                                                                 <div className="text-[10px] text-gray-500">{item.symbol} | {item.category}</div>
                                                             </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-2">
+                                                        <div className="text-gray-400 text-xs max-w-[120px] truncate" title={item.tradeMemo}>
+                                                            {item.tradeMemo || '-'}
                                                         </div>
                                                     </td>
                                                     <td className="py-3 text-right px-2">
