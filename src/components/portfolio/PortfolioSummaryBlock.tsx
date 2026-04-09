@@ -2,7 +2,8 @@
 
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 import { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2, Coins, RefreshCw, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, CheckCircle2, Coins, RefreshCw, ChevronDown, Clock, Loader2 } from 'lucide-react';
+import { usePortfolioHistory } from '@/hooks/usePortfolioHistory';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { formatCurrency } from '@/utils/format';
 
@@ -196,6 +197,11 @@ export default function PortfolioSummaryBlock() {
 
     const [view, setView] = useState<ViewMode>('all');
     const [isDividendExpanded, setIsDividendExpanded] = useState(false);
+
+    // History Hooks
+    const { investmentHistory, valuationHistory, isLoading: isHistoryLoading } = usePortfolioHistory();
+    const [isInvestmentHistoryOpen, setIsInvestmentHistoryOpen] = useState(false);
+    const [isValuationHistoryOpen, setIsValuationHistoryOpen] = useState(false);
 
     const isLoading = isContextLoading || krLoading || usLoading || goldLoading;
     const hasError = krHasError || usHasError;
@@ -549,14 +555,26 @@ export default function PortfolioSummaryBlock() {
                         {/* 1. Overall Account Row (Top Full Width) */}
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                             {/* Total Purchase */}
-                            <div className="bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1">
-                                <div className="text-xs text-gray-500 mb-1">총 투자 금액</div>
+                            <div 
+                                className={`bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1 cursor-pointer transition-all ${isInvestmentHistoryOpen ? 'ring-2 ring-[#F7D047] bg-[#1a1a1a]' : 'hover:bg-[#1a1a1a]'}`}
+                                onClick={() => { setIsInvestmentHistoryOpen(!isInvestmentHistoryOpen); setIsValuationHistoryOpen(false); }}
+                            >
+                                <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
+                                    <span>총 투자 금액</span>
+                                    <Clock size={12} className={isInvestmentHistoryOpen ? "text-[#F7D047]" : "text-gray-600"} />
+                                </div>
                                 <div className="text-xl sm:text-2xl font-bold text-gray-200">{fmtValue(current.purchase, view)}</div>
                             </div>
 
                             {/* Total Valuation */}
-                            <div className="bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1">
-                                <div className="text-xs text-gray-500 mb-1">총 평가금액</div>
+                            <div 
+                                className={`bg-[#121212] rounded-xl p-5 border border-[#333] md:col-span-1 cursor-pointer transition-all ${isValuationHistoryOpen ? 'ring-2 ring-blue-500/50 bg-[#1a1a1a]' : 'hover:bg-[#1a1a1a]'}`}
+                                onClick={() => { setIsValuationHistoryOpen(!isValuationHistoryOpen); setIsInvestmentHistoryOpen(false); }}
+                            >
+                                <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
+                                    <span>총 평가금액</span>
+                                    <Clock size={12} className={isValuationHistoryOpen ? "text-blue-400" : "text-gray-600"} />
+                                </div>
                                 <div className="text-xl sm:text-2xl font-bold text-white">{fmtValue(current.valuation, view)}</div>
                             </div>
 
@@ -606,6 +624,87 @@ export default function PortfolioSummaryBlock() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* ===== History Expansion Blocks ===== */}
+                        {isInvestmentHistoryOpen && (
+                            <div className="bg-[#121212] border border-[#333] rounded-xl p-5 mb-6 animate-in slide-in-from-top-4 shadow-inner">
+                                <div className="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2">
+                                    <Clock size={16} className="text-[#F7D047]" /> 일자별 총 투자금액 증감 내역
+                                </div>
+                                {isHistoryLoading ? (
+                                    <div className="flex justify-center items-center py-6 text-gray-500"><Loader2 className="animate-spin" size={24} /></div>
+                                ) : investmentHistory.length > 0 ? (
+                                    <div className="overflow-x-auto hide-scrollbar">
+                                        <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap min-w-[500px]">
+                                            <thead>
+                                                <tr className="border-b border-[#333] text-gray-500">
+                                                    <th className="pb-3 font-semibold px-2">날짜</th>
+                                                    <th className="pb-3 text-right font-semibold px-2">투자금액</th>
+                                                    <th className="pb-3 text-right font-semibold px-2">전일대비 증감액</th>
+                                                    <th className="pb-3 font-semibold px-4">증가금액 사용처</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-[#222]">
+                                                {investmentHistory.map((row, idx) => (
+                                                    <tr key={idx} className="hover:bg-white/5 transition-colors group">
+                                                        <td className="py-3 px-2 text-gray-300 font-mono">{row.date}</td>
+                                                        <td className="py-3 px-2 text-right text-gray-200 font-bold">{formatCurrency(row.investmentAmount, 'KRW')}원</td>
+                                                        <td className={`py-3 px-2 text-right font-bold ${row.diffFromPrev > 0 ? 'text-red-400' : row.diffFromPrev < 0 ? 'text-blue-400' : 'text-gray-600'}`}>
+                                                            {row.diffFromPrev > 0 ? '+' : ''}{row.diffFromPrev === 0 ? '-' : `${formatCurrency(row.diffFromPrev, 'KRW')}원`}
+                                                        </td>
+                                                        <td className="py-3 px-4 text-gray-400 text-xs w-full whitespace-normal break-keep">
+                                                            {row.usageText}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-gray-500 py-6 text-xs">기록된 데이터가 없습니다. 매일 밤 9시 기준 첫 데이터가 첫 기록됩니다.</div>
+                                )}
+                            </div>
+                        )}
+
+                        {isValuationHistoryOpen && (
+                            <div className="bg-[#121212] border border-[#333] rounded-xl p-5 mb-6 animate-in slide-in-from-top-4 shadow-inner">
+                                <div className="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2">
+                                    <Clock size={16} className="text-blue-400" /> 일자별 총 평가금액 변동 요약
+                                </div>
+                                {isHistoryLoading ? (
+                                    <div className="flex justify-center items-center py-6 text-gray-500"><Loader2 className="animate-spin" size={24} /></div>
+                                ) : valuationHistory.length > 0 ? (
+                                    <div className="overflow-x-auto hide-scrollbar">
+                                        <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap min-w-[500px]">
+                                            <thead>
+                                                <tr className="border-b border-[#333] text-gray-500">
+                                                    <th className="pb-3 font-semibold px-2">날짜</th>
+                                                    <th className="pb-3 text-right font-semibold px-2">평가금액</th>
+                                                    <th className="pb-3 text-right font-semibold px-2">전일대비 증감액</th>
+                                                    <th className="pb-3 font-semibold px-4">증가금액 요약 (종목별)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-[#222]">
+                                                {valuationHistory.map((row, idx) => (
+                                                    <tr key={idx} className="hover:bg-white/5 transition-colors group">
+                                                        <td className="py-3 px-2 text-gray-300 font-mono">{row.date}</td>
+                                                        <td className="py-3 px-2 text-right text-gray-200 font-bold">{formatCurrency(row.valuationAmount, 'KRW')}원</td>
+                                                        <td className={`py-3 px-2 text-right font-bold ${row.diffFromPrev > 0 ? 'text-red-400' : row.diffFromPrev < 0 ? 'text-blue-400' : 'text-gray-600'}`}>
+                                                            {row.diffFromPrev > 0 ? '+' : ''}{row.diffFromPrev === 0 ? '-' : `${formatCurrency(row.diffFromPrev, 'KRW')}원`}
+                                                        </td>
+                                                        <td className="py-3 px-4 text-gray-400 text-xs w-full whitespace-normal break-keep">
+                                                            {row.summaryText}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-gray-500 py-6 text-xs">기록된 데이터가 없습니다. 매일 밤 9시 기준 첫 데이터가 첫 기록됩니다.</div>
+                                )}
+                            </div>
+                        )}
 
                         {/* 2. Dividend BreakDown Block (Expandable) */}
                         {isDividendExpanded && dividendGains.count > 0 && (
