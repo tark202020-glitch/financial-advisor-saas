@@ -90,9 +90,13 @@ export async function GET(request: NextRequest) {
             userPortfolios[p.user_id].push(p);
         }
 
-        // 6. KST 시간대 기준 오늘 날짜 구하기 (KST 9 PM이면 오늘 자정 이후)
-        // Vercel 서버는 주로 UTC 이므로 +9 Hours 보정
+        // 6. KST 시간대 기준 포트폴리오 기준 날짜 구하기
+        // Vercel 서버는 주기적인 UTC 동작하며 KST 보정을 위해 +9 시간 적용
+        // 단, 자정 이후(0시 ~ 6시)에 API가 늦게 실행되는 경우 전날의 스냅샷으로 기록합니다. (4월 10일 누락 방지)
         const kstDate = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        if (kstDate.getUTCHours() < 6) {
+            kstDate.setUTCDate(kstDate.getUTCDate() - 1);
+        }
         const kstDateString = kstDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
         // 7. 유저별 투자금/평가금/스냅샷 계산

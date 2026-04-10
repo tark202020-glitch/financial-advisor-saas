@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { usePortfolio } from '@/context/PortfolioContext';
 
@@ -25,7 +25,7 @@ export interface ValuationHistoryRow {
 }
 
 export function usePortfolioHistory() {
-    const { user, assets } = usePortfolio();
+    const { user, assets, exchangeRate } = usePortfolio();
     const [historyData, setHistoryData] = useState<PortfolioDailySnapshot[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -56,13 +56,40 @@ export function usePortfolioHistory() {
         fetchHistory();
     }, [user]);
 
+    // 과거 이력의 평가금과 투자금을 현재 환율(오늘 환율 기준)로 일괄 재계산
+    // 환율 변동으로 인한 투자금액 변동성을 제거하고 기준을 통일하기 위함
+    const processedHistory = useMemo(() => {
+        const currentExRate = exchangeRate || 1350;
+        return historyData.map(snap => {
+            let total_investment = 0;
+            let total_valuation = 0;
+            
+            if (snap.assets_snapshot && snap.assets_snapshot.length > 0) {
+                snap.assets_snapshot.forEach((asset: any) => {
+                    const exRateMultiplier = asset.category === 'US' ? currentExRate : 1;
+                    total_investment += asset.buy_price * asset.quantity * exRateMultiplier;
+                    total_valuation += asset.current_price * asset.quantity * exRateMultiplier;
+                });
+            } else {
+                total_investment = snap.total_investment;
+                total_valuation = snap.total_valuation;
+            }
+            
+            return {
+                ...snap,
+                total_investment,
+                total_valuation
+            };
+        });
+    }, [historyData, exchangeRate]);
+
     // 투자금액 히스토리 전처리 함수
     const getInvestmentHistory = (): InvestmentHistoryRow[] => {
         const rows: InvestmentHistoryRow[] = [];
         
-        for (let i = 0; i < historyData.length; i++) {
-            const current = historyData[i];
-            const prev = i > 0 ? historyData[i - 1] : null;
+        for (let i = 0; i < processedHistory.length; i++) {
+            const current = processedHistory[i];
+            const prev = i > 0 ? processedHistory[i - 1] : null;
             const diff = prev ? current.total_investment - prev.total_investment : 0;
             
             let usageText = '-';
@@ -107,9 +134,9 @@ export function usePortfolioHistory() {
     const getValuationHistory = (): ValuationHistoryRow[] => {
         const rows: ValuationHistoryRow[] = [];
         
-        for (let i = 0; i < historyData.length; i++) {
-            const current = historyData[i];
-            const prev = i > 0 ? historyData[i - 1] : null;
+        for (let i = 0; i < processedHistory.length; i++) {
+            const current = processedHistory[i];
+            const prev = i > 0 ? processedHistory[i - 1] : null;
             const diff = prev ? current.total_valuation - prev.total_valuation : 0;
             
             let summaryText = '-';
