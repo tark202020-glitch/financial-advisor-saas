@@ -57,25 +57,28 @@ export async function GET(request: NextRequest) {
         // 병렬 요청으로 인한 Rate Limit 회피를 위해 KIS Client 내부의 kisRateLimiter 가 동작함
         const fetchPromises = uniqueSymbols.map(async (symbol) => {
             const category = getMarketType(symbol);
-            try {
-                if (category === 'KR') {
-                    const cleanSymbol = symbol.replace('.KS', '');
-                    const res = await getDomesticPrice(cleanSymbol);
-                    priceMap[symbol] = parseFloat(res?.stck_prpr || '0');
-                } else if (category === 'US') {
-                    const res = await getOverseasPrice(symbol);
-                    priceMap[symbol] = parseFloat(res?.last || '0');
-                } else if (category === 'GOLD') {
-                    const res = await getGoldSpotPrice();
-                    priceMap[symbol] = parseFloat(res?.stck_prpr || '0');
-                }
-            } catch (err: any) {
-                console.error(`[Portfolio Snapshot] Price fetch failed for ${symbol}: ${err.message || err}`);
-                priceMap[symbol] = 0; // fallback
+            let price = 0;
+            if (category === 'KR') {
+                const cleanSymbol = symbol.replace('.KS', '');
+                const res = await getDomesticPrice(cleanSymbol);
+                price = parseFloat(res?.stck_prpr || '0');
+            } else if (category === 'US') {
+                const res = await getOverseasPrice(symbol);
+                price = parseFloat(res?.last || '0');
+            } else if (category === 'GOLD') {
+                const res = await getGoldSpotPrice();
+                price = parseFloat(res?.stck_prpr || '0');
             }
+            
+            if (!price || price === 0 || isNaN(price)) {
+                throw new Error(`실시간 가격 조회 실패: ${symbol}. 잘못된 가치 저장을 방지하기 위해 스냅샷 처리를 중단합니다.`);
+            }
+            
+            priceMap[symbol] = price;
         });
 
-        await Promise.allSettled(fetchPromises);
+        // 단 1개의 종목이라도 가격을 못 가져오면 전체 저장을 중단(throw)하여 평가금액 정보 훼손을 방지합니다.
+        await Promise.all(fetchPromises);
 
         // 4. 환율 동기화 (US 종목 자산가치 원화 환산용)
         let exchangeRate = 1350; // default fallback
@@ -117,8 +120,7 @@ export async function GET(request: NextRequest) {
 
             for (const p of ports) {
                 const category = getMarketType(p.symbol);
-                // 가져온 실시간 가격 없으면 본전(buy_price)Fallback 처리
-                const currentPrice = priceMap[p.symbol] || Number(p.buy_price); 
+                const currentPrice = priceMap[p.symbol]; // Promise.all 검증에 의해 정상가 보장
                 
                 const exRateMultiplier = (category === 'US') ? exchangeRate : 1;
                 
