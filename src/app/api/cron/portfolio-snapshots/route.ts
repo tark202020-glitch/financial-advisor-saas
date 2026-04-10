@@ -33,8 +33,16 @@ export async function GET(request: NextRequest) {
         const { data: portfolios, error } = await supabase.from('portfolios').select('*');
         if (error) throw error;
         
+        const isAdminKeySet = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+        const keyPrefix = process.env.SUPABASE_SERVICE_ROLE_KEY ? process.env.SUPABASE_SERVICE_ROLE_KEY.substring(0, 5) : 'none';
+
         if (!portfolios || portfolios.length === 0) {
-            return NextResponse.json({ success: true, message: "No portfolios found to snapshot.", elapsed_ms: Date.now() - startTime });
+            return NextResponse.json({ 
+                success: true, 
+                message: "No portfolios found to snapshot. Check RLS or Service Role Key.", 
+                debug: { isAdminKeySet, keyPrefix },
+                elapsed_ms: Date.now() - startTime 
+            });
         }
 
         // 2. 현재 보유중인 (quantity > 0) 포트폴리오만 식별 및 고유 Symbol 목록 추출
