@@ -137,7 +137,11 @@ export function usePortfolioHistory() {
         for (let i = 0; i < processedHistory.length; i++) {
             const current = processedHistory[i];
             const prev = i > 0 ? processedHistory[i - 1] : null;
-            const diff = prev ? current.total_valuation - prev.total_valuation : 0;
+            
+            const valuationDiff = prev ? current.total_valuation - prev.total_valuation : 0;
+            const investmentDiff = prev ? current.total_investment - prev.total_investment : 0;
+            // 순수 평가손익 = 종합 자산 변동액 - 투자 원금 변동액 (입출금)
+            const diff = prev ? valuationDiff - investmentDiff : 0;
             
             let summaryText = '-';
 

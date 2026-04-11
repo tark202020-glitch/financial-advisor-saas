@@ -477,6 +477,17 @@ export default function PortfolioSummaryBlock() {
     const isPositive = current.profit >= 0;
     const isRealizedPositive = realizedGains.totalProfit >= 0;
 
+    const augmentedValuationHistory = useMemo(() => {
+        if (isHistoryLoading) return [];
+        const todayRow = {
+            date: '오늘 (실시간)',
+            valuationAmount: current.valuation,
+            diffFromPrev: dailyAnalysis.totalDailyProfit,
+            summaryText: dailyAnalysis.hasData ? `실시간 시세 손익 (${dailyAnalysis.totalDailyProfit >= 0 ? '+' : ''}${formatCurrency(Math.abs(dailyAnalysis.totalDailyProfit), 'KRW')}원)` : '실시간 집계중...'
+        };
+        return [todayRow, ...valuationHistory];
+    }, [valuationHistory, current.valuation, dailyAnalysis, isHistoryLoading]);
+
     // Prepare chart data from categories
     const chartData = useMemo(() => {
         return Object.entries(summary.categories)
@@ -669,23 +680,23 @@ export default function PortfolioSummaryBlock() {
                         {isValuationHistoryOpen && (
                             <div className="bg-[#121212] border border-[#333] rounded-xl p-5 mb-6 animate-in slide-in-from-top-4 shadow-inner">
                                 <div className="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2">
-                                    <Clock size={16} className="text-blue-400" /> 일자별 총 평가금액 변동 요약
+                                    <Clock size={16} className="text-blue-400" /> 일자별 평가손익 및 자산 변동 요약
                                 </div>
                                 {isHistoryLoading ? (
                                     <div className="flex justify-center items-center py-6 text-gray-500"><Loader2 className="animate-spin" size={24} /></div>
-                                ) : valuationHistory.length > 0 ? (
+                                ) : augmentedValuationHistory.length > 0 ? (
                                     <div className="overflow-x-auto hide-scrollbar">
                                         <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap min-w-[500px]">
                                             <thead>
                                                 <tr className="border-b border-[#333] text-gray-500">
                                                     <th className="pb-3 font-semibold px-2">날짜</th>
-                                                    <th className="pb-3 text-right font-semibold px-2">평가금액</th>
-                                                    <th className="pb-3 text-right font-semibold px-2">전일대비 증감액</th>
-                                                    <th className="pb-3 font-semibold px-4">증가금액 요약 (종목별)</th>
+                                                    <th className="pb-3 text-right font-semibold px-2">총 평가금액</th>
+                                                    <th className="pb-3 text-right font-semibold px-2 text-blue-300/80">순수 시세손익(전일비)</th>
+                                                    <th className="pb-3 font-semibold px-4">등락 요약</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-[#222]">
-                                                {valuationHistory.map((row, idx) => (
+                                                {augmentedValuationHistory.map((row, idx) => (
                                                     <tr key={idx} className="hover:bg-white/5 transition-colors group">
                                                         <td className="py-3 px-2 text-gray-300 font-mono">{row.date}</td>
                                                         <td className="py-3 px-2 text-right text-gray-200 font-bold">{formatCurrency(row.valuationAmount, 'KRW')}원</td>
