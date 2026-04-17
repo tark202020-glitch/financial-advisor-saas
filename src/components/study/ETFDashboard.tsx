@@ -70,10 +70,11 @@ interface CandleData {
 }
 
 const CATEGORY_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-    ai: { label: 'AI·테크', color: 'text-blue-400', bg: 'bg-blue-900/30 border-blue-800' },
-    strategy: { label: '전략', color: 'text-purple-400', bg: 'bg-purple-900/30 border-purple-800' },
+    ai: { label: 'AI', color: 'text-blue-400', bg: 'bg-blue-900/30 border-blue-800' },
     dividend: { label: '배당', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border-emerald-800' },
-    custom: { label: '직접추가', color: 'text-amber-400', bg: 'bg-amber-900/30 border-amber-800' },
+    energy: { label: '에너지', color: 'text-orange-400', bg: 'bg-orange-900/30 border-orange-800' },
+    index: { label: '지수', color: 'text-indigo-400', bg: 'bg-indigo-900/30 border-indigo-800' },
+    custom: { label: '기타', color: 'text-amber-400', bg: 'bg-amber-900/30 border-amber-800' },
 };
 
 export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
