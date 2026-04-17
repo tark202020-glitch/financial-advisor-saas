@@ -51,33 +51,71 @@ export async function GET(request: NextRequest) {
         
         console.log(`[Portfolio Snapshot] Found ${activePortfolios.length} active assets across users. Unique symbols: ${uniqueSymbols.length}`);
 
+        // 2.5. 어제자 가격 조회를 위한 fallback 가격맵 구축
+        const { data: recentHistory } = await supabase
+            .from('portfolio_daily_history')
+            .select('assets_snapshot')
+            .order('record_date', { ascending: false });
+
+        const fallbackPriceMap: Record<string, number> = {};
+        if (recentHistory) {
+            for (const row of recentHistory) {
+                if (row.assets_snapshot) {
+                    for (const asset of row.assets_snapshot) {
+                        if (asset.current_price && !fallbackPriceMap[asset.symbol]) {
+                            fallbackPriceMap[asset.symbol] = asset.current_price;
+                        }
+                    }
+                }
+            }
+        }
+
         // 3. KIS API 호출하여 전 종목 현재가(또는 주간장 마감가) 가져오기
         const priceMap: Record<string, number> = {};
+        const failedSymbols: string[] = [];
         
         // 병렬 요청으로 인한 Rate Limit 회피를 위해 KIS Client 내부의 kisRateLimiter 가 동작함
         const fetchPromises = uniqueSymbols.map(async (symbol) => {
             const category = getMarketType(symbol);
             let price = 0;
-            if (category === 'KR') {
-                const cleanSymbol = symbol.replace('.KS', '');
-                const res = await getDomesticPrice(cleanSymbol);
-                price = parseFloat(res?.stck_prpr || '0');
-            } else if (category === 'US') {
-                const res = await getOverseasPrice(symbol);
-                price = parseFloat(res?.last || '0');
-            } else if (category === 'GOLD') {
-                const res = await getGoldSpotPrice();
-                price = parseFloat(res?.stck_prpr || '0');
+            let success = false;
+            
+            for (let attempt = 1; attempt <= 2; attempt++) {
+                try {
+                    if (category === 'KR') {
+                        const cleanSymbol = symbol.replace('.KS', '');
+                        const res = await getDomesticPrice(cleanSymbol);
+                        price = parseFloat(res?.stck_prpr || '0');
+                    } else if (category === 'US') {
+                        const res = await getOverseasPrice(symbol);
+                        price = parseFloat(res?.last || '0');
+                    } else if (category === 'GOLD') {
+                        const res = await getGoldSpotPrice();
+                        price = parseFloat(res?.stck_prpr || '0');
+                    }
+                    
+                    if (price > 0 && !isNaN(price)) {
+                        success = true;
+                        break;
+                    }
+                } catch (e: any) {
+                    console.warn(`[Portfolio Snapshot] fetch attempt ${attempt} failed for ${symbol}: ${e.message}`);
+                }
+                
+                if (attempt < 2) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
             }
             
-            if (!price || price === 0 || isNaN(price)) {
-                throw new Error(`실시간 가격 조회 실패: ${symbol}. 잘못된 가치 저장을 방지하기 위해 스냅샷 처리를 중단합니다.`);
+            if (success) {
+                priceMap[symbol] = price;
+            } else {
+                console.error(`[Portfolio Snapshot] 실시간 가격 조회 최종 실패: ${symbol}. 전일 가격으로 Fallback을 시도합니다.`);
+                failedSymbols.push(symbol);
+                priceMap[symbol] = fallbackPriceMap[symbol] || 0;
             }
-            
-            priceMap[symbol] = price;
         });
 
-        // 단 1개의 종목이라도 가격을 못 가져오면 전체 저장을 중단(throw)하여 평가금액 정보 훼손을 방지합니다.
         await Promise.all(fetchPromises);
 
         // 4. 환율 동기화 (US 종목 자산가치 원화 환산용)
@@ -120,7 +158,12 @@ export async function GET(request: NextRequest) {
 
             for (const p of ports) {
                 const category = getMarketType(p.symbol);
-                const currentPrice = priceMap[p.symbol]; // Promise.all 검증에 의해 정상가 보장
+                const isFailed = failedSymbols.includes(p.symbol);
+                
+                let currentPrice = priceMap[p.symbol];
+                if (currentPrice === 0) {
+                     currentPrice = Number(p.buy_price); // final extreme fallback (if past history is missing too)
+                }
                 
                 const exRateMultiplier = (category === 'US') ? exchangeRate : 1;
                 
@@ -139,7 +182,8 @@ export async function GET(request: NextRequest) {
                     buy_price: Number(p.buy_price),
                     current_price: currentPrice,
                     invested_krw: investedKrw,
-                    valuation_krw: valuationKrw
+                    valuation_krw: valuationKrw,
+                    is_failed: isFailed
                 });
             }
 

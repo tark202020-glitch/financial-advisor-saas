@@ -151,10 +151,15 @@ export function usePortfolioHistory() {
                 const currMap = new Map(current.assets_snapshot.map(a => [a.symbol, a]));
                 
                 const changes: { name: string, changeAmt: number }[] = [];
+                const failed: string[] = [];
                 
                 currMap.forEach((currAsset, symbol) => {
+                    if (currAsset.is_failed) {
+                        failed.push(currAsset.name);
+                        return; // 실패한 에셋은 평가 변동액 계산에서 스킵
+                    }
                     const prevAsset = prevMap.get(symbol);
-                    if (prevAsset) {
+                    if (prevAsset && !prevAsset.is_failed) {
                         const amtDiff = currAsset.valuation_krw - prevAsset.valuation_krw;
                         if (Math.abs(amtDiff) > 100) { // 미세변동 무시
                             changes.push({ name: currAsset.name, changeAmt: amtDiff });
@@ -168,6 +173,14 @@ export function usePortfolioHistory() {
                 // 변동폭 큰 순서대로 내림차순 정렬 (절댓값 기준 상위 노출)
                 changes.sort((a, b) => Math.abs(b.changeAmt) - Math.abs(a.changeAmt));
                 
+                const summaryParts: string[] = [];
+
+                if (failed.length > 0) {
+                     // 실패 종목 알림 (최대 2개 표기, 나머지는 외 N종목)
+                     const failedText = failed.slice(0, 2).join(', ') + (failed.length > 2 ? ` 외 ${failed.length - 2}종목` : '');
+                     summaryParts.push(`⚠️ ${failedText} (조회실패-전일가격유지)`);
+                }
+
                 if (changes.length > 0) {
                     // 최대 3개까지만 요약
                     const topChanges = changes.slice(0, 3).map(c => {
@@ -176,10 +189,15 @@ export function usePortfolioHistory() {
                         return `${c.name}(${mark}${absM}만)`;
                     });
                     
-                    summaryText = topChanges.join(', ');
+                    let partsText = topChanges.join(', ');
                     if (changes.length > 3) {
-                        summaryText += ` 등 ${changes.length}종목 변동`;
+                        partsText += ` 외 ${changes.length - 3}종목`;
                     }
+                    summaryParts.push(partsText);
+                }
+                
+                if (summaryParts.length > 0) {
+                    summaryText = summaryParts.join(' | ');
                 }
             }
 
