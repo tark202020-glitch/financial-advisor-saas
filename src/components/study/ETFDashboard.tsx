@@ -266,6 +266,29 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
         }
     };
 
+    // ────────────── 카테고리 수정 ──────────────
+    const handleCategoryChange = async (newCategory: string) => {
+        if (!selectedETF) return;
+        try {
+            const res = await fetch('/api/etf/select-active', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol: selectedETF.symbol, category: newCategory }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setSelectedETF(prev => prev ? { ...prev, category: newCategory } : null);
+                setTrackedETFs(prev =>
+                    prev.map(etf => etf.symbol === selectedETF.symbol ? { ...etf, category: newCategory } : etf)
+                );
+            } else {
+                alert('카테고리 수정 실패: ' + data.error);
+            }
+        } catch (e) {
+            alert('카테고리 수정 중 오류 발생');
+        }
+    };
+
     // ────────────── ETF 상세 조회 ──────────────
     const handleSelectETF = async (etf: TrackedETF) => {
         setSelectedETF(etf);
@@ -590,6 +613,17 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                                     {snapshotDate && (
                                         <span className="text-xs text-gray-600">스냅샷: {snapshotDate}</span>
                                     )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        value={selectedETF.category || 'custom'}
+                                        onChange={(e) => handleCategoryChange(e.target.value)}
+                                        className="bg-[#2A2A2A] border border-[#444] rounded px-2 py-1 text-xs text-gray-200 outline-none focus:border-[#F7D047] transition-colors cursor-pointer"
+                                    >
+                                        {Object.entries(CATEGORY_LABELS).map(([key, cfg]) => (
+                                            <option key={key} value={key}>{cfg.label}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
