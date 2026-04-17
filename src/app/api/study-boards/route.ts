@@ -37,7 +37,8 @@ export async function PUT(request: Request) {
 
         // Authorization check: Must be admin
         const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user || user.email !== 'tark202020@gmail.com') {
+        const adminEmails = ['tark202020@gmail.com', 'tark2020@naver.com'];
+        if (authError || !user || !user.email || !adminEmails.includes(user.email)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -75,7 +76,8 @@ export async function DELETE(request: Request) {
 
         // Authorization check: Must be admin
         const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user || user.email !== 'tark202020@gmail.com') {
+        const adminEmails = ['tark202020@gmail.com', 'tark2020@naver.com'];
+        if (authError || !user || !user.email || !adminEmails.includes(user.email)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -110,7 +112,8 @@ export async function POST(request: Request) {
 
         // Authorization check: Must be admin
         const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user || user.email !== 'tark202020@gmail.com') {
+        const adminEmails = ['tark202020@gmail.com', 'tark2020@naver.com'];
+        if (authError || !user || !user.email || !adminEmails.includes(user.email)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

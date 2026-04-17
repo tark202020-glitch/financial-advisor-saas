@@ -322,7 +322,8 @@ export async function POST(request: NextRequest) {
         // 보안: 호출자가 올바른 관리자인지 확인
         const supabaseAuth = await createClient();
         const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-        if (authError || !user || user.email !== 'tark202020@gmail.com') {
+        const adminEmails = ['tark202020@gmail.com', 'tark2020@naver.com'];
+        if (authError || !user || !user.email || !adminEmails.includes(user.email)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

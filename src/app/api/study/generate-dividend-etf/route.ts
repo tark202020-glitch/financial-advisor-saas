@@ -2,24 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
 import { getDividendRateRanking, getKsdinfoDividend, getEtfPrice, getStockInfo } from "@/lib/kis/client";
 import { fetchDividendDisclosures } from "@/lib/opendart";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 import fs from 'fs';
 import path from 'path';
 
 export const maxDuration = 60; // Allow 60 seconds execution limit
-
-// 커버드콜 ETF 필터링 키워드
-const COVERED_CALL_KEYWORDS = ['커버드콜', '커버드', 'COVERED', 'CC', '프리미엄', 'PREMIUM', '인컴', 'INCOME', '채권', '미국'];
-
-// 원하는 키워드 및 식별용 브랜드
-const TARGET_KEYWORDS = ['배당', '액티브', '보험', '은행'];
-const ETF_BRANDS = [
-    'KODEX', 'TIGER', 'KBSTAR', 'RISE', 'ARIRANG', 'HANARO', 'ACE', 'SOL', 
-    'TIMEFOLIO', 'TIME KOREA', 'TIME', 'PLUS', 'WOORI', '마이티', 'KOSEF', '히어로즈', 
-    'KOACT', 'BNK', 'HK', 'NAVIGATOR', '파워', 'TREX',
-    'KIWOOM', 'DAISHIN', 'TRUSTON', 'FOCUS', 'ITF', 'UNICORN', 'VITA', 'WON',
-    '신한', '마이다스', '에셋플러스', '더제이',
-];
 
 function formatNumber(num: number): string {
     return num.toLocaleString('ko-KR');
@@ -35,9 +23,13 @@ export async function POST(req: NextRequest) {
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-        if (authError || !user || user.email !== 'tark202020@gmail.com') {
+        const adminEmails = ['tark202020@gmail.com', 'tark2020@naver.com'];
+        if (authError || !user || !user.email || !adminEmails.includes(user.email)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+
+        const body = await req.json();
+        const userPrompt = body.prompt || '';
 
         const now = new Date();
         const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -45,7 +37,6 @@ export async function POST(req: NextRequest) {
         const displayDate = kstNow.toISOString().slice(0, 10);
         const displayTime = kstNow.toISOString().slice(11, 16);
 
-        // 기준일 범위
         const twoYearsAgo = new Date(kstNow);
         twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
         const fromDate = twoYearsAgo.toISOString().slice(0, 10).replace(/-/g, '');
@@ -53,8 +44,37 @@ export async function POST(req: NextRequest) {
         console.log(`\n▶ [배당ETF분석] 시작`);
 
         // ====================================================================
-        // 1. 배당 ETF 파싱 및 데이터 확보 (동적 추출)
-        // json 파일에서 키워드가 포함된 ETF 종목을 동적으로 필터링하여 후보군으로 구성합니다.
+        // 1. LLM Step 1: Extract Filter Config
+        // ====================================================================
+        const apiKey = process.env.GEMINI_API_KEY || '';
+        let includeKeywords = ['배당'];
+        let excludeKeywords: string[] = [];
+        let topLimit = 10;
+
+        if (apiKey && userPrompt) {
+            try {
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                const extractPrompt = `넌 ETF 필터 설정 추출기야. 사용자의 프롬프트를 분석해서 반드시 순수 JSON 형태(문자열 블록 \`\`\`json 등이 없는 형태)로만 응답해.
+형식: {"includeKeywords": ["키워드1", "키워드2"], "excludeKeywords": ["제외어1"], "topLimit": 10}
+- 프롬프트에 포함되어야 할 종목 키워드(예: 배당, 리츠)를 includeKeywords 로 뽑아. 명시되지 않았다면 ["배당"]으로 해.
+- 제외해야 하는 키워드(예: 커버드콜 제외 -> ["커버드콜", "커버드"])가 있다면 excludeKeywords 로 뽑아. 없으면 [].
+- 상위 N개를 뽑으라는 지시(예: 상위 30개)가 있다면 topLimit을 그 숫자로 설정해. (최대 50)
+- 사용자 프롬프트: ${userPrompt}`;
+                const result = await model.generateContent(extractPrompt);
+                const text = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
+                const config = JSON.parse(text);
+                if (config.includeKeywords && Array.isArray(config.includeKeywords)) includeKeywords = config.includeKeywords;
+                if (config.excludeKeywords && Array.isArray(config.excludeKeywords)) excludeKeywords = config.excludeKeywords;
+                if (typeof config.topLimit === 'number') topLimit = Math.min(config.topLimit, 50); // 안전장치 최대 50
+                console.log(`  [LLM] 파싱된 필터 설정:`, config);
+            } catch (e) {
+                console.error("  [LLM] 필터 추출 실패 (기본값 사용):", e);
+            }
+        }
+
+        // ====================================================================
+        // 2. 배당 ETF 파싱 및 데이터 확보 (동적 추출)
         // ====================================================================
         let matchedEtfs: { code: string, name: string }[] = [];
         try {
@@ -63,245 +83,160 @@ export async function POST(req: NextRequest) {
                 const rawData = fs.readFileSync(unifiedPath, 'utf-8');
                 const allStocks = JSON.parse(rawData);
 
+                const ETF_BRANDS = ['KODEX', 'TIGER', 'KBSTAR', 'RISE', 'ARIRANG', 'HANARO', 'ACE', 'SOL', 'TIMEFOLIO', 'PLUS', 'WOORI', 'KOSEF', '히어로즈', 'KOACT', 'BNK', 'NAVIGATOR', '파워', 'KIWOOM', 'DAISHIN', 'TRUSTON', 'FOCUS', 'ITF', 'UNICORN', 'WON', '신한', '마이다스', '에셋플러스'];
+
                 matchedEtfs = allStocks.filter((stock: any) => {
                     if (!stock.name) return false;
                     const nameUpper = stock.name.toUpperCase();
                     
-                    // 1. 필수 키워드 포함 확인 ('배당', '액티브', '보험', '은행')
-                    const hasKeyword = TARGET_KEYWORDS.some(kw => nameUpper.includes(kw.toUpperCase()));
-                    if (!hasKeyword) return false;
-
-                    // 2. 커버드콜 종목 필터링 제외
-                    const hasExclude = COVERED_CALL_KEYWORDS.some(kw => nameUpper.includes(kw.toUpperCase()));
-                    if (hasExclude) return false;
-
-                    // 3. ETF 브랜드명 확인하여 일반 주식 혼입 방지
                     const isEtf = ETF_BRANDS.some(brand => nameUpper.includes(brand.toUpperCase()));
-                    return isEtf;
+                    if (!isEtf) return false;
+
+                    const hasInclude = includeKeywords.some(kw => nameUpper.includes(kw.toUpperCase()));
+                    if (includeKeywords.length > 0 && !hasInclude) return false;
+
+                    const hasExclude = excludeKeywords.some(kw => nameUpper.includes(kw.toUpperCase()));
+                    if (excludeKeywords.length > 0 && hasExclude) return false;
+
+                    return true;
                 }).map((stock: any) => ({ code: stock.symbol, name: stock.name }));
-            } else {
-                console.warn("[경고] all_stocks_master.json 파일을 찾을 수 없습니다.");
             }
         } catch (error) {
             console.error("[에러] ETF 후보군 파싱 중 오류 발생:", error);
         }
 
-        console.log(`  [1단계] 동적 ETF 후보군 ${matchedEtfs.length}개 파싱 및 설정 완료`);
+        console.log(`  [2단계] 동적 ETF 후보군 ${matchedEtfs.length}개 파싱 완료`);
+
+        // 후보군이 너무 많으면 KIS API가 제한되므로 무작위 추출 또는 단순 커팅
+        if (matchedEtfs.length > 60) matchedEtfs = matchedEtfs.slice(0, 60);
 
         // ====================================================================
-        // 2. ETF 정보 및 현재가 조회 (Chunk 병렬 처리로 속도 개선)
+        // 3. ETF 정보 및 현재가 조회
         // ====================================================================
-        console.log(`  [2단계] ETF 현재가 및 정보 조회 시작... (대상: ${matchedEtfs.length}개)`);
-
-        interface EtfCandidate {
-            code: string;
-            name: string;
-            price: number;
-            dividendCycle: string;
-        }
-
+        interface EtfCandidate { code: string; name: string; price: number; dividendCycle: string; }
         const etfCandidates: EtfCandidate[] = [];
         
-        // KIS API 초당 호출 제한(20건/초)을 고려하여 15개씩 청크 단위로 병렬 처리
         const chunkSize = 15;
         for (let i = 0; i < matchedEtfs.length; i += chunkSize) {
             const chunk = matchedEtfs.slice(i, i + chunkSize);
-            
             const chunkResults = await Promise.all(
                 chunk.map(async (item) => {
                     try {
                         const etfData = await getEtfPrice(item.code);
                         if (!etfData || !etfData.stck_prpr) return null;
-
                         const price = parseInt(etfData.stck_prpr || '0');
                         if (price <= 0) return null;
-
-                        return {
-                            code: item.code,
-                            name: item.name,
-                            price,
-                            dividendCycle: etfData.etf_dvdn_cycl || '-',
-                        } as EtfCandidate;
-                    } catch (e) {
-                        return null;
-                    }
+                        return { code: item.code, name: item.name, price, dividendCycle: etfData.etf_dvdn_cycl || '-' } as EtfCandidate;
+                    } catch (e) { return null; }
                 })
             );
-
-            // 유효한 결과만 추가
-            chunkResults.forEach(res => {
-                if (res) etfCandidates.push(res);
-            });
-            
-            // 청크 간 딜레이 최소화 (Vercel 60초 타임아웃 방지)
-            if (i + chunkSize < matchedEtfs.length) {
-                await new Promise(r => setTimeout(r, 200)); 
-            }
+            chunkResults.forEach(res => { if (res) etfCandidates.push(res); });
+            if (i + chunkSize < matchedEtfs.length) await new Promise(r => setTimeout(r, 200)); 
         }
 
-        console.log(`  [2단계] 유효 ETF ${etfCandidates.length}개 확보 완료`);
-
         // ====================================================================
-        // 3. ETF 후보들의 실제 배당 이력 조회 → TOP10 선정 (Chunk 병렬 처리)
+        // 4. 배당 이력 조회 -> 수익률 산출
         // ====================================================================
-        console.log(`  [3단계] ETF 실제 배당 이력 조회 중...`);
         const etfResults: any[] = [];
-        const divChunkSize = 15; // 타임아웃 방지를 위해 청크 사이즈 확대
-
+        const divChunkSize = 15;
         for (let i = 0; i < etfCandidates.length; i += divChunkSize) {
             const chunk = etfCandidates.slice(i, i + divChunkSize);
-            
             const chunkDivResults = await Promise.all(
                 chunk.map(async (etf) => {
                     try {
-                        const actualDividends = await getKsdinfoDividend({
-                            gb1: '0',
-                            f_dt: fromDate,
-                            t_dt: todayStr,
-                            sht_cd: etf.code,
-                        });
-
+                        const actualDividends = await getKsdinfoDividend({ gb1: '0', f_dt: fromDate, t_dt: todayStr, sht_cd: etf.code });
                         if (!actualDividends || actualDividends.length === 0) return null;
-
-                        // 가장 최근 배당
-                        const sortedDividends = actualDividends
-                            .filter((d: any) => parseFloat(d.per_sto_divi_amt || '0') > 0)
-                            .sort((a: any, b: any) => (b.record_date || '').localeCompare(a.record_date || ''));
-
+                        const sortedDividends = actualDividends.filter((d: any) => parseFloat(d.per_sto_divi_amt || '0') > 0).sort((a: any, b: any) => (b.record_date || '').localeCompare(a.record_date || ''));
                         if (sortedDividends.length === 0) return null;
 
                         const latest = sortedDividends[0];
                         const actualAmount = parseFloat(latest.per_sto_divi_amt || '0');
-                        const dividendPayDate = latest.divi_pay_dt || latest.record_date || '';
-                        const recordDate = latest.record_date || '';
-
-                        // 수익률 = 실제 배당금 / 현재 종가 × 100
                         const yieldRate = (actualAmount / etf.price) * 100;
 
-                        // 배당 횟수 추정
-                        let frequency = '-';
-                        const cycle = etf.dividendCycle;
-                        if (cycle.includes('월')) frequency = '12회';
-                        else if (cycle.includes('분기')) frequency = '4회';
-                        else if (cycle.includes('반기')) frequency = '2회';
-                        else if (cycle.includes('연')) frequency = '1회';
-
-                        // 가상배당금
-                        const shares = Math.floor(10000000 / etf.price);
-                        const virtualDividend = shares * actualAmount;
-
                         return {
-                            code: etf.code,
-                            name: etf.name,
-                            price: etf.price,
+                            code: etf.code, name: etf.name, price: etf.price,
                             dividendAmount: actualAmount,
-                            dividendPayDate,
-                            recordDate,
+                            dividendPayDate: latest.divi_pay_dt || latest.record_date || '',
+                            recordDate: latest.record_date || '',
                             yieldRate,
-                            frequency,
-                            virtualDividend,
+                            frequency: etf.dividendCycle,
+                            virtualDividend: Math.floor(10000000 / etf.price) * actualAmount
                         };
-                    } catch (e) {
-                        return null;
-                    }
+                    } catch (e) { return null; }
                 })
             );
-
-            chunkDivResults.forEach(res => {
-                if (res) etfResults.push(res);
-            });
-            
-            if (i + divChunkSize < etfCandidates.length) {
-                await new Promise(r => setTimeout(r, 200)); 
-            }
+            chunkDivResults.forEach(res => { if (res) etfResults.push(res); });
+            if (i + divChunkSize < etfCandidates.length) await new Promise(r => setTimeout(r, 200)); 
         }
 
-        // 수익률 높은 순 재정렬 후 상위 10개 추출
         etfResults.sort((a, b) => b.yieldRate - a.yieldRate);
-        const top10Etfs = etfResults.slice(0, 10);
+        const finalTopEtfs = etfResults.slice(0, topLimit);
 
         // ====================================================================
-        // 4. 마크다운 생성
+        // 5. LLM Step 2: 프롬프트에 맞는 Markdown 렌더링
         // ====================================================================
-        let markdown = `# 배당ETF\n`;
-        markdown += `> 📅 작성일시: ${displayDate} ${displayTime} | 📊 데이터: KIS API 실시간 조회\n\n`;
-        markdown += `---\n\n`;
+        let markdown = '';
+        if (apiKey && userPrompt && finalTopEtfs.length > 0) {
+            console.log(`  [LLM] 사용자 프롬프트 기반 마크다운 작성 지시...`);
+            try {
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                const renderPrompt = `너는 전문 펀드 매니저 겸 애널리스트야. 사용자의 요청(프롬프트)과 백엔드 시스템이 실제 수집한 "제공된 ETF 데이터"를 결합하여 완벽한 마크다운 리포트를 작성해줘.
+데이터 상의 금액 및 수치는 있는 그대로 포맷팅해서 작성해야 하며 절대 임의로 상상해서 쓰지 마.
+데이터가 부족하면 있는 것만으로 작성해. 표는 사용자가 요청한 양식에 맞춰 그려줘.
 
-        markdown += `## 국내 ETF 배당 수익률 TOP 10 (커버드콜 제외, KOSDAQ 포함)\n\n`;
-        if (top10Etfs.length > 0) {
-            const avgRate = (top10Etfs.reduce((sum, s) => sum + s.yieldRate, 0) / top10Etfs.length).toFixed(2);
-            markdown += `> 배당수익률 상위 ETF 중 커버드콜을 제외하고, 실제 지급된 현금배당 내역을 확인하여 정리한 리포트입니다. 수익률은 현재 종가 대비로 산출하였습니다. (평균 ${avgRate}%)\n\n`;
+[사용자 요청 프롬프트]:
+${userPrompt}
 
-            markdown += `| 종목 | 종가 | 주당배당금 | 수익률 | 횟수 | 최근배당일 | 가상배당금 |\n`;
-            markdown += `|------|------|-----------|--------|------|-----------|----------|\n`;
-
-            for (const s of top10Etfs) {
-                const payDateFormatted = formatDate(s.dividendPayDate || s.recordDate);
-                markdown += `| ${s.name} | ${formatNumber(s.price)}원 | ${formatNumber(s.dividendAmount)}원 (${payDateFormatted}) | ${s.yieldRate.toFixed(2)}% | ${s.frequency} | ${formatDate(s.recordDate)} | ${formatNumber(Math.round(s.virtualDividend))}원 |\n`;
+[제공된 ETF 데이터 (상위 ${topLimit}개)]:
+${JSON.stringify(finalTopEtfs.map(e => ({...e, virtualDividend: Math.round(e.virtualDividend)})), null, 2)}`;
+                
+                const response = await model.generateContent(renderPrompt);
+                markdown = response.response.text();
+            } catch (e) {
+                console.error("  [LLM] 마크다운 렌더링 실패 (기본 양식 폴백):", e);
             }
-        } else {
-            markdown += `> 조회된 ETF 데이터가 없습니다.\n`;
         }
 
-        markdown += `\n---\n\n`;
+        // LLM이 마크다운 작성을 실패했거나 없으면 폴백으로 기본 마크다운 생성
+        if (!markdown) {
+            markdown = `# 배당ETF\n> 📅 작성일시: ${displayDate} ${displayTime}\n\n`;
+            if (finalTopEtfs.length > 0) {
+                markdown += `| 종목 | 종가 | 주당배당금 | 수익률 | 배당주기 | 최근배당일 | 가상배당금 |\n|------|------|-----------|--------|--------|-----------|----------|\n`;
+                for (const s of finalTopEtfs) {
+                    const payDateFmt = formatDate(s.dividendPayDate || s.recordDate);
+                    markdown += `| ${s.name} | ${formatNumber(s.price)}원 | ${formatNumber(s.dividendAmount)}원 (${payDateFmt}) | ${s.yieldRate.toFixed(2)}% | ${s.frequency} | ${formatDate(s.recordDate)} | ${formatNumber(Math.round(s.virtualDividend))}원 |\n`;
+                }
+            } else { markdown += `> 조회된 데이터가 없습니다.\n`; }
+        }
 
-        // ====================================================================
-        // 배당 관련 DART 공시 링크
-        // ====================================================================
-        markdown += `## 📋 배당 관련 공시\n\n`;
-
+        // 공시 정보 덧붙이기 (항상 작동)
+        markdown += `\n\n---\n## 📋 배당 관련 공시\n\n`;
         let hasAnyDisclosure = false;
-        for (const s of top10Etfs) {
+        for (const s of finalTopEtfs) {
             try {
                 const disclosures = await fetchDividendDisclosures(s.code);
                 if (disclosures.length > 0) {
                     hasAnyDisclosure = true;
                     markdown += `### ${s.name} (${s.code})\n`;
-                    for (const d of disclosures) {
-                        markdown += `- ${d.date} | [${d.title}](${d.url})\n`;
-                    }
+                    for (const d of disclosures) { markdown += `- ${d.date} | [${d.title}](${d.url})\n`; }
                     markdown += `\n`;
                 }
-            } catch (e) {
-                console.warn(`[공시조회] ${s.name} 실패:`, e);
-            }
+            } catch (e) {}
             await new Promise(r => setTimeout(r, 200));
         }
-
-        if (!hasAnyDisclosure) {
-            markdown += `> 최근 12개월 내 "배당" 관련 공시가 없습니다.\n`;
-        }
-
-        markdown += `\n---\n\n`;
-        markdown += `*본 리포트는 KIS(한국투자증권) API 실시간 데이터를 기반으로 자동 생성되었습니다.*\n`;
-        markdown += `*주당배당금은 가장 최근 실제 지급된 금액이며, 수익률은 현재 종가 대비로 산출했습니다.*\n`;
-        markdown += `*가상배당금은 1,000만원 투자 시 연간 예상 배당금입니다.*\n`;
-        markdown += `*공시 링크는 DART(전자공시시스템)에서 "배당" 키워드가 포함된 최신 공시입니다.*\n`;
+        if (!hasAnyDisclosure) markdown += `> 최근 12개월 내 "배당" 관련 최신 공시가 없습니다.\n`;
+        markdown += `\n---\n*본 리포트는 KIS API 실시간 데이터를 기반으로 AI가 작성했습니다.*\n`;
 
         // ====================================================================
-        // 5. Supabase 저장
+        // 6. DB 저장
         // ====================================================================
         const title = `배당ETF_${displayDate} ${displayTime}`;
+        const { error: insertError } = await supabase.from('study_boards').insert({ topic: 'dividend', title, content: markdown });
+        if (insertError) console.error('[배당ETF] 저장 실패:', insertError);
 
-        const { error: insertError } = await supabase
-            .from('study_boards')
-            .insert({ topic: 'dividend', title, content: markdown });
-
-        if (insertError) {
-            console.error('[배당ETF분석] Supabase 저장 실패:', insertError);
-        } else {
-            console.log(`[배당ETF분석] Supabase 저장 완료: ${title}`);
-        }
-
-        return NextResponse.json({
-            success: true,
-            content: markdown,
-            title,
-            stats: { etfs: etfResults.length },
-        });
-
+        return NextResponse.json({ success: true, content: markdown, title, stats: { etfs: etfResults.length } });
     } catch (err: any) {
-        console.error("API /study/generate-dividend-etf error:", err);
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }

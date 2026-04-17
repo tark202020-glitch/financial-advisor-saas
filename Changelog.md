@@ -1,3 +1,17 @@
+## [Alpha V1.357] - 2026-04-18 00:25:30
+
+### 🚀 Feature: 배당 / 배당ETF 데이터 추출 및 렌더링 AI 고도화 (Gemini 2-Step 파이프라인)
+- **Summary**: 하드코딩된 필터 조건을 지우고 입력된 프롬프트에 맞춰 1.조건 추출, 2.마크다운 생성 등을 Gemini AI가 수행하도록 고도화
+- **Detail**:
+  - `src/app/api/study/generate-dividend-etf/route.ts`:
+    - 기존 밴밴(커버드콜 등) 하드코딩 키워드 일괄 삭제
+    - Gemini 를 활용한 순수 JSON 조건/개수 필터 파서 적용
+    - 데이터 추출 후, 데이터를 다시 Gemini 프롬프트와 병합하여 사용자 맞춤형 마크다운 포맷 생성
+  - `src/app/api/study/generate-dividend/route.ts`:
+    - 기존 고정 상위 10건 반환 로직에서 사용자 프롬프트 기반 가변 개수 필터 적용
+    - ETF와 동일하게 실제 API 데이터를 바탕으로 Gemini 마크다운 자동 생성
+- **Build Time**: 2026-04-18 00:25:30
+
 ## [Alpha V1.356] - 2026-04-17 23:58:45
 
 ### ✨ Feature: 배당 분석 프롬프트 사용자 커스텀 설정 기능
