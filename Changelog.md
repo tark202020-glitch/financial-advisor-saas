@@ -1,3 +1,13 @@
+## [Alpha V1.356] - 2026-04-17 23:58:45
+
+### ✨ Feature: 배당 분석 프롬프트 사용자 커스텀 설정 기능
+- **Summary**: 배당주/배당ETF 생성에 사용되는 기본 프롬프트를 관리자가 직접 화면에서 수정 및 저장할 수 있는 기능 추가
+- **Detail**:
+  - `system_settings` 테이블 생성 미적용 시 대응 및 RLS 정책 갱신 (추가 이메일 권한 등록: `tark2020@naver.com`)
+  - `src/app/study/page.tsx`: 프롬프트 (배당주 / 배당ETF) 진입 통합 관리 및 편집 UI 구현
+  - `src/app/api/system-settings/route.ts`: 시스템 세팅값 동적 로딩 및 UPSERT 관리 API 신설
+- **Build Time**: 2026-04-17 23:58:45
+
 ## [Alpha V1.355] - 2026-04-17 22:54:15
 
 ### ✨ Refactor: ETF 분석기 카테고리 목록 리뉴얼

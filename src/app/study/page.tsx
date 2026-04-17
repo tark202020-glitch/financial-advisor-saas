@@ -142,7 +142,10 @@ export default function StudyPage() {
 
     // AI Generation state
     const [isPromptMode, setIsPromptMode] = useState<boolean>(false);
+    const [promptTarget, setPromptTarget] = useState<"dividend" | "dividend_etf">("dividend");
     const [dividendPrompt, setDividendPrompt] = useState<string>(DEFAULT_DIVIDEND_PROMPT);
+    const [dividendEtfPrompt, setDividendEtfPrompt] = useState<string>("[목표] 대한민국 배당 ETF TOP 10 수익률 리포트 작성");
+    const [isSavingPrompt, setIsSavingPrompt] = useState<boolean>(false);
 
     // Auth state
     const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -151,6 +154,7 @@ export default function StudyPage() {
 
     useEffect(() => {
         checkAdmin();
+        fetchPrompts();
     }, []);
 
     useEffect(() => {
@@ -159,8 +163,28 @@ export default function StudyPage() {
 
     const checkAdmin = async () => {
         const { data: { session } } = await supabase.auth.getSession();
-        if (session && session.user && session.user.email === 'tark202020@gmail.com') {
-            setIsAdmin(true);
+        if (session && session.user && session.user.email) {
+            const adminEmails = ['tark202020@gmail.com', 'tark2020@naver.com'];
+            if (adminEmails.includes(session.user.email)) {
+                setIsAdmin(true);
+            }
+        }
+    };
+
+    const fetchPrompts = async () => {
+        try {
+            const res = await fetch('/api/system-settings?keys=DIVIDEND_PROMPT,DIVIDEND_ETF_PROMPT');
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.data) {
+                    data.data.forEach((item: any) => {
+                        if (item.key_name === 'DIVIDEND_PROMPT' && item.key_value) setDividendPrompt(item.key_value);
+                        if (item.key_name === 'DIVIDEND_ETF_PROMPT' && item.key_value) setDividendEtfPrompt(item.key_value);
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load prompts', e);
         }
     };
 
@@ -326,23 +350,25 @@ export default function StudyPage() {
     };
 
     const handleGenerateDividend = async () => {
-        if (!dividendPrompt.trim()) {
+        const currentPrompt = promptTarget === 'dividend' ? dividendPrompt : dividendEtfPrompt;
+        if (!currentPrompt.trim()) {
             alert("프롬프트를 입력해주세요.");
             return;
         }
 
         setIsGenerating(true);
         try {
-            const res = await fetch("/api/study/generate-dividend", {
+            const apiUrl = promptTarget === 'dividend' ? "/api/study/generate-dividend" : "/api/study/generate-dividend-etf";
+            const res = await fetch(apiUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ prompt: dividendPrompt })
+                body: JSON.stringify({ prompt: currentPrompt })
             });
             const data = await res.json();
 
             if (res.ok && data.success) {
-                setContent(data.content);
-                setEditedContent(data.content);
+                setContent(data.content || data.boards?.[0]?.content || "생성 완료되었습니다.");
+                setEditedContent(data.content || data.boards?.[0]?.content || "생성 완료되었습니다.");
                 setIsPromptMode(false);
                 setSelectedFile(null); // 신규 생성상태
                 setIsEditing(true); // 에디터 모드로 진입시켜 검수 후 저장 유도
@@ -354,6 +380,31 @@ export default function StudyPage() {
             alert("API 호출 중 오류가 발생했습니다.");
         } finally {
             setIsGenerating(false);
+        }
+    };
+
+    const handleSavePrompt = async () => {
+        if (!isAdmin) return;
+        setIsSavingPrompt(true);
+        const key = promptTarget === 'dividend' ? 'DIVIDEND_PROMPT' : 'DIVIDEND_ETF_PROMPT';
+        const val = promptTarget === 'dividend' ? dividendPrompt : dividendEtfPrompt;
+        
+        try {
+            const res = await fetch('/api/system-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key_name: key, key_value: val })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert('프롬프트 설정이 성공적으로 저장되었습니다.');
+            } else {
+                alert('저장 실패: ' + data.error);
+            }
+        } catch (e) {
+            alert('설정 저장 중 오류가 발생했습니다.');
+        } finally {
+            setIsSavingPrompt(false);
         }
     };
 
@@ -494,20 +545,28 @@ export default function StudyPage() {
                                 {topic === "dividend" && (
                                     <>
                                         <button
-                                            onClick={handleGenerateInfo}
+                                            onClick={() => {
+                                                setIsPromptMode(true);
+                                                setPromptTarget("dividend");
+                                                setEditedContent("");
+                                            }}
                                             disabled={isGenerating || isUploading}
                                             className="w-full text-sm bg-purple-600 hover:bg-purple-500 disabled:opacity-50 border border-purple-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
                                         >
                                             <ShieldCheck size={16} />
-                                            {isGenerating ? 'KIS API 데이터 수집 중...' : '배당주 TOP10조사'}
+                                            {isGenerating && promptTarget === "dividend" ? '데이터 수집 중...' : '배당주 TOP10조사'}
                                         </button>
                                         <button
-                                            onClick={handleGenerateDividendEtf}
+                                            onClick={() => {
+                                                setIsPromptMode(true);
+                                                setPromptTarget("dividend_etf");
+                                                setEditedContent("");
+                                            }}
                                             disabled={isGenerating || isUploading}
                                             className="w-full text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 border border-emerald-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
                                         >
                                             <ShieldCheck size={16} />
-                                            {isGenerating ? 'KIS API 데이터 수집 중...' : '배당ETF TOP10조사'}
+                                            {isGenerating && promptTarget === "dividend_etf" ? '데이터 수집 중...' : '배당ETF TOP10조사'}
                                         </button>
                                     </>
                                 )}
@@ -563,14 +622,29 @@ export default function StudyPage() {
                 <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] bg-[#121212]">
                     {isPromptMode ? (
                         <div className="flex flex-col h-full bg-[#121212] p-8">
-                            <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-                                🚀 AI 증권 분석기 (Gemini 연동)
-                            </h2>
-                            <p className="text-gray-400 mb-6 text-sm">원하시는 분석 가이드라인(프롬프트)을 아래에 작성해주세요. 지시사항에 맞게 AI가 마크다운 포맷의 리포트를 자동 생성합니다.</p>
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                    🚀 {promptTarget === 'dividend' ? '배당주 분석' : '배당ETF 분석'} 프롬프트 설정
+                                </h2>
+                                {isAdmin && (
+                                    <button
+                                        onClick={handleSavePrompt}
+                                        disabled={isSavingPrompt}
+                                        className="h-9 px-4 text-sm bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 text-white rounded-lg transition-colors flex items-center gap-2 font-bold shadow-md"
+                                    >
+                                        <Save size={16} />
+                                        {isSavingPrompt ? '저장중...' : '현재 설정 기본 프롬프트로 저장'}
+                                    </button>
+                                )}
+                            </div>
+                            <p className="text-gray-400 mb-6 text-sm">프롬프트 가이드라인을 작성해주세요. (실제 데이터는 KIS API를 기반으로 자동화 추출됩니다)</p>
                             <textarea
-                                className="flex-1 w-full p-6 bg-[#1A1A1A] text-gray-200 border border-[#333] rounded-lg outline-none resize-none font-mono text-sm leading-relaxed mb-6 focus:border-purple-500 transition-colors shadow-inner"
-                                value={dividendPrompt}
-                                onChange={(e) => setDividendPrompt(e.target.value)}
+                                className="flex-1 w-full p-6 bg-[#1A1A1A] text-gray-200 border border-[#333] rounded-lg outline-none resize-none font-mono text-sm leading-relaxed mb-6 focus:border-[#F7D047] transition-colors shadow-inner"
+                                value={promptTarget === 'dividend' ? dividendPrompt : dividendEtfPrompt}
+                                onChange={(e) => {
+                                    if (promptTarget === 'dividend') setDividendPrompt(e.target.value);
+                                    else setDividendEtfPrompt(e.target.value);
+                                }}
                             />
                             <div className="flex justify-end gap-3">
                                 <button
@@ -583,9 +657,9 @@ export default function StudyPage() {
                                 <button
                                     onClick={handleGenerateDividend}
                                     disabled={isGenerating}
-                                    className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-sm font-bold transition-colors shadow-md flex items-center gap-2"
+                                    className="px-5 py-2.5 bg-[#F7D047] hover:bg-yellow-500 text-black rounded-lg text-sm font-bold transition-colors shadow-md flex items-center gap-2"
                                 >
-                                    {isGenerating ? 'AI가 분석하고 문서를 작성하고 있습니다...' : '분석 시작'}
+                                    {isGenerating ? '분석 중...' : '이 프롬프트로 분석 시작'}
                                 </button>
                             </div>
                         </div>
