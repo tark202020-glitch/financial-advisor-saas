@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { BarChart3, RefreshCw, ChevronRight, TrendingUp, TrendingDown, Plus, Minus, ArrowUpDown } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+    BarChart3, RefreshCw, ChevronRight, TrendingUp, TrendingDown,
+    Plus, Minus, ArrowUpDown, Search, X, Trash2, Edit3, Check,
+    Star, AlertCircle
+} from 'lucide-react';
 
 interface TrackedETF {
     symbol: string;
     name: string;
     category: string;
+    market: string;
+    memo: string;
     is_active: boolean;
 }
 
@@ -22,7 +28,7 @@ interface Change {
     etf_symbol: string;
     etf_name: string;
     change_date: string;
-    change_type: string; // 'added', 'removed', 'weight_changed'
+    change_type: string;
     holding_symbol: string;
     holding_name: string;
     prev_weight: number | null;
@@ -30,11 +36,19 @@ interface Change {
     weight_diff: number | null;
 }
 
+interface SearchResult {
+    symbol: string;
+    name: string;
+    market: 'KR' | 'US' | 'GOLD';
+    flag: string;
+    exchange?: string;
+}
+
 const CATEGORY_LABELS: Record<string, { label: string; color: string; bg: string }> = {
     ai: { label: 'AI·테크', color: 'text-blue-400', bg: 'bg-blue-900/30 border-blue-800' },
     strategy: { label: '전략', color: 'text-purple-400', bg: 'bg-purple-900/30 border-purple-800' },
     dividend: { label: '배당', color: 'text-emerald-400', bg: 'bg-emerald-900/30 border-emerald-800' },
-
+    custom: { label: '직접추가', color: 'text-amber-400', bg: 'bg-amber-900/30 border-amber-800' },
 };
 
 export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
@@ -45,15 +59,42 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
     const [allChanges, setAllChanges] = useState<Change[]>([]);
     const [loading, setLoading] = useState(true);
     const [holdingLoading, setHoldingLoading] = useState(false);
-    const [isSelecting, setIsSelecting] = useState(false);
     const [isCollecting, setIsCollecting] = useState(false);
     const [activeCategory, setActiveCategory] = useState<string>('all');
     const [snapshotDate, setSnapshotDate] = useState<string>('');
+
+    // 검색 관련 상태
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+    const [addingSymbol, setAddingSymbol] = useState<string | null>(null);
+    const searchRef = useRef<HTMLDivElement>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+    // 메모 편집 상태
+    const [editingMemo, setEditingMemo] = useState(false);
+    const [memoText, setMemoText] = useState('');
+
+    // 삭제 확인 상태
+    const [deletingSymbol, setDeletingSymbol] = useState<string | null>(null);
 
     // 추적 ETF 목록 로드
     useEffect(() => {
         fetchTrackedList();
         fetchAllChanges();
+    }, []);
+
+    // 검색 영역 외부 클릭 시 드롭다운 닫기
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+                setShowSearchDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const fetchTrackedList = async () => {
@@ -83,11 +124,123 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
         }
     };
 
+    // ────────────── 종목 검색 ──────────────
+    const handleSearchChange = useCallback((value: string) => {
+        setSearchQuery(value);
+
+        if (debounceRef.current) {
+            clearTimeout(debounceRef.current);
+        }
+
+        if (value.trim().length < 1) {
+            setSearchResults([]);
+            setShowSearchDropdown(false);
+            return;
+        }
+
+        debounceRef.current = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const res = await fetch(`/api/search/stock?q=${encodeURIComponent(value.trim())}&limit=10`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setSearchResults(data || []);
+                    setShowSearchDropdown(true);
+                }
+            } catch (e) {
+                console.error('Search failed:', e);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+    }, []);
+
+    // ────────────── 종목 추가 ──────────────
+    const handleAddStock = async (stock: SearchResult) => {
+        setAddingSymbol(stock.symbol);
+        try {
+            const res = await fetch('/api/etf/select-active', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    symbol: stock.symbol,
+                    name: stock.name,
+                    market: stock.market,
+                    category: 'custom',
+                }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                await fetchTrackedList();
+                setSearchQuery('');
+                setSearchResults([]);
+                setShowSearchDropdown(false);
+            } else {
+                alert(data.error || '추가 실패');
+            }
+        } catch (e) {
+            alert('종목 추가 중 오류 발생');
+        } finally {
+            setAddingSymbol(null);
+        }
+    };
+
+    // ────────────── 종목 삭제 ──────────────
+    const handleDeleteStock = async (symbol: string) => {
+        try {
+            const res = await fetch('/api/etf/select-active', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (selectedETF?.symbol === symbol) {
+                    setSelectedETF(null);
+                    setHoldings([]);
+                    setChanges([]);
+                }
+                await fetchTrackedList();
+            } else {
+                alert(data.error || '삭제 실패');
+            }
+        } catch (e) {
+            alert('종목 삭제 중 오류 발생');
+        } finally {
+            setDeletingSymbol(null);
+        }
+    };
+
+    // ────────────── 메모 저장 ──────────────
+    const handleSaveMemo = async () => {
+        if (!selectedETF) return;
+        try {
+            const res = await fetch('/api/etf/select-active', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol: selectedETF.symbol, memo: memoText }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setEditingMemo(false);
+                setSelectedETF(prev => prev ? { ...prev, memo: memoText } : null);
+                // 목록도 갱신
+                setTrackedETFs(prev =>
+                    prev.map(etf => etf.symbol === selectedETF.symbol ? { ...etf, memo: memoText } : etf)
+                );
+            }
+        } catch (e) {
+            alert('메모 저장 실패');
+        }
+    };
+
+    // ────────────── ETF 상세 조회 ──────────────
     const handleSelectETF = async (etf: TrackedETF) => {
         setSelectedETF(etf);
         setHoldingLoading(true);
+        setEditingMemo(false);
+        setMemoText(etf.memo || '');
         try {
-            // 보유종목 로드
             const holdRes = await fetch(`/api/etf/holdings?symbol=${etf.symbol}`);
             if (holdRes.ok) {
                 const holdData = await holdRes.json();
@@ -95,7 +248,6 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                 setSnapshotDate(holdData.snapshot_date || '');
             }
 
-            // 해당 ETF 변경 기록 로드
             const changeRes = await fetch(`/api/etf/holdings?changes=true&symbol=${etf.symbol}&limit=30`);
             if (changeRes.ok) {
                 const changeData = await changeRes.json();
@@ -108,27 +260,7 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
         }
     };
 
-    // ETF 자동 선정 실행
-    const handleAutoSelect = async () => {
-        if (!confirm('stock_master에서 새 기준으로 ETF를 선정합니다. 기존 목록·보유종목·변경이력이 모두 삭제됩니다.')) return;
-        setIsSelecting(true);
-        try {
-            const res = await fetch('/api/etf/select-active', { method: 'POST' });
-            const data = await res.json();
-            if (data.success) {
-                alert(`ETF 선정 완료: 총 ${data.total}개 (AI-테크: ${data.categories.ai}, 배당: ${data.categories.dividend}, 전략: ${data.categories.strategy})`);
-                fetchTrackedList();
-            } else {
-                alert(`선정 실패: ${data.error}`);
-            }
-        } catch (e) {
-            alert('ETF 자동 선정 중 오류 발생');
-        } finally {
-            setIsSelecting(false);
-        }
-    };
-
-    // 보유종목 수동 수집
+    // 보유종목 수동 수집 (admin 전용)
     const handleCollectHoldings = async () => {
         if (!confirm('추적 대상 전체 ETF의 보유종목을 수집합니다. 시간이 걸릴 수 있습니다.')) return;
         setIsCollecting(true);
@@ -156,18 +288,105 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
 
     const categoryCount = (cat: string) => trackedETFs.filter(e => e.category === cat).length;
 
+    // 이미 추가된 종목인지 확인
+    const isAlreadyTracked = (symbol: string) =>
+        trackedETFs.some(etf => etf.symbol === symbol);
+
     return (
         <div className="flex h-full bg-[#121212]">
-            {/* 좌측: ETF 목록 패널 */}
+            {/* 좌측: 종목 목록 패널 */}
             <div className="w-80 border-r border-[#333] bg-[#1E1E1E] flex flex-col h-full overflow-hidden">
                 {/* 헤더 */}
                 <div className="p-4 border-b border-[#333]">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <BarChart3 size={18} className="text-[#F7D047]" />
-                            <h2 className="font-bold text-sm text-gray-200">추적 ETF 목록</h2>
+                            <h2 className="font-bold text-sm text-gray-200">추적 종목 목록</h2>
                             <span className="text-xs text-gray-500">({trackedETFs.length})</span>
                         </div>
+                    </div>
+
+                    {/* 🔍 종목 검색 */}
+                    <div ref={searchRef} className="relative mb-3">
+                        <div className="flex items-center bg-[#2A2A2A] border border-[#444] rounded-lg px-3 py-2 focus-within:border-[#F7D047] transition-colors">
+                            <Search size={14} className="text-gray-500 shrink-0" />
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                placeholder="종목명 또는 코드 검색..."
+                                value={searchQuery}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                onFocus={() => {
+                                    if (searchResults.length > 0) setShowSearchDropdown(true);
+                                }}
+                                className="flex-1 bg-transparent text-sm text-gray-200 outline-none ml-2 placeholder-gray-600"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => {
+                                        setSearchQuery('');
+                                        setSearchResults([]);
+                                        setShowSearchDropdown(false);
+                                    }}
+                                    className="text-gray-500 hover:text-gray-300"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                            {isSearching && (
+                                <RefreshCw size={14} className="text-gray-500 animate-spin ml-1" />
+                            )}
+                        </div>
+
+                        {/* 검색 결과 드롭다운 */}
+                        {showSearchDropdown && searchResults.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-[#2A2A2A] border border-[#444] rounded-lg shadow-xl z-50 max-h-60 overflow-y-auto">
+                                {searchResults.map((stock) => {
+                                    const tracked = isAlreadyTracked(stock.symbol);
+                                    return (
+                                        <div
+                                            key={stock.symbol}
+                                            className={`flex items-center justify-between px-3 py-2.5 text-xs border-b border-[#333] last:border-b-0 ${
+                                                tracked ? 'opacity-50' : 'hover:bg-[#333]'
+                                            } transition-colors`}
+                                        >
+                                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                <span className="text-sm">{stock.flag}</span>
+                                                <div className="min-w-0">
+                                                    <div className="text-gray-200 font-medium truncate">{stock.name}</div>
+                                                    <div className="text-gray-500 text-[10px] font-mono">{stock.symbol}</div>
+                                                </div>
+                                            </div>
+                                            {tracked ? (
+                                                <span className="text-[10px] text-gray-500 bg-[#333] px-2 py-0.5 rounded shrink-0">
+                                                    등록됨
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleAddStock(stock)}
+                                                    disabled={addingSymbol === stock.symbol}
+                                                    className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-[#F7D047] hover:text-yellow-300 bg-[#F7D047]/10 hover:bg-[#F7D047]/20 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                                                >
+                                                    {addingSymbol === stock.symbol ? (
+                                                        <RefreshCw size={10} className="animate-spin" />
+                                                    ) : (
+                                                        <Plus size={10} />
+                                                    )}
+                                                    추가
+                                                </button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* 검색 결과 없음 */}
+                        {showSearchDropdown && searchQuery.trim().length > 0 && searchResults.length === 0 && !isSearching && (
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-[#2A2A2A] border border-[#444] rounded-lg shadow-xl z-50 p-4 text-center text-xs text-gray-500">
+                                검색 결과가 없습니다
+                            </div>
+                        )}
                     </div>
 
                     {/* 카테고리 필터 */}
@@ -178,31 +397,27 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                         >
                             전체 {trackedETFs.length}
                         </button>
-                        {Object.entries(CATEGORY_LABELS).map(([key, cfg]) => (
-                            <button
-                                key={key}
-                                onClick={() => setActiveCategory(key)}
-                                className={`text-xs px-2.5 py-1 rounded-full transition-colors ${activeCategory === key ? `${cfg.bg} ${cfg.color} font-bold border` : 'bg-[#333] text-gray-400 hover:bg-[#444]'}`}
-                            >
-                                {cfg.label} {categoryCount(key)}
-                            </button>
-                        ))}
+                        {Object.entries(CATEGORY_LABELS).map(([key, cfg]) => {
+                            const count = categoryCount(key);
+                            if (count === 0) return null;
+                            return (
+                                <button
+                                    key={key}
+                                    onClick={() => setActiveCategory(key)}
+                                    className={`text-xs px-2.5 py-1 rounded-full transition-colors ${activeCategory === key ? `${cfg.bg} ${cfg.color} font-bold border` : 'bg-[#333] text-gray-400 hover:bg-[#444]'}`}
+                                >
+                                    {cfg.label} {count}
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    {/* 관리 버튼 */}
+                    {/* 관리 버튼: 보유종목 수집 (admin 전용) */}
                     {isAdmin && (
                         <div className="flex gap-2">
                             <button
-                                onClick={handleAutoSelect}
-                                disabled={isSelecting || isCollecting}
-                                className="flex-1 text-xs bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 font-medium"
-                            >
-                                <RefreshCw size={12} className={isSelecting ? 'animate-spin' : ''} />
-                                {isSelecting ? '선정중...' : 'ETF 선정'}
-                            </button>
-                            <button
                                 onClick={handleCollectHoldings}
-                                disabled={isSelecting || isCollecting}
+                                disabled={isCollecting}
                                 className="flex-1 text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 font-medium"
                             >
                                 <RefreshCw size={12} className={isCollecting ? 'animate-spin' : ''} />
@@ -212,25 +427,29 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                     )}
                 </div>
 
-                {/* ETF 리스트 */}
+                {/* 종목 리스트 */}
                 <div className="flex-1 overflow-y-auto p-2">
                     {loading ? (
                         <p className="text-gray-500 text-xs text-center p-4">불러오는 중...</p>
                     ) : filteredETFs.length === 0 ? (
                         <div className="text-center p-6 text-gray-500 text-xs">
                             {trackedETFs.length === 0
-                                ? '추적 대상 ETF가 없습니다.\n"ETF 선정" 버튼을 눌러주세요.'
-                                : '해당 카테고리에 ETF가 없습니다.'}
+                                ? <div className="flex flex-col items-center gap-3">
+                                    <Search size={32} className="text-[#333]" />
+                                    <p>추적 종목이 없습니다.</p>
+                                    <p className="text-gray-600">상단 검색으로 종목을 추가하세요.</p>
+                                  </div>
+                                : '해당 카테고리에 종목이 없습니다.'}
                         </div>
                     ) : (
                         <ul className="space-y-0.5">
                             {filteredETFs.map((etf) => {
-                                const cat = CATEGORY_LABELS[etf.category] || CATEGORY_LABELS.etc;
+                                const cat = CATEGORY_LABELS[etf.category] || CATEGORY_LABELS.custom;
                                 return (
-                                    <li key={etf.symbol}>
+                                    <li key={etf.symbol} className="group relative">
                                         <button
                                             onClick={() => handleSelectETF(etf)}
-                                            className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all flex items-center gap-2 group
+                                            className={`w-full text-left px-3 py-2.5 rounded-lg text-xs transition-all flex items-center gap-2
                                                 ${selectedETF?.symbol === etf.symbol
                                                     ? 'bg-[#333] text-white border-l-2 border-[#F7D047]'
                                                     : 'text-gray-400 hover:bg-[#2A2A2A] hover:text-white'}`}
@@ -240,9 +459,48 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                                             </span>
                                             <div className="flex-1 min-w-0">
                                                 <div className="truncate font-medium text-gray-200 text-[11px]">{etf.name}</div>
-                                                <div className="text-[10px] text-gray-500">{etf.symbol}</div>
+                                                <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                    {etf.symbol}
+                                                    {etf.memo && (
+                                                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#F7D047]" title="메모 있음" />
+                                                    )}
+                                                </div>
                                             </div>
-                                            <ChevronRight size={12} className="text-gray-600 group-hover:text-gray-400 shrink-0" />
+
+                                            {/* 삭제 버튼 (hover 시 표시) */}
+                                            {deletingSymbol === etf.symbol ? (
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteStock(etf.symbol);
+                                                        }}
+                                                        className="text-[10px] bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded transition-colors"
+                                                    >
+                                                        확인
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setDeletingSymbol(null);
+                                                        }}
+                                                        className="text-[10px] bg-[#444] hover:bg-[#555] text-gray-300 px-2 py-0.5 rounded transition-colors"
+                                                    >
+                                                        취소
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setDeletingSymbol(etf.symbol);
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-all shrink-0"
+                                                    title="삭제"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
                                         </button>
                                     </li>
                                 );
@@ -257,12 +515,68 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                 {selectedETF ? (
                     <>
                         {/* 헤더 */}
-                        <div className="h-12 border-b border-[#333] flex items-center justify-between px-6 bg-[#1A1A1A] shrink-0">
-                            <div className="flex items-center gap-3">
-                                <h3 className="font-bold text-sm text-gray-200">{selectedETF.name}</h3>
-                                <span className="text-xs text-gray-500">{selectedETF.symbol}</span>
-                                {snapshotDate && (
-                                    <span className="text-xs text-gray-600">스냅샷: {snapshotDate}</span>
+                        <div className="border-b border-[#333] px-6 py-3 bg-[#1A1A1A] shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <h3 className="font-bold text-sm text-gray-200">{selectedETF.name}</h3>
+                                    <span className="text-xs text-gray-500 font-mono">{selectedETF.symbol}</span>
+                                    <span className="text-[10px] text-gray-600">{selectedETF.market === 'US' ? '🇺🇸' : '🇰🇷'}</span>
+                                    {snapshotDate && (
+                                        <span className="text-xs text-gray-600">스냅샷: {snapshotDate}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* 메모 영역 */}
+                            <div className="mt-2 flex items-start gap-2">
+                                {editingMemo ? (
+                                    <div className="flex items-center gap-2 flex-1">
+                                        <input
+                                            type="text"
+                                            value={memoText}
+                                            onChange={(e) => setMemoText(e.target.value)}
+                                            className="flex-1 bg-[#2A2A2A] border border-[#444] rounded px-3 py-1.5 text-xs text-gray-200 outline-none focus:border-[#F7D047] transition-colors"
+                                            placeholder="메모를 입력하세요..."
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleSaveMemo();
+                                                if (e.key === 'Escape') {
+                                                    setEditingMemo(false);
+                                                    setMemoText(selectedETF.memo || '');
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleSaveMemo}
+                                            className="text-emerald-400 hover:text-emerald-300 transition-colors"
+                                        >
+                                            <Check size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setEditingMemo(false);
+                                                setMemoText(selectedETF.memo || '');
+                                            }}
+                                            className="text-gray-500 hover:text-gray-300 transition-colors"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setEditingMemo(true);
+                                            setMemoText(selectedETF.memo || '');
+                                        }}
+                                        className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors group"
+                                    >
+                                        <Edit3 size={12} className="text-gray-600 group-hover:text-[#F7D047]" />
+                                        {selectedETF.memo ? (
+                                            <span className="text-gray-400">{selectedETF.memo}</span>
+                                        ) : (
+                                            <span className="text-gray-600 italic">메모 추가...</span>
+                                        )}
+                                    </button>
                                 )}
                             </div>
                         </div>
@@ -316,7 +630,7 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                                         </div>
                                     ) : (
                                         <p className="text-gray-500 text-xs bg-[#1A1A1A] border border-[#333] rounded-lg p-4 text-center">
-                                            아직 수집된 보유종목이 없습니다. "보유종목 수집" 버튼을 눌러주세요.
+                                            아직 수집된 보유종목이 없습니다. {isAdmin ? '"보유종목 수집" 버튼을 눌러주세요.' : '관리자가 보유종목을 수집하면 표시됩니다.'}
                                         </p>
                                     )}
                                 </div>
@@ -371,8 +685,9 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                             ETF 분석기
                         </h3>
                         <p className="text-gray-500 text-sm mb-6">
-                            국내 액티브 ETF의 보유종목 구성 변화를 매일 추적합니다.
-                            좌측에서 ETF를 선택하여 상세 보유종목과 변경 이력을 확인하세요.
+                            추적하고 싶은 종목을 검색하여 추가하세요. ETF의 보유종목 구성 변화를 매일 추적합니다.
+                            <br />
+                            좌측에서 종목을 선택하면 상세 보유종목과 변경 이력을 확인할 수 있습니다.
                         </p>
 
                         {allChanges.length > 0 && (
@@ -408,11 +723,9 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
 
                         {allChanges.length === 0 && trackedETFs.length === 0 && (
                             <div className="text-center p-8 bg-[#1A1A1A] border border-[#333] rounded-xl">
-                                <BarChart3 size={48} className="text-[#333] mx-auto mb-4" />
-                                <p className="text-gray-500 text-sm mb-2">추적 대상 ETF가 없습니다</p>
-                                {isAdmin && (
-                                    <p className="text-gray-600 text-xs">좌측 "ETF 선정" 버튼으로 액티브 ETF를 자동 선정하세요.</p>
-                                )}
+                                <Search size={48} className="text-[#333] mx-auto mb-4" />
+                                <p className="text-gray-400 text-sm mb-2">추적 종목이 없습니다</p>
+                                <p className="text-gray-600 text-xs">좌측 검색 바에서 추적하고 싶은 종목/ETF를 검색하여 추가하세요.</p>
                             </div>
                         )}
 

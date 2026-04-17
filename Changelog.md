@@ -1,3 +1,16 @@
+## [Alpha V1.352] - 2026-04-17 21:48:37
+
+### ✨ Feature: ETF 분석기 — 자동선정 → 수동 검색/추가 방식 전환
+- **Summary**: ETF 분석기의 추적 목록 구성 방식을 자동 선정에서 사용자가 직접 검색+추가/삭제하는 방식으로 전면 개편
+- **Detail**:
+  - **API 전환** (`select-active/route.ts`): 기존 자동 선정 POST 로직 제거 → 개별 종목 추가(POST), 삭제(DELETE), 메모 수정(PATCH) CRUD API로 교체
+  - **대시보드 재작성** (`ETFDashboard.tsx`): 상단 검색 바 추가 (기존 `/api/search/stock` 활용, 300ms 디바운스), 종목별 삭제 버튼 (hover 표시 → 확인/취소 2단계), 인라인 메모 편집 기능
+  - **DB 확장**: `etf_tracked_list` 테이블에 `memo`(TEXT), `market`(TEXT) 컬럼 추가
+  - **카테고리 확장**: 기존 ai/strategy/dividend + 신규 `custom`(직접추가) 카테고리 추가
+  - **공통 기능**: 계정별 분리 없이 모든 사용자가 동일 목록 공유
+  - **보존**: 보유종목 비중 조회, 변경 이력 추적, 크론 잡, Google Sheets 연동 모두 유지
+- **Build Time**: 2026-04-17 21:48:37
+
 ## [Alpha V1.351] - 2026-04-17 11:23:14
 
 ### 🔄 Build Update

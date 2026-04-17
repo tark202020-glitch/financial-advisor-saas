@@ -14,7 +14,7 @@ type Topic = "msci" | "dividend" | "etf";
 const TOPIC_CONFIG = {
     msci: { title: "MSCI 스터디", icon: <BookOpen size={20} className="text-[#F7D047]" />, guide: "MSCI 관련 문서를 열람하고 수정(저장) 할 수 있습니다. '정보 만들기'로 최신 데이터를 구성하세요." },
     dividend: { title: "배당주 분석", icon: <TrendingUp size={20} className="text-[#F7D047]" />, guide: "배당주 투자 방향과 시가배당률 랭킹, 그리고 안정적인 배당 파이프라인 구축을 위한 심층 리포트가 수록됩니다. 프롬프트를 통해 커스텀 분석 요청이 가능합니다." },
-    etf: { title: "ETF 분석기", icon: <BarChart3 size={20} className="text-[#F7D047]" />, guide: "우량주 기반의 ETF 및 산업별 핵심 ETF의 퍼포먼스 리뷰와 추세 추종 전략 시뮬레이션 결과를 열람합니다." }
+    etf: { title: "ETF 분석기", icon: <BarChart3 size={20} className="text-[#F7D047]" />, guide: "추적하고 싶은 종목/ETF를 검색하여 추가하세요. 보유종목 구성과 일일 변경 이력을 추적합니다." }
 };
 
 const DEFAULT_DIVIDEND_PROMPT = `[목표] 국내 고배당 종목 및 ETF(커버드콜 제외, 일반/리츠/액티브 포함) 시가배당률 상위 30% 리포트 작성
