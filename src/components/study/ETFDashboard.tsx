@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     BarChart3, RefreshCw, ChevronRight, TrendingUp, TrendingDown,
     Plus, Minus, ArrowUpDown, Search, X, Trash2, Edit3, Check,
-    Plus, Minus, ArrowUpDown, Search, X, Trash2, Edit3, Check,
     Star, AlertCircle
 } from 'lucide-react';
 import { useStockPrice } from '@/hooks/useStockPrice';
