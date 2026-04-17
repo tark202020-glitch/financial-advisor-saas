@@ -1,3 +1,19 @@
+## [Alpha V1.358] - 2026-04-18 00:39:00
+
+### ⚡ Optimization: KIS API 호출 최적화 (벌크 배당 조회 전략)
+- **Summary**: 배당 ETF/주식 분석 시 KIS API 호출을 200+회 → ~20회로 획기적 절감
+- **Detail**:
+  - `generate-dividend-etf/route.ts`: **벌크 배당 조회** 도입
+    - 기존: ETF 후보 × 2회 API(가격+배당) → 60개 제한 필요 → 종목 누락 발생
+    - 변경: `getKsdinfoDividend(sht_cd='')` 1회 호출로 전체 배당 데이터 수집
+    - 로컬에서 ETF 후보 전수(100+개)와 교차 매칭 후 상위 20개만 가격 조회
+    - 총 API: ~21회 (배당 1 + 가격 20), 60초 타임아웃 안전
+  - `generate-dividend/route.ts`: 동일 전략 적용
+    - 랭킹 1회 + 벌크 배당 1회 + 가격/종목명 ~15회 = ~17회
+  - 표시 상한: 최대 10개로 통일
+  - Gemini 모델: `gemini-1.5-flash` → `gemini-2.0-flash` 업그레이드
+- **Build Time**: 2026-04-18 00:39:00
+
 ## [Alpha V1.357] - 2026-04-18 00:25:30
 
 ### 🚀 Feature: 배당 / 배당ETF 데이터 추출 및 렌더링 AI 고도화 (Gemini 2-Step 파이프라인)
