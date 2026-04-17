@@ -4,8 +4,21 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     BarChart3, RefreshCw, ChevronRight, TrendingUp, TrendingDown,
     Plus, Minus, ArrowUpDown, Search, X, Trash2, Edit3, Check,
+    Plus, Minus, ArrowUpDown, Search, X, Trash2, Edit3, Check,
     Star, AlertCircle
 } from 'lucide-react';
+import { useStockPrice } from '@/hooks/useStockPrice';
+import { formatCurrency } from '@/utils/format';
+import {
+    ComposedChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    Line,
+} from 'recharts';
 
 interface TrackedETF {
     symbol: string;
@@ -44,6 +57,19 @@ interface SearchResult {
     exchange?: string;
 }
 
+interface CandleData {
+    date: string;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+    ma5?: number;
+    ma20?: number;
+    ma60?: number;
+    ma120?: number;
+}
+
 const CATEGORY_LABELS: Record<string, { label: string; color: string; bg: string }> = {
     ai: { label: 'AI·테크', color: 'text-blue-400', bg: 'bg-blue-900/30 border-blue-800' },
     strategy: { label: '전략', color: 'text-purple-400', bg: 'bg-purple-900/30 border-purple-800' },
@@ -79,6 +105,13 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
 
     // 삭제 확인 상태
     const [deletingSymbol, setDeletingSymbol] = useState<string | null>(null);
+
+    // 차트 상태
+    const [chartData, setChartData] = useState<CandleData[]>([]);
+    const [chartLoading, setChartLoading] = useState(false);
+
+    // 실시간 가격
+    const stockLive = useStockPrice(selectedETF?.symbol || '', 0, selectedETF?.market || 'KR');
 
     // 추적 ETF 목록 로드
     useEffect(() => {
@@ -238,6 +271,7 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
     const handleSelectETF = async (etf: TrackedETF) => {
         setSelectedETF(etf);
         setHoldingLoading(true);
+        setChartLoading(true);
         setEditingMemo(false);
         setMemoText(etf.memo || '');
         try {
@@ -253,10 +287,43 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                 const changeData = await changeRes.json();
                 setChanges(changeData.changes || []);
             }
+
+            // 차트 데이터 수집
+            const chartRes = await fetch(`/api/kis/chart/daily/${etf.symbol}?market=${etf.market || 'KR'}`);
+            if (chartRes.ok) {
+                const data = await chartRes.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    const sorted = [...data].reverse().map(d => ({
+                        date: d.stck_bsop_date,
+                        open: parseFloat(d.stck_oprc),
+                        high: parseFloat(d.stck_hgpr),
+                        low: parseFloat(d.stck_lwpr),
+                        close: parseFloat(d.stck_clpr),
+                        volume: parseInt(d.acml_vol),
+                    }));
+                    const withMA = sorted.map((d, i) => {
+                        const getSlice = (w: number) => i >= w - 1 ? sorted.slice(i - w + 1, i + 1) : [];
+                        const avg = (arr: any[]) => arr.length ? arr.reduce((a, b) => a + b.close, 0) / arr.length : undefined;
+                        return {
+                            ...d,
+                            ma5: avg(getSlice(5)),
+                            ma20: avg(getSlice(20)),
+                            ma60: avg(getSlice(60)),
+                            ma120: avg(getSlice(120)),
+                        };
+                    });
+                    setChartData(withMA);
+                } else {
+                    setChartData([]);
+                }
+            } else {
+                setChartData([]);
+            }
         } catch (e) {
             console.error('Failed to load ETF details:', e);
         } finally {
             setHoldingLoading(false);
+            setChartLoading(false);
         }
     };
 
@@ -587,6 +654,103 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                             </div>
                         ) : (
                             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                
+                                {/* 📈 차트 및 가격 영역 */}
+                                <div className="bg-[#1A1A1A] border border-[#333] rounded-xl p-5 shadow-inner">
+                                    {chartLoading ? (
+                                        <div className="h-[300px] flex items-center justify-center text-gray-500">
+                                            <RefreshCw className="animate-spin mr-2" size={20} />
+                                            차트 및 데이터 불러오는 중...
+                                        </div>
+                                    ) : chartData.length > 0 ? (
+                                        <>
+                                            {/* 가격 표시 헤더 */}
+                                            <div className="mb-6">
+                                                {(() => {
+                                                    const currentPrice = stockLive?.price || chartData[chartData.length - 1].close;
+                                                    let changePercent = stockLive?.changePercent || 0;
+                                                    let changeAmount = stockLive?.change || 0;
+                                                    // 실시간 데이터가 없는 경우 차트의 전일 종가와 비교
+                                                    if (!stockLive?.price && chartData.length > 1) {
+                                                        const prevClose = chartData[chartData.length - 2].close;
+                                                        changeAmount = currentPrice - prevClose;
+                                                        changePercent = (changeAmount / prevClose) * 100;
+                                                    }
+                                                    const isKR = selectedETF.market === 'KR' || !selectedETF.market;
+                                                    const isPositive = changeAmount > 0;
+                                                    const isZero = changeAmount === 0;
+                                                    const colorClass = isZero ? 'text-gray-400' : (isPositive ? 'text-red-500' : 'text-blue-500');
+                                                    const bgClass = isZero ? 'bg-gray-500/10' : (isPositive ? 'bg-red-500/10' : 'bg-blue-500/10');
+                                                    const sign = isZero ? '' : (isPositive ? '▲' : '▼');
+                                                    const signPlus = isPositive ? '+' : '';
+                                                    
+                                                    return (
+                                                        <div className="flex items-end gap-3">
+                                                            <span className={`text-3xl font-extrabold tracking-tight ${colorClass}`}>
+                                                                {formatCurrency(currentPrice, isKR ? 'KRW' : 'USD')}
+                                                            </span>
+                                                            <span className={`px-2 py-1 mb-1 rounded-md text-sm font-bold flex items-center gap-1.5 ${colorClass} ${bgClass}`}>
+                                                                {sign} {formatCurrency(Math.abs(changeAmount), isKR ? 'KRW' : 'USD')} 
+                                                                ({signPlus}{changePercent.toFixed(2)}%)
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+
+                                            {/* 차트 영역 */}
+                                            <div className="flex items-center gap-3 text-gray-500 text-[10px] mb-2 font-medium">
+                                                <span>이동평균선</span>
+                                                <div className="flex gap-2 text-[10px]">
+                                                    <span style={{ color: '#f97316' }}>■ 5</span>
+                                                    <span style={{ color: '#8b5cf6' }}>■ 20</span>
+                                                    <span style={{ color: '#3b82f6' }}>■ 60</span>
+                                                    <span style={{ color: '#22c55e' }}>■ 120</span>
+                                                </div>
+                                            </div>
+                                            <div className="h-[200px] w-full">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <ComposedChart data={chartData.slice(-60)} margin={{ top: 10, right: 0, left: -25, bottom: 0 }} syncId="etfDetail">
+                                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+                                                        <XAxis dataKey="date" hide />
+                                                        <YAxis
+                                                            domain={['auto', 'auto']}
+                                                            orientation="right"
+                                                            tick={{ fontSize: 10, fill: '#666' }}
+                                                            axisLine={false}
+                                                            tickLine={false}
+                                                        />
+                                                        <Tooltip
+                                                            contentStyle={{ backgroundColor: '#1E1E1E', border: '1px solid #333', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
+                                                            labelStyle={{ color: '#999' }}
+                                                        />
+                                                        <Line type="monotone" dataKey="ma5" stroke="#f97316" strokeWidth={1} dot={false} />
+                                                        <Line type="monotone" dataKey="ma20" stroke="#8b5cf6" strokeWidth={1} dot={false} />
+                                                        <Line type="monotone" dataKey="ma60" stroke="#3b82f6" strokeWidth={1} dot={false} />
+                                                        <Line type="monotone" dataKey="ma120" stroke="#22c55e" strokeWidth={1} dot={false} />
+                                                        <Line type="monotone" dataKey="close" stroke="#F7D047" strokeWidth={2} dot={false} />
+                                                    </ComposedChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                            
+                                            {/* 거래량 하단 차트 */}
+                                            <div className="h-12 mt-1 border-t border-[#333] relative">
+                                                <span className="absolute top-1 left-0 text-[9px] text-gray-600 font-bold z-10">거래량</span>
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <ComposedChart data={chartData.slice(-60)} margin={{ top: 0, right: 0, left: -25, bottom: 0 }} syncId="etfDetail">
+                                                        <Bar dataKey="volume" fill="#444" />
+                                                        <YAxis orientation="right" tick={false} axisLine={false} tickLine={false} />
+                                                    </ComposedChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="h-[150px] flex items-center justify-center text-sm text-gray-500">
+                                            차트 데이터가 없습니다.
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* 보유종목 테이블 */}
                                 <div>
                                     <h4 className="text-sm font-bold text-gray-200 mb-3 flex items-center gap-2">
