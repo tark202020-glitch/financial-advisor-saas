@@ -144,52 +144,79 @@ export async function POST(req: NextRequest) {
         }
 
         const dividendMatches: DividendResult[] = [];
-        const scanChunkSize = 20;
+        
+        // KSD API의 엄격한 Rate Limit(초당 N건) 및 한 페이지 반환 개수 제한을 우회하기 위해,
+        // 1년 치를 1개월 단위 12개 청크로 쪼개어 순차적 벌크 스캔(sht_cd: '')을 실행합니다.
+        const bulkDividends: any[] = [];
+        let currentDate = new Date(oneYearAgo);
+        const endDate = new Date(kstNow);
 
-        for (let i = 0; i < matchedEtfs.length; i += scanChunkSize) {
-            const chunk = matchedEtfs.slice(i, i + scanChunkSize);
-            const chunkResults = await Promise.all(
-                chunk.map(async (item) => {
-                    try {
-                        const actualDividends = await getKsdinfoDividend({
-                            gb1: '0',
-                            f_dt: fromDate,
-                            t_dt: todayStr,
-                            sht_cd: item.code,
-                        });
-                        
-                        // 배당 기록이 없거나 0원이면 탈락
-                        if (!actualDividends || actualDividends.length === 0) return null;
-                        
-                        const sortedDiv = actualDividends
-                            .filter((d: any) => parseFloat(d.per_sto_divi_amt || '0') > 0)
-                            .sort((a: any, b: any) => (b.record_date || '').localeCompare(a.record_date || ''));
-                        
-                        if (sortedDiv.length === 0) return null;
-
-                        // 최근 1년 실제 지급된 모든 배당금 합산 (TTM 시가배당률의 분자)
-                        const totalAnnualDividend = sortedDiv.reduce((sum: number, d: any) => sum + parseFloat(d.per_sto_divi_amt || '0'), 0);
-                        const latest = sortedDiv[0];
-                        
-                        return {
-                            code: item.code,
-                            name: item.name,
-                            dividendAmount: totalAnnualDividend,
-                            latestDividend: parseFloat(latest.per_sto_divi_amt || '0'),
-                            payoutCount: sortedDiv.length,
-                            dividendPayDate: latest.divi_pay_dt || latest.record_date || '',
-                            recordDate: latest.record_date || '',
-                        } as DividendResult;
-                    } catch (e) {
-                        return null;
-                    }
-                })
-            );
+        const monthChunks = [];
+        while (currentDate <= endDate) {
+            const chunkEnd = new Date(currentDate);
+            chunkEnd.setMonth(chunkEnd.getMonth() + 1);
+            if (chunkEnd > endDate) chunkEnd.setTime(endDate.getTime());
             
-            chunkResults.forEach(res => { if (res) dividendMatches.push(res); });
+            monthChunks.push({
+                f_dt: currentDate.toISOString().slice(0, 10).replace(/-/g, ''),
+                t_dt: chunkEnd.toISOString().slice(0, 10).replace(/-/g, ''),
+            });
+            
+            currentDate = new Date(chunkEnd);
+            currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        console.log(`  [3단계] 실제 배당 이력 확인된 ETF: ${dividendMatches.length}개`);
+        console.log(`  [3단계] 병목 방지를 위해 1달 단위 ${monthChunks.length}개 청크로 벌크 스캔 시작...`);
+        for (const chunk of monthChunks) {
+            try {
+                const res = await getKsdinfoDividend({
+                    gb1: '0',
+                    f_dt: chunk.f_dt,
+                    t_dt: chunk.t_dt,
+                    sht_cd: '', // 전체 종목
+                });
+                if (res && Array.isArray(res)) bulkDividends.push(...res);
+                await new Promise(r => setTimeout(r, 150)); // KSD API 요금제 한도 보호를 위한 안전 지연
+            } catch (e) {
+                console.error(`KSD Bulk Error for ${chunk.f_dt}:`, e);
+            }
+        }
+
+        // 인메모리 매핑
+        const dividendMap = new Map<string, any[]>();
+        for (const record of bulkDividends) {
+            const code = record.sht_cd;
+            if (code) {
+                if (!dividendMap.has(code)) dividendMap.set(code, []);
+                dividendMap.get(code)!.push(record);
+            }
+        }
+
+        for (const item of matchedEtfs) {
+            const actualDividends = dividendMap.get(item.code) || [];
+            if (actualDividends.length === 0) continue;
+            
+            const sortedDiv = actualDividends
+                .filter((d: any) => parseFloat(d.per_sto_divi_amt || '0') > 0)
+                .sort((a: any, b: any) => (b.record_date || '').localeCompare(a.record_date || ''));
+            
+            if (sortedDiv.length === 0) continue;
+
+            const totalAnnualDividend = sortedDiv.reduce((sum: number, d: any) => sum + parseFloat(d.per_sto_divi_amt || '0'), 0);
+            const latest = sortedDiv[0];
+            
+            dividendMatches.push({
+                code: item.code,
+                name: item.name,
+                dividendAmount: totalAnnualDividend,
+                latestDividend: parseFloat(latest.per_sto_divi_amt || '0'),
+                payoutCount: sortedDiv.length,
+                dividendPayDate: latest.divi_pay_dt || latest.record_date || '',
+                recordDate: latest.record_date || '',
+            } as DividendResult);
+        }
+
+        console.log(`  [3단계] 실제 배당 이력 매핑이 확인된 ETF: ${dividendMatches.length}개`);
 
         // 전체 배당 이력이 확인된 ETF를 대상으로 가격을 모두 조회해야만 정확한 시가배당률을 구할 수 있음
         const priceCandidates = dividendMatches;
@@ -286,7 +313,14 @@ export async function POST(req: NextRequest) {
                 const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
                 const renderPrompt = `너는 전문 펀드 매니저 겸 애널리스트야. 사용자의 요청(프롬프트)과 백엔드 시스템이 실제 수집한 "제공된 ETF 데이터"를 결합하여 완벽한 마크다운 리포트를 작성해줘.
 데이터 상의 금액 및 수치는 있는 그대로 포맷팅해서 작성해야 하며 절대 임의로 상상해서 쓰지 마.
-데이터가 부족하면 있는 것만으로 작성해. 표는 사용자가 요청한 양식에 맞춰 그려줘.
+데이터가 부족하면 있는 것만으로 작성해. 표는 사용자가 요청한 양식에 맞춰 그려주되, 사용자가 헤더를 지정하지 않았다면 반드시 아래의 강제 마크다운 표 포맷을 엄수해줘.
+
+[강제 마크다운 헤더 포맷]
+| 종목 | 종가 | 연 배당금(최근지급) | 환산수익률 | 배당주기 | 최근배당일 | 가상배당금 |
+
+* 주의사항:
+- "연 배당금(최근지급)" 칸에는 반드시 JSON의 dividendAmount 금액과 latestDividend 금액을 조합하여 "[dividendAmount]원 (최근 [latestDividend]원)" 문자열로 합쳐 명시해야 해.
+- "환산수익률" 칸에는 yieldRate 치수를 O.OO% 포맷으로 표시해줘.
 
 [사용자 요청 프롬프트]:
 ${userPrompt}
