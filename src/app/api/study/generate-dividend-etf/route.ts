@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
                 const extractPrompt = `넌 ETF 필터 설정 추출기야. 사용자의 프롬프트를 분석해서 반드시 순수 JSON 형태(문자열 블록 \`\`\`json 등이 없는 형태)로만 응답해.
 형식: {"includeKeywords": ["키워드1", "키워드2"], "excludeKeywords": ["제외어1"], "topLimit": 10}
 - 프롬프트에 포함되어야 할 종목 키워드(예: 미국, 리츠)를 includeKeywords 로 뽑아. 사용자가 특정 단어를 반드시 포함해야만 한다고 명시하지 않았다면 빈 배열 []로 해 (모든 ETF 대상).
-- 제외해야 하는 키워드(예: 커버드콜 제외 -> ["커버드콜", "커버드"])가 있다면 excludeKeywords 로 뽑아. 없으면 [].
+- 제외해야 하는 키워드가 명시적으로 프롬프트에 있다면 excludeKeywords 로 뽑아. (예시: "리츠 종목은 제외해줘" -> ["리츠", "REITs"]). 사용자가 '제외'나 '빼달라'는 언급을 명확히 하지 않았다면 절대로 임의의 단어를 넣지 말고 무조건 무조건 빈 배열 []로 설정해.
 - 상위 N개를 뽑으라는 지시(예: 상위 30개)가 있다면 topLimit을 그 숫자로 설정해. 단 최종 표시 상한은 10개이므로 topLimit은 최대 10.
 - 사용자 프롬프트: ${userPrompt}`;
                 const result = await model.generateContent(extractPrompt);
@@ -138,6 +138,7 @@ export async function POST(req: NextRequest) {
             name: string;
             dividendAmount: number;
             latestDividend: number;
+            payoutCount: number;
             dividendPayDate: string;
             recordDate: string;
         }
@@ -175,6 +176,7 @@ export async function POST(req: NextRequest) {
                             name: item.name,
                             dividendAmount: totalAnnualDividend,
                             latestDividend: parseFloat(latest.per_sto_divi_amt || '0'),
+                            payoutCount: sortedDiv.length,
                             dividendPayDate: latest.divi_pay_dt || latest.record_date || '',
                             recordDate: latest.record_date || '',
                         } as DividendResult;
@@ -224,15 +226,34 @@ export async function POST(req: NextRequest) {
                         const price = parseInt(etfData.stck_prpr || '0');
                         if (price <= 0) return null;
 
-                        const yieldRate = (item.dividendAmount / price) * 100;
+                        let annualDiv = item.dividendAmount;
+                        const cycleStr = etfData.etf_dvdn_cycl || '';
+                        const cycle = parseInt(cycleStr.replace(/[^0-9]/g, ''));
+                        
+                        // 연환산(Annualized) 로직: 상장된 지 1년이 안 되어 실제 지급 횟수가 연간 기대 횟수보다 부족한 경우 보정
+                        if (!isNaN(cycle) && cycle > 0 && cycle <= 12) {
+                            const expectedPayouts = Math.floor(12 / cycle);
+                            if (item.payoutCount > 0 && item.payoutCount < expectedPayouts) {
+                                const avgPayout = item.dividendAmount / item.payoutCount;
+                                annualDiv = avgPayout * expectedPayouts;
+                            }
+                        } else {
+                             // 분배주기가 불명확하나 종목명에 명백한 '월배당' 속성이 있는 경우 12회 지급으로 예상 연환산
+                             if ((item.name.includes('월배당') || item.name.includes('프리미엄') || item.name.includes('커버드')) && item.payoutCount < 12) {
+                                 const avgPayout = item.dividendAmount / item.payoutCount;
+                                 annualDiv = avgPayout * 12;
+                             }
+                        }
+
+                        const yieldRate = (annualDiv / price) * 100;
                         const shares = Math.floor(10000000 / price);
-                        const virtualDividend = shares * item.dividendAmount;
+                        const virtualDividend = shares * annualDiv;
 
                         return {
                             code: item.code,
                             name: item.name,
                             price,
-                            dividendAmount: item.dividendAmount,
+                            dividendAmount: annualDiv, // 연환산 보정된 최종 연금을 UI 표출에 사용
                             latestDividend: item.latestDividend,
                             dividendPayDate: item.dividendPayDate,
                             recordDate: item.recordDate,
