@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         // 1. LLM Step 1: 사용자 프롬프트에서 필터 조건 추출
         // ====================================================================
         const apiKey = process.env.GEMINI_API_KEY || '';
-        let includeKeywords = ['배당'];
+        let includeKeywords: string[] = [];
         let excludeKeywords: string[] = [];
         let topLimit = 10;
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
                 const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
                 const extractPrompt = `넌 ETF 필터 설정 추출기야. 사용자의 프롬프트를 분석해서 반드시 순수 JSON 형태(문자열 블록 \`\`\`json 등이 없는 형태)로만 응답해.
 형식: {"includeKeywords": ["키워드1", "키워드2"], "excludeKeywords": ["제외어1"], "topLimit": 10}
-- 프롬프트에 포함되어야 할 종목 키워드(예: 배당, 리츠)를 includeKeywords 로 뽑아. 명시되지 않았다면 ["배당"]으로 해.
+- 프롬프트에 포함되어야 할 종목 키워드(예: 미국, 리츠)를 includeKeywords 로 뽑아. 사용자가 특정 단어를 반드시 포함해야만 한다고 명시하지 않았다면 빈 배열 []로 해 (모든 ETF 대상).
 - 제외해야 하는 키워드(예: 커버드콜 제외 -> ["커버드콜", "커버드"])가 있다면 excludeKeywords 로 뽑아. 없으면 [].
 - 상위 N개를 뽑으라는 지시(예: 상위 30개)가 있다면 topLimit을 그 숫자로 설정해. 단 최종 표시 상한은 10개이므로 topLimit은 최대 10.
 - 사용자 프롬프트: ${userPrompt}`;
@@ -75,8 +75,7 @@ export async function POST(req: NextRequest) {
         }
 
         // ====================================================================
-        // 2. all_stocks_master.json에서 ETF 후보군 전수 파싱 (API 호출 없음)
-        //    → 제한 없이 100개든 500개든 전부 로컬에서 필터링
+        // 2. all_stocks_master.json에서 ETF 후보군 필터링 (불필요한 파생 제거)
         // ====================================================================
         const ETF_BRANDS = [
             'KODEX', 'TIGER', 'KBSTAR', 'RISE', 'ARIRANG', 'HANARO', 'ACE', 'SOL',
@@ -86,7 +85,10 @@ export async function POST(req: NextRequest) {
             'HK', 'VITA', '마이티', '더제이',
         ];
 
-        let matchedEtfMap = new Map<string, string>(); // code -> name
+        // 배당이 거의 없는 파생/상품 ETF 키워드
+        const JUNK_KEYWORDS = ['레버리지', '인버스', '선물', 'VIX', '2X', '블룸버그', '원유', '천연가스', '금선물', '은선물', '구리', '농산물', '콩', '달러', '엔선물', '유로'];
+
+        let matchedEtfs: { code: string, name: string }[] = [];
         try {
             const unifiedPath = path.join(process.cwd(), 'public', 'data', 'all_stocks_master.json');
             if (fs.existsSync(unifiedPath)) {
@@ -97,9 +99,12 @@ export async function POST(req: NextRequest) {
                     if (!stock.name || !stock.symbol) continue;
                     const nameUpper = stock.name.toUpperCase();
 
-                    // ETF 브랜드명 확인
                     const isEtf = ETF_BRANDS.some(brand => nameUpper.includes(brand.toUpperCase()));
                     if (!isEtf) continue;
+
+                    // 파생상품 등 배당 무관 종목 가지치기
+                    const isJunk = JUNK_KEYWORDS.some(kw => nameUpper.includes(kw));
+                    if (isJunk) continue;
 
                     // 포함 키워드 확인
                     if (includeKeywords.length > 0) {
@@ -113,23 +118,22 @@ export async function POST(req: NextRequest) {
                         if (hasExclude) continue;
                     }
 
-                    matchedEtfMap.set(stock.symbol, stock.name);
+                    matchedEtfs.push({ code: stock.symbol, name: stock.name });
                 }
             }
         } catch (error) {
             console.error("[에러] ETF 후보군 파싱 중 오류 발생:", error);
         }
 
-        console.log(`  [2단계] ETF 후보군 전수 파싱: ${matchedEtfMap.size}개 (API 호출 없음)`);
+        console.log(`  [2단계] 파생 제외 후 순수 ETF 후보군 파싱: ${matchedEtfs.length}개`);
 
         // ====================================================================
-        // 3. 벌크 배당 조회: 1회 API 호출로 전체 배당 데이터 수집
-        //    → sht_cd를 공백으로 보내면 전 종목 배당 데이터 반환
-        //    → 로컬에서 ETF 코드와 교차 매칭
+        // 3. 고속 개별 배당 이력 스캔 (Concurrent Scan)
+        //    -> rateLimiter (16 req/sec) 를 통해 전체 종목 빠르게 배당 여부만 확인
         // ====================================================================
-        console.log(`  [3단계] 벌크 배당 데이터 조회 시작 (1회 API 호출)...`);
+        console.log(`  [3단계] ${matchedEtfs.length}개 종목 고속 배당 조회 시작...`);
 
-        interface DividendMatch {
+        interface DividendResult {
             code: string;
             name: string;
             dividendAmount: number;
@@ -137,65 +141,55 @@ export async function POST(req: NextRequest) {
             recordDate: string;
         }
 
-        const dividendMatches: DividendMatch[] = [];
+        const dividendMatches: DividendResult[] = [];
+        const scanChunkSize = 20;
 
-        try {
-            const allDividends = await getKsdinfoDividend({
-                gb1: '0',
-                f_dt: fromDate,
-                t_dt: todayStr,
-                sht_cd: '',  // 전체 종목 일괄 조회
-            });
+        for (let i = 0; i < matchedEtfs.length; i += scanChunkSize) {
+            const chunk = matchedEtfs.slice(i, i + scanChunkSize);
+            const chunkResults = await Promise.all(
+                chunk.map(async (item) => {
+                    try {
+                        const actualDividends = await getKsdinfoDividend({
+                            gb1: '0',
+                            f_dt: fromDate,
+                            t_dt: todayStr,
+                            sht_cd: item.code,
+                        });
+                        
+                        // 배당 기록이 없거나 0원이면 탈락
+                        if (!actualDividends || actualDividends.length === 0) return null;
+                        
+                        const sortedDiv = actualDividends
+                            .filter((d: any) => parseFloat(d.per_sto_divi_amt || '0') > 0)
+                            .sort((a: any, b: any) => (b.record_date || '').localeCompare(a.record_date || ''));
+                        
+                        if (sortedDiv.length === 0) return null;
 
-            console.log(`  [3단계] 벌크 배당 응답: ${allDividends.length}건`);
-
-            // ETF 코드와 교차 매칭 → 종목별 최신 배당만 추출
-            const etfDividendMap = new Map<string, any>();
-
-            for (const d of allDividends) {
-                const code = d.sht_cd || '';
-                if (!matchedEtfMap.has(code)) continue; // ETF 후보가 아니면 스킵
-
-                const amount = parseFloat(d.per_sto_divi_amt || '0');
-                if (amount <= 0) continue;
-
-                const recordDate = d.record_date || '';
-                const existing = etfDividendMap.get(code);
-
-                // 종목별 가장 최근 배당만 유지
-                if (!existing || recordDate > existing.recordDate) {
-                    etfDividendMap.set(code, {
-                        code,
-                        name: matchedEtfMap.get(code) || code,
-                        dividendAmount: amount,
-                        dividendPayDate: d.divi_pay_dt || recordDate,
-                        recordDate,
-                    });
-                }
-            }
-
-            // Map → Array
-            for (const [, match] of etfDividendMap) {
-                dividendMatches.push(match);
-            }
-
-            // 배당금 높은 순 정렬 (가격 없이 배당금 기준 사전 정렬)
-            dividendMatches.sort((a, b) => b.dividendAmount - a.dividendAmount);
-
-        } catch (e) {
-            console.error("  [3단계] 벌크 배당 조회 실패:", e);
+                        const latest = sortedDiv[0];
+                        return {
+                            code: item.code,
+                            name: item.name,
+                            dividendAmount: parseFloat(latest.per_sto_divi_amt || '0'),
+                            dividendPayDate: latest.divi_pay_dt || latest.record_date || '',
+                            recordDate: latest.record_date || '',
+                        } as DividendResult;
+                    } catch (e) {
+                        return null;
+                    }
+                })
+            );
+            
+            chunkResults.forEach(res => { if (res) dividendMatches.push(res); });
         }
 
-        console.log(`  [3단계] 배당 이력 매칭된 ETF: ${dividendMatches.length}개`);
+        console.log(`  [3단계] 실제 배당 이력 확인된 ETF: ${dividendMatches.length}개`);
+
+        // 전체 배당 이력이 확인된 ETF를 대상으로 가격을 모두 조회해야만 정확한 시가배당률을 구할 수 있음
+        const priceCandidates = dividendMatches;
 
         // ====================================================================
-        // 4. 상위 후보만 가격 조회 (최대 20개 → API 20회)
-        //    → 실시간 아니어도 OK: 전일 종가(stck_prpr) 사용
-        //    → 가격 정보로 정확한 수익률 산출 후 최종 TOP 10 확정
+        // 4. 추려진 상위 후보군 현재가(전일가) 조회 및 최종 수익률 산출
         // ====================================================================
-        const priceCheckLimit = Math.min(dividendMatches.length, 20);
-        const priceCandidates = dividendMatches.slice(0, priceCheckLimit);
-
         console.log(`  [4단계] 상위 ${priceCandidates.length}개 ETF 가격 조회 시작...`);
 
         interface FinalEtfResult {
@@ -211,7 +205,7 @@ export async function POST(req: NextRequest) {
         }
 
         const etfResults: FinalEtfResult[] = [];
-        const priceChunkSize = 10;
+        const priceChunkSize = 20;
 
         for (let i = 0; i < priceCandidates.length; i += priceChunkSize) {
             const chunk = priceCandidates.slice(i, i + priceChunkSize);
@@ -245,16 +239,13 @@ export async function POST(req: NextRequest) {
                 })
             );
             chunkResults.forEach(res => { if (res) etfResults.push(res); });
-            if (i + priceChunkSize < priceCandidates.length) {
-                await new Promise(r => setTimeout(r, 300));
-            }
         }
 
         // 수익률 높은 순 최종 정렬 → TOP N 추출 (최대 10)
         etfResults.sort((a, b) => b.yieldRate - a.yieldRate);
         const finalTopEtfs = etfResults.slice(0, topLimit);
 
-        console.log(`  [4단계] 최종 TOP ${finalTopEtfs.length}개 ETF 확정 (전체 유효: ${etfResults.length}개)`);
+        console.log(`  [4단계] 최종 TOP ${finalTopEtfs.length}개 ETF 확정 (현재가 유효: ${etfResults.length}개)`);
 
         // ====================================================================
         // 5. LLM Step 2: 프롬프트에 맞는 Markdown 렌더링
@@ -312,8 +303,8 @@ ${JSON.stringify(finalTopEtfs.map(e => ({...e, virtualDividend: Math.round(e.vir
             await new Promise(r => setTimeout(r, 200));
         }
         if (!hasAnyDisclosure) markdown += `> 최근 12개월 내 "배당" 관련 최신 공시가 없습니다.\n`;
-        markdown += `\n---\n*본 리포트는 KIS API 전일 종가 데이터를 기반으로 AI가 작성했습니다.*\n`;
-        markdown += `*조회 범위: 전체 ETF ${matchedEtfMap.size}개 후보 중 배당 이력 ${dividendMatches.length}개 → 상위 ${finalTopEtfs.length}개 선별*\n`;
+        markdown += `\n---\n*본 리포트는 전수 검색을 통한 KIS API 전일 종가 기반으로 AI가 작성했습니다.*\n`;
+        markdown += `*조회 범위: 전체 ETF ${matchedEtfs.length}개 후보 중 실제 배당 확인 ${dividendMatches.length}개 → 수익 산출 상위 ${finalTopEtfs.length}개 선별*\n`;
 
         // ====================================================================
         // 6. DB 저장
@@ -329,7 +320,7 @@ ${JSON.stringify(finalTopEtfs.map(e => ({...e, virtualDividend: Math.round(e.vir
             content: markdown,
             title,
             stats: {
-                totalCandidates: matchedEtfMap.size,
+                totalCandidates: matchedEtfs.length,
                 dividendMatched: dividendMatches.length,
                 finalTop: finalTopEtfs.length,
             },

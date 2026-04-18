@@ -53,6 +53,6 @@ export class RateLimiter {
 }
 
 // Global instance
-// maxConcurrency 5, minInterval 200ms => ~5 req/sec (KIS API 안정 범위)
-export const kisRateLimiter = new RateLimiter(5, 200);
+// maxConcurrency 10, minInterval 60ms => ~16 req/sec (KIS 실전계좌 20건/초 한도 내 안전 범위)
+export const kisRateLimiter = new RateLimiter(10, 60);
 
