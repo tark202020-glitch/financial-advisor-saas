@@ -37,10 +37,10 @@ export async function POST(req: NextRequest) {
         const displayDate = kstNow.toISOString().slice(0, 10);
         const displayTime = kstNow.toISOString().slice(11, 16);
 
-        // 배당 이력: 최근 6개월 (벌크 조회 시 응답 크기 절감)
-        const sixMonthsAgo = new Date(kstNow);
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        const fromDate = sixMonthsAgo.toISOString().slice(0, 10).replace(/-/g, '');
+        // 배당 이력: 최근 1년 (TTM 기준 실제 연간 실지급 배당금의 총합 연산)
+        const oneYearAgo = new Date(kstNow);
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const fromDate = oneYearAgo.toISOString().slice(0, 10).replace(/-/g, '');
 
         console.log(`\n▶ [배당ETF분석] 시작 (최적화 버전 - Bulk Dividend)`);
 
@@ -137,6 +137,7 @@ export async function POST(req: NextRequest) {
             code: string;
             name: string;
             dividendAmount: number;
+            latestDividend: number;
             dividendPayDate: string;
             recordDate: string;
         }
@@ -165,11 +166,15 @@ export async function POST(req: NextRequest) {
                         
                         if (sortedDiv.length === 0) return null;
 
+                        // 최근 1년 실제 지급된 모든 배당금 합산 (TTM 시가배당률의 분자)
+                        const totalAnnualDividend = sortedDiv.reduce((sum: number, d: any) => sum + parseFloat(d.per_sto_divi_amt || '0'), 0);
                         const latest = sortedDiv[0];
+                        
                         return {
                             code: item.code,
                             name: item.name,
-                            dividendAmount: parseFloat(latest.per_sto_divi_amt || '0'),
+                            dividendAmount: totalAnnualDividend,
+                            latestDividend: parseFloat(latest.per_sto_divi_amt || '0'),
                             dividendPayDate: latest.divi_pay_dt || latest.record_date || '',
                             recordDate: latest.record_date || '',
                         } as DividendResult;
@@ -197,6 +202,7 @@ export async function POST(req: NextRequest) {
             name: string;
             price: number;
             dividendAmount: number;
+            latestDividend: number;
             dividendPayDate: string;
             recordDate: string;
             yieldRate: number;
@@ -227,6 +233,7 @@ export async function POST(req: NextRequest) {
                             name: item.name,
                             price,
                             dividendAmount: item.dividendAmount,
+                            latestDividend: item.latestDividend,
                             dividendPayDate: item.dividendPayDate,
                             recordDate: item.recordDate,
                             yieldRate,
@@ -277,10 +284,10 @@ ${JSON.stringify(finalTopEtfs.map(e => ({...e, virtualDividend: Math.round(e.vir
         if (!markdown) {
             markdown = `# 배당ETF\n> 📅 작성일시: ${displayDate} ${displayTime}\n\n`;
             if (finalTopEtfs.length > 0) {
-                markdown += `| 종목 | 종가 | 주당배당금 | 수익률 | 배당주기 | 최근배당일 | 가상배당금 |\n|------|------|-----------|--------|--------|-----------|----------|\n`;
+                markdown += `| 종목 | 종가 | 연 배당금 | 수익률 | 배당주기 | 최근배당일 | 가상배당금 |\n|------|------|----------|--------|--------|-----------|----------|\n`;
                 for (const s of finalTopEtfs) {
                     const payDateFmt = formatDate(s.dividendPayDate || s.recordDate);
-                    markdown += `| ${s.name} | ${formatNumber(s.price)}원 | ${formatNumber(s.dividendAmount)}원 (${payDateFmt}) | ${s.yieldRate.toFixed(2)}% | ${s.frequency} | ${formatDate(s.recordDate)} | ${formatNumber(Math.round(s.virtualDividend))}원 |\n`;
+                    markdown += `| ${s.name} | ${formatNumber(s.price)}원 | ${formatNumber(s.dividendAmount)}원 (최근 ${formatNumber(s.latestDividend)}원) | ${s.yieldRate.toFixed(2)}% | ${s.frequency} | ${formatDate(s.recordDate)} | ${formatNumber(Math.round(s.virtualDividend))}원 |\n`;
                 }
             } else {
                 markdown += `> 조회된 데이터가 없습니다.\n`;
