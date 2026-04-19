@@ -537,34 +537,6 @@ export default function StudyPage() {
                                     </button>
                                 )}
 
-                                {topic === "dividend" && (
-                                    <>
-                                        <button
-                                            onClick={() => {
-                                                setIsPromptMode(true);
-                                                setPromptTarget("dividend");
-                                                setEditedContent("");
-                                            }}
-                                            disabled={isGenerating || isUploading}
-                                            className="w-full text-sm bg-purple-600 hover:bg-purple-500 disabled:opacity-50 border border-purple-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
-                                        >
-                                            <ShieldCheck size={16} />
-                                            {isGenerating && promptTarget === "dividend" ? '데이터 수집 중...' : '배당주 TOP10조사'}
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setIsPromptMode(true);
-                                                setPromptTarget("dividend_etf");
-                                                setEditedContent("");
-                                            }}
-                                            disabled={isGenerating || isUploading}
-                                            className="w-full text-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 border border-emerald-500 text-white py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-semibold shadow-md"
-                                        >
-                                            <ShieldCheck size={16} />
-                                            {isGenerating && promptTarget === "dividend_etf" ? '데이터 수집 중...' : '배당ETF TOP10조사'}
-                                        </button>
-                                    </>
-                                )}
 
                                 {/* MD 파일 업로드 버튼 */}
                                 <input
