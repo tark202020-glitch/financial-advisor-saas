@@ -138,7 +138,7 @@ export default function StudyPage() {
     // AI Generation state
     const [isPromptMode, setIsPromptMode] = useState<boolean>(false);
     const [promptTarget, setPromptTarget] = useState<"dividend" | "dividend_etf">("dividend");
-    const [dividendPrompt, setDividendPrompt] = useState<string>(DEFAULT_DIVIDEND_PROMPT);
+    const [dividendPrompt, setDividendPrompt] = useState<string>("");
     const [dividendEtfPrompt, setDividendEtfPrompt] = useState<string>("[목표] 대한민국 배당 ETF TOP 10 수익률 리포트 작성");
     const [isSavingPrompt, setIsSavingPrompt] = useState<boolean>(false);
 
