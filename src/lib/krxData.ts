@@ -56,7 +56,7 @@ export interface EtfDividendYieldResult {
 }
 
 // ============================================================================
-// KRX OTP 방식 Core
+// KRX API Core (JSON API 1차 → OTP/CSV 2차 폴백)
 // ============================================================================
 
 const KRX_HEADERS = {
@@ -66,17 +66,59 @@ const KRX_HEADERS = {
     'Referer': 'https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd',
 };
 
+// JSON API: OTP 없이 직접 JSON 응답 (Vercel 서버리스 환경에서 더 안정적)
+const JSON_API_URL = 'https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd';
+// OTP/CSV 폴백용
 const OTP_URL = 'https://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd';
 const DOWNLOAD_URL = 'https://data.krx.co.kr/comm/fileDn/download_csv/download.cmd';
 
 /**
+ * KRX JSON API: OTP 없이 직접 JSON 응답을 받습니다.
+ * Vercel 서버리스 환경에서 OTP 2단계 방식보다 안정적입니다.
+ */
+async function krxFetchJson(params: Record<string, string>): Promise<Record<string, any>> {
+    const bld = params.url || params.bld || 'unknown';
+    console.log(`[KRX-JSON] API 호출 시작 (${bld})...`);
+
+    const body = new URLSearchParams({
+        ...params,
+        bld: params.url || params.bld || '',  // JSON API는 'bld' 파라미터 사용
+    });
+    // JSON API에서는 'url' 파라미터 제거
+    body.delete('url');
+
+    const res = await fetch(JSON_API_URL, {
+        method: 'POST',
+        headers: {
+            ...KRX_HEADERS,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+        },
+        body: body.toString(),
+        signal: AbortSignal.timeout(15000),
+    });
+
+    console.log(`[KRX-JSON] 응답 상태: ${res.status} (${bld})`);
+
+    if (!res.ok) {
+        const errorBody = await res.text().catch(() => '(body read failed)');
+        throw new Error(`KRX JSON API 실패: ${res.status} ${res.statusText} | body: ${errorBody.slice(0, 200)}`);
+    }
+
+    const data = await res.json();
+    const outBlock = data.OutBlock_1 || data.output || data.block1 || [];
+    console.log(`[KRX-JSON] 데이터 수신: ${Array.isArray(outBlock) ? outBlock.length : 'N/A'}건 (${bld})`);
+
+    return data;
+}
+
+/**
  * KRX OTP 2단계 fetch: OTP 발급 → CSV 다운로드 → 텍스트 반환
- * - 15초 timeout 설정 (Vercel 서버리스 환경 대응)
- * - 상세 진단 로깅 포함
+ * JSON API 실패 시 폴백으로 사용합니다.
  */
 async function krxFetchCsv(params: Record<string, string>): Promise<string> {
     const apiLabel = params.url || 'unknown';
-    console.log(`[KRX] OTP 발급 시작 (${apiLabel})...`);
+    console.log(`[KRX-CSV] OTP 발급 시작 (${apiLabel})...`);
 
     // 1. OTP 발급 (15초 timeout)
     const otpRes = await fetch(OTP_URL, {
@@ -93,7 +135,7 @@ async function krxFetchCsv(params: Record<string, string>): Promise<string> {
         signal: AbortSignal.timeout(15000),
     });
 
-    console.log(`[KRX] OTP 응답 상태: ${otpRes.status} (${apiLabel})`);
+    console.log(`[KRX-CSV] OTP 응답 상태: ${otpRes.status} (${apiLabel})`);
 
     if (!otpRes.ok) {
         const errorBody = await otpRes.text().catch(() => '(body read failed)');
@@ -105,7 +147,7 @@ async function krxFetchCsv(params: Record<string, string>): Promise<string> {
         throw new Error(`KRX OTP 응답 이상 (길이=${otp.length}): "${otp.slice(0, 100)}"`);
     }
 
-    console.log(`[KRX] OTP 발급 성공 (길이=${otp.length}), CSV 다운로드 시작...`);
+    console.log(`[KRX-CSV] OTP 발급 성공 (길이=${otp.length}), CSV 다운로드 시작...`);
 
     // 2. CSV 다운로드 (15초 timeout)
     const dlRes = await fetch(DOWNLOAD_URL, {
@@ -118,7 +160,7 @@ async function krxFetchCsv(params: Record<string, string>): Promise<string> {
         signal: AbortSignal.timeout(15000),
     });
 
-    console.log(`[KRX] CSV 다운로드 응답 상태: ${dlRes.status} (${apiLabel})`);
+    console.log(`[KRX-CSV] CSV 다운로드 응답 상태: ${dlRes.status} (${apiLabel})`);
 
     if (!dlRes.ok) {
         throw new Error(`KRX CSV 다운로드 실패: ${dlRes.status} ${dlRes.statusText}`);
@@ -128,7 +170,7 @@ async function krxFetchCsv(params: Record<string, string>): Promise<string> {
     const buf = await dlRes.arrayBuffer();
     const csvText = new TextDecoder('euc-kr').decode(buf);
     const lineCount = csvText.trim().split('\n').length;
-    console.log(`[KRX] CSV 수신 완료: ${buf.byteLength} bytes, ${lineCount} lines (${apiLabel})`);
+    console.log(`[KRX-CSV] CSV 수신 완료: ${buf.byteLength} bytes, ${lineCount} lines (${apiLabel})`);
 
     return csvText;
 }
@@ -223,22 +265,59 @@ export async function fetchKrxEtfPrices(date?: string): Promise<KrxEtfPrice[]> {
 
     console.log(`[KRX] ETF 전종목 시세 조회 (${date})...`);
 
-    const csvText = await krxFetchCsv({
+    const params = {
         locale: 'ko_KR',
         mktId: 'ETF',
         trdDd: date,
         share: '1',
         money: '1',
         url: 'dbms/MDC/STAT/standard/MDCSTAT04301',
-    });
+    };
+
+    // --- 1차: JSON API 시도 ---
+    try {
+        const data = await krxFetchJson(params);
+        const items = data.OutBlock_1 || data.output || data.block1 || [];
+        if (Array.isArray(items) && items.length > 0) {
+            console.log(`[KRX-JSON] ETF 시세 ${items.length}개 종목 (JSON 성공)`);
+            // JSON 응답 필드명 로깅 (최초 1회)
+            if (items.length > 0) {
+                console.log(`[KRX-JSON] 필드명: ${Object.keys(items[0]).join(', ')}`);
+            }
+            return items.map((item: any) => {
+                // JSON 응답의 필드명은 영문 약어 또는 한글일 수 있음
+                const rawCode = item.ISU_SRT_CD || item.ISU_CD || item['종목코드'] || '';
+                const shortCode = rawCode.length === 12 ? rawCode.slice(3, 9) : rawCode.replace(/[^0-9]/g, '');
+                return {
+                    code: shortCode,
+                    isinCode: item.ISU_CD || rawCode,
+                    name: item.ISU_ABBRV || item.ISU_NM || item['종목명'] || '',
+                    price: parseNum(item.TDD_CLSPRC || item.CLSPRC || item['종가'] || item['현재가']),
+                    change: parseNum(item.CMPPREVDD_PRC || item['대비']),
+                    changeRate: parseNum(item.FLUC_RT || item['등락률']),
+                    open: parseNum(item.TDD_OPNPRC || item['시가']),
+                    high: parseNum(item.TDD_HGPRC || item['고가']),
+                    low: parseNum(item.TDD_LWPRC || item['저가']),
+                    volume: parseNum(item.ACC_TRDVOL || item['거래량']),
+                    tradingValue: parseNum(item.ACC_TRDVAL || item['거래대금']),
+                    marketCap: parseNum(item.MKTCAP || item['시가총액']),
+                    nav: parseNum(item.NAV || item['NAV']),
+                    baseIndex: item.IDX_IND_NM || item['기초지수'] || '',
+                };
+            }).filter((item: KrxEtfPrice) => item.code && item.price > 0);
+        }
+        console.log(`[KRX-JSON] ETF 시세 JSON 빈 응답 → CSV 폴백`);
+    } catch (e: any) {
+        console.error(`[KRX-JSON] ETF 시세 JSON 실패: ${e.message} → CSV 폴백`);
+    }
+
+    // --- 2차: OTP/CSV 폴백 ---
+    const csvText = await krxFetchCsv(params);
 
     const rows = parseCsv(csvText);
-    console.log(`[KRX] ETF 시세 ${rows.length}개 종목 수신`);
+    console.log(`[KRX-CSV] ETF 시세 ${rows.length}개 종목 수신`);
 
-    // 컬럼명 자동 감지 (KRX 반환 컬럼명은 한글)
-    // 일반적 헤더: 종목코드, 종목명, 현재가, 대비, 등락률, 시가, 고가, 저가, 거래량, 거래대금, 시가총액, ...
     return rows.map(row => {
-        // 종목코드 추출: ISIN 코드(KR7069500007)에서 6자리 추출 또는 직접 코드 사용
         const rawCode = row['종목코드'] || '';
         const shortCode = rawCode.length === 12 ? rawCode.slice(3, 9) : rawCode.replace(/[^0-9]/g, '');
 
@@ -273,7 +352,7 @@ export async function fetchKrxEtfPrices(date?: string): Promise<KrxEtfPrice[]> {
 export async function fetchKrxEtfDistributions(fromDate: string, toDate: string): Promise<KrxEtfDistribution[]> {
     console.log(`[KRX] ETF 분배금 현황 조회 (${fromDate} ~ ${toDate})...`);
 
-    const csvText = await krxFetchCsv({
+    const params = {
         locale: 'ko_KR',
         searchType: '1',       // 기간 검색
         mktId: 'ETF',
@@ -281,13 +360,42 @@ export async function fetchKrxEtfDistributions(fromDate: string, toDate: string)
         strtDd: fromDate,
         endDd: toDate,
         url: 'dbms/MDC/STAT/standard/MDCSTAT04802',
-    });
+    };
+
+    // --- 1차: JSON API 시도 ---
+    try {
+        const data = await krxFetchJson(params);
+        const items = data.OutBlock_1 || data.output || data.block1 || [];
+        if (Array.isArray(items) && items.length > 0) {
+            console.log(`[KRX-JSON] 분배금 ${items.length}건 (JSON 성공)`);
+            if (items.length > 0) {
+                console.log(`[KRX-JSON] 분배금 필드명: ${Object.keys(items[0]).join(', ')}`);
+            }
+            return items.map((item: any) => {
+                const rawCode = item.ISU_SRT_CD || item.ISU_CD || item['종목코드'] || '';
+                const shortCode = rawCode.length === 12 ? rawCode.slice(3, 9) : rawCode.replace(/[^0-9]/g, '');
+                return {
+                    code: shortCode,
+                    isinCode: item.ISU_CD || rawCode,
+                    name: item.ISU_ABBRV || item.ISU_NM || item['종목명'] || '',
+                    recordDate: item.RECORD_DATE || item.STD_DT || item['분배금기준일'] || item['기준일'] || '',
+                    payDate: item.PAY_DATE || item.PAY_DT || item['지급일'] || item['실제지급일'] || '',
+                    cashDistribution: parseNum(item.CASH_DISTR || item.CASH_DIST_AMT || item['현금분배금'] || item['분배금'] || item['현금분배금(원/좌)']),
+                };
+            }).filter((item: KrxEtfDistribution) => item.code && item.cashDistribution > 0);
+        }
+        console.log(`[KRX-JSON] 분배금 JSON 빈 응답 → CSV 폴백`);
+    } catch (e: any) {
+        console.error(`[KRX-JSON] 분배금 JSON 실패: ${e.message} → CSV 폴백`);
+    }
+
+    // --- 2차: OTP/CSV 폴백 ---
+    const csvText = await krxFetchCsv(params);
 
     const rows = parseCsv(csvText);
-    console.log(`[KRX] 분배금 ${rows.length}건 수신`);
+    console.log(`[KRX-CSV] 분배금 ${rows.length}건 수신`);
 
     return rows.map(row => {
-        // 종목코드 추출
         const rawCode = row['종목코드'] || '';
         const shortCode = rawCode.length === 12 ? rawCode.slice(3, 9) : rawCode.replace(/[^0-9]/g, '');
 
