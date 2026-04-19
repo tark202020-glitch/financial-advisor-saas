@@ -1,3 +1,24 @@
+## [Alpha V1.362] - 2026-04-19 22:35:00
+
+### 🚀 Major Refactor: ETF 배당 데이터 소스 전면 교체 (KIS API → KRX + 네이버 금융)
+- **Summary**: KIS API Rate Limit / 타임아웃 / 데이터 누락 문제를 근본적으로 해결하기 위해 데이터 소스를 KRX 정보데이터시스템(data.krx.co.kr) OTP 방식으로 전면 교체
+- **Detail**:
+  - **[NEW] `src/lib/krxData.ts`**: KRX OTP 2단계(OTP 발급 → CSV 다운로드) 벌크 데이터 수집 모듈 신규 생성
+    - `fetchKrxEtfPrices()`: ETF 전종목 시세 (종가, 시가총액, NAV 등) 조회
+    - `fetchKrxEtfDistributions()`: ETF 분배금 현황 (기준일, 지급일, 현금분배금) 조회
+    - `fetchNaverEtfPrices()`: 네이버 금융 API 폴백 (KRX 장애 시 가격 대체)
+    - `getKrxEtfDividendYield()`: 가격 + 분배금 인메모리 조인 → TTM 수익률 산출
+    - EUC-KR 인코딩 CSV 파서 내장, 비영업일 자동 재시도 (최대 3일 전까지)
+  - **[MODIFY] `generate-dividend-etf/route.ts`**: KIS API 의존 완전 제거
+    - `getKsdinfoDividend`, `getEtfPrice` import 제거 → `getKrxEtfDividendYield` 단일 호출로 교체
+    - `all_stocks_master.json` 기반 ETF 후보 파싱 로직 제거 (KRX가 ETF 전종목 제공)
+    - **API 호출: 312+회 → 2회 (OTP 2 + Download 2)**
+    - **소요시간: 30~60초 → 3~5초** (maxDuration 60 → 30)
+    - **API 키 불필요, Rate Limit 없음, 커버드콜 ETF 전수 포함**
+  - LLM 필터 추출 및 마크다운 리포트 생성 로직은 그대로 유지
+  - 연환산(Annualized) 보정 로직 유지 (월배당 ETF × 12, 분기배당 × 4)
+- **Build Time**: 2026-04-19 22:35:00
+
 ## [Alpha V1.361] - 2026-04-19 00:45:00
 
 ### 🚀 Update: ETF 배당수익률 연간(TTM) 기준 산출로 로직 전면 수정
