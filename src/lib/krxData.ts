@@ -63,17 +63,22 @@ const KRX_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': '*/*',
     'Accept-Language': 'ko-KR,ko;q=0.9',
-    'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd',
+    'Referer': 'https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd',
 };
 
-const OTP_URL = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd';
-const DOWNLOAD_URL = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd';
+const OTP_URL = 'https://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd';
+const DOWNLOAD_URL = 'https://data.krx.co.kr/comm/fileDn/download_csv/download.cmd';
 
 /**
  * KRX OTP 2단계 fetch: OTP 발급 → CSV 다운로드 → 텍스트 반환
+ * - 15초 timeout 설정 (Vercel 서버리스 환경 대응)
+ * - 상세 진단 로깅 포함
  */
 async function krxFetchCsv(params: Record<string, string>): Promise<string> {
-    // 1. OTP 발급
+    const apiLabel = params.url || 'unknown';
+    console.log(`[KRX] OTP 발급 시작 (${apiLabel})...`);
+
+    // 1. OTP 발급 (15초 timeout)
     const otpRes = await fetch(OTP_URL, {
         method: 'POST',
         headers: {
@@ -85,18 +90,24 @@ async function krxFetchCsv(params: Record<string, string>): Promise<string> {
             csvxls_isNo: 'false',
             name: 'fileDown',
         }).toString(),
+        signal: AbortSignal.timeout(15000),
     });
 
+    console.log(`[KRX] OTP 응답 상태: ${otpRes.status} (${apiLabel})`);
+
     if (!otpRes.ok) {
-        throw new Error(`KRX OTP 발급 실패: ${otpRes.status} ${otpRes.statusText}`);
+        const errorBody = await otpRes.text().catch(() => '(body read failed)');
+        throw new Error(`KRX OTP 발급 실패: ${otpRes.status} ${otpRes.statusText} | body: ${errorBody.slice(0, 100)}`);
     }
 
     const otp = await otpRes.text();
     if (!otp || otp.length < 10) {
-        throw new Error(`KRX OTP 응답 이상: "${otp.slice(0, 50)}"`);
+        throw new Error(`KRX OTP 응답 이상 (길이=${otp.length}): "${otp.slice(0, 100)}"`);
     }
 
-    // 2. CSV 다운로드
+    console.log(`[KRX] OTP 발급 성공 (길이=${otp.length}), CSV 다운로드 시작...`);
+
+    // 2. CSV 다운로드 (15초 timeout)
     const dlRes = await fetch(DOWNLOAD_URL, {
         method: 'POST',
         headers: {
@@ -104,7 +115,10 @@ async function krxFetchCsv(params: Record<string, string>): Promise<string> {
             'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: `code=${otp}`,
+        signal: AbortSignal.timeout(15000),
     });
+
+    console.log(`[KRX] CSV 다운로드 응답 상태: ${dlRes.status} (${apiLabel})`);
 
     if (!dlRes.ok) {
         throw new Error(`KRX CSV 다운로드 실패: ${dlRes.status} ${dlRes.statusText}`);
@@ -112,7 +126,11 @@ async function krxFetchCsv(params: Record<string, string>): Promise<string> {
 
     // EUC-KR 디코딩 (KRX는 EUC-KR 인코딩)
     const buf = await dlRes.arrayBuffer();
-    return new TextDecoder('euc-kr').decode(buf);
+    const csvText = new TextDecoder('euc-kr').decode(buf);
+    const lineCount = csvText.trim().split('\n').length;
+    console.log(`[KRX] CSV 수신 완료: ${buf.byteLength} bytes, ${lineCount} lines (${apiLabel})`);
+
+    return csvText;
 }
 
 /**
