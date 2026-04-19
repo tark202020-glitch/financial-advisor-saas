@@ -1,4 +1,9 @@
-## [Alpha V1.362] - 2026-04-19 22:35:00
+## [Alpha V1.363] - 2026-04-19 15:55:00
+
+### 🔄 Build Update
+- **Summary**: Auto-generated build update.
+- **Detail**: 배당주 분석 기능 및 UI 완전 삭제 (KRX 서버리스 크롤링 불가로 인한 처리)
+- **Build Time**: 2026-04-19 15:55:00
 
 ### 🚀 Major Refactor: ETF 배당 데이터 소스 전면 교체 (KIS API → KRX + 네이버 금융)
 - **Summary**: KIS API Rate Limit / 타임아웃 / 데이터 누락 문제를 근본적으로 해결하기 위해 데이터 소스를 KRX 정보데이터시스템(data.krx.co.kr) OTP 방식으로 전면 교체
