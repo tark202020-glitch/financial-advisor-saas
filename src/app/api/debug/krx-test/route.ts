@@ -24,6 +24,8 @@ export async function GET() {
         'Accept': '*/*',
         'Accept-Language': 'ko-KR,ko;q=0.9',
         'Referer': 'https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd',
+        'Origin': 'https://data.krx.co.kr',
+        'X-Requested-With': 'XMLHttpRequest',
     };
 
     // === Test 0: KRX 세션 쿠키 획득 ===

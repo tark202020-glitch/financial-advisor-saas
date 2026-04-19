@@ -64,6 +64,8 @@ const KRX_HEADERS: Record<string, string> = {
     'Accept': '*/*',
     'Accept-Language': 'ko-KR,ko;q=0.9',
     'Referer': 'https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd',
+    'Origin': 'https://data.krx.co.kr',
+    'X-Requested-With': 'XMLHttpRequest',
 };
 
 // JSON API: OTP 없이 직접 JSON 응답
