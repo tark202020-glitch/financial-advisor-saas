@@ -56,44 +56,118 @@ export interface EtfDividendYieldResult {
 }
 
 // ============================================================================
-// KRX API Core (JSON API 1차 → OTP/CSV 2차 폴백)
+// KRX API Core (세션 쿠키 → JSON API 1차 → OTP/CSV 2차 폴백)
 // ============================================================================
 
-const KRX_HEADERS = {
+const KRX_HEADERS: Record<string, string> = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': '*/*',
     'Accept-Language': 'ko-KR,ko;q=0.9',
     'Referer': 'https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd',
 };
 
-// JSON API: OTP 없이 직접 JSON 응답 (Vercel 서버리스 환경에서 더 안정적)
+// JSON API: OTP 없이 직접 JSON 응답
 const JSON_API_URL = 'https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd';
 // OTP/CSV 폴백용
 const OTP_URL = 'https://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd';
 const DOWNLOAD_URL = 'https://data.krx.co.kr/comm/fileDn/download_csv/download.cmd';
 
+// ---- 세션 쿠키 관리 ----
+let krxSessionCookie = '';
+let krxSessionExpiry = 0;
+
+/**
+ * KRX 세션 쿠키를 획득합니다.
+ * data.krx.co.kr은 세션 없이 API 호출 시 "LOGOUT"을 반환합니다.
+ * 메인 페이지를 GET으로 방문하여 JSESSIONID 쿠키를 획득합니다.
+ */
+async function ensureKrxSession(): Promise<string> {
+    const now = Date.now();
+    if (krxSessionCookie && krxSessionExpiry > now) {
+        return krxSessionCookie;
+    }
+
+    console.log('[KRX] 세션 쿠키 획득 중...');
+
+    try {
+        const res = await fetch('https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101', {
+            method: 'GET',
+            headers: KRX_HEADERS,
+            redirect: 'follow',
+            signal: AbortSignal.timeout(10000),
+        });
+
+        // set-cookie 헤더에서 쿠키 추출
+        const cookies: string[] = [];
+
+        // Node.js 19.7+ getSetCookie() 지원
+        if (typeof (res.headers as any).getSetCookie === 'function') {
+            const setCookies = (res.headers as any).getSetCookie() as string[];
+            for (const sc of setCookies) {
+                const cookiePart = sc.split(';')[0].trim();
+                if (cookiePart) cookies.push(cookiePart);
+            }
+        } else {
+            // 폴백: raw set-cookie 헤더 파싱
+            const raw = res.headers.get('set-cookie') || '';
+            if (raw) {
+                // 여러 쿠키가 콤마로 구분될 수 있음
+                for (const part of raw.split(/,(?=[^;]*=)/)) {
+                    const cookiePart = part.split(';')[0].trim();
+                    if (cookiePart) cookies.push(cookiePart);
+                }
+            }
+        }
+
+        krxSessionCookie = cookies.join('; ');
+        krxSessionExpiry = now + 5 * 60 * 1000; // 5분 유효
+
+        console.log(`[KRX] 세션 쿠키 획득 완료: "${krxSessionCookie.slice(0, 60)}..." (status=${res.status})`);
+
+        // 쿠키가 비어있으면 응답 헤더 전체를 로깅
+        if (!krxSessionCookie) {
+            const headerEntries: string[] = [];
+            res.headers.forEach((value, key) => {
+                headerEntries.push(`${key}: ${value.slice(0, 100)}`);
+            });
+            console.log(`[KRX] 응답 헤더 (쿠키 미발견):`, headerEntries.join(' | '));
+        }
+
+        return krxSessionCookie;
+    } catch (e: any) {
+        console.error(`[KRX] 세션 획득 실패: ${e.message}`);
+        return '';
+    }
+}
+
 /**
  * KRX JSON API: OTP 없이 직접 JSON 응답을 받습니다.
- * Vercel 서버리스 환경에서 OTP 2단계 방식보다 안정적입니다.
+ * 세션 쿠키를 자동으로 주입합니다.
  */
 async function krxFetchJson(params: Record<string, string>): Promise<Record<string, any>> {
     const bld = params.url || params.bld || 'unknown';
     console.log(`[KRX-JSON] API 호출 시작 (${bld})...`);
 
+    const sessionCookie = await ensureKrxSession();
+
     const body = new URLSearchParams({
         ...params,
-        bld: params.url || params.bld || '',  // JSON API는 'bld' 파라미터 사용
+        bld: params.url || params.bld || '',
     });
-    // JSON API에서는 'url' 파라미터 제거
     body.delete('url');
+
+    const headers: Record<string, string> = {
+        ...KRX_HEADERS,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+    };
+    if (sessionCookie) {
+        headers['Cookie'] = sessionCookie;
+    }
 
     const res = await fetch(JSON_API_URL, {
         method: 'POST',
-        headers: {
-            ...KRX_HEADERS,
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json',
-        },
+        headers,
         body: body.toString(),
         signal: AbortSignal.timeout(15000),
     });
@@ -105,7 +179,17 @@ async function krxFetchJson(params: Record<string, string>): Promise<Record<stri
         throw new Error(`KRX JSON API 실패: ${res.status} ${res.statusText} | body: ${errorBody.slice(0, 200)}`);
     }
 
-    const data = await res.json();
+    // "LOGOUT" 응답 감지
+    const text = await res.text();
+    if (text.trim() === 'LOGOUT' || text.trim().length < 10) {
+        // 세션 만료 → 쿠키 초기화 후 재시도
+        console.log(`[KRX-JSON] LOGOUT 감지 → 세션 재초기화...`);
+        krxSessionCookie = '';
+        krxSessionExpiry = 0;
+        throw new Error('KRX 세션 만료 (LOGOUT)');
+    }
+
+    const data = JSON.parse(text);
     const outBlock = data.OutBlock_1 || data.output || data.block1 || [];
     console.log(`[KRX-JSON] 데이터 수신: ${Array.isArray(outBlock) ? outBlock.length : 'N/A'}건 (${bld})`);
 
@@ -114,19 +198,26 @@ async function krxFetchJson(params: Record<string, string>): Promise<Record<stri
 
 /**
  * KRX OTP 2단계 fetch: OTP 발급 → CSV 다운로드 → 텍스트 반환
- * JSON API 실패 시 폴백으로 사용합니다.
+ * 세션 쿠키를 자동으로 주입합니다.
  */
 async function krxFetchCsv(params: Record<string, string>): Promise<string> {
     const apiLabel = params.url || 'unknown';
     console.log(`[KRX-CSV] OTP 발급 시작 (${apiLabel})...`);
 
+    const sessionCookie = await ensureKrxSession();
+
+    const headers: Record<string, string> = {
+        ...KRX_HEADERS,
+        'Content-Type': 'application/x-www-form-urlencoded',
+    };
+    if (sessionCookie) {
+        headers['Cookie'] = sessionCookie;
+    }
+
     // 1. OTP 발급 (15초 timeout)
     const otpRes = await fetch(OTP_URL, {
         method: 'POST',
-        headers: {
-            ...KRX_HEADERS,
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers,
         body: new URLSearchParams({
             ...params,
             csvxls_isNo: 'false',
@@ -143,6 +234,15 @@ async function krxFetchCsv(params: Record<string, string>): Promise<string> {
     }
 
     const otp = await otpRes.text();
+
+    // "LOGOUT" 감지
+    if (otp.trim() === 'LOGOUT') {
+        console.log(`[KRX-CSV] LOGOUT 감지 → 세션 재초기화...`);
+        krxSessionCookie = '';
+        krxSessionExpiry = 0;
+        throw new Error('KRX 세션 만료 (LOGOUT)');
+    }
+
     if (!otp || otp.length < 10) {
         throw new Error(`KRX OTP 응답 이상 (길이=${otp.length}): "${otp.slice(0, 100)}"`);
     }
@@ -152,10 +252,7 @@ async function krxFetchCsv(params: Record<string, string>): Promise<string> {
     // 2. CSV 다운로드 (15초 timeout)
     const dlRes = await fetch(DOWNLOAD_URL, {
         method: 'POST',
-        headers: {
-            ...KRX_HEADERS,
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers,
         body: `code=${otp}`,
         signal: AbortSignal.timeout(15000),
     });

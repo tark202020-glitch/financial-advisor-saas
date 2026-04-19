@@ -3,10 +3,9 @@ import { createClient } from "@/utils/supabase/server";
 
 /**
  * KRX 데이터 소스 연결 진단 API
- * Vercel 서버리스 환경에서 KRX JSON API / OTP/CSV 방식의 동작 여부를 확인합니다.
+ * 세션 쿠키 획득 → JSON API → OTP/CSV 전 과정을 테스트합니다.
  */
 export async function GET() {
-    // 관리자만 접근 가능
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const adminEmails = ['tark202020@gmail.com', 'tark2020@naver.com'];
@@ -20,27 +19,78 @@ export async function GET() {
         tests: {},
     };
 
-    const KRX_HEADERS = {
+    const KRX_HEADERS: Record<string, string> = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': '*/*',
         'Accept-Language': 'ko-KR,ko;q=0.9',
         'Referer': 'https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd',
     };
 
-    // Test 1: KRX JSON API - ETF 시세
+    // === Test 0: KRX 세션 쿠키 획득 ===
+    let sessionCookie = '';
     try {
         const start = Date.now();
+        const res = await fetch('https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101', {
+            method: 'GET',
+            headers: KRX_HEADERS,
+            redirect: 'follow',
+            signal: AbortSignal.timeout(10000),
+        });
+
+        const cookies: string[] = [];
+        if (typeof (res.headers as any).getSetCookie === 'function') {
+            const setCookies = (res.headers as any).getSetCookie() as string[];
+            for (const sc of setCookies) {
+                const cookiePart = sc.split(';')[0].trim();
+                if (cookiePart) cookies.push(cookiePart);
+            }
+        } else {
+            const raw = res.headers.get('set-cookie') || '';
+            if (raw) {
+                for (const part of raw.split(/,(?=[^;]*=)/)) {
+                    const cookiePart = part.split(';')[0].trim();
+                    if (cookiePart) cookies.push(cookiePart);
+                }
+            }
+        }
+
+        sessionCookie = cookies.join('; ');
+        const elapsed = Date.now() - start;
+
+        // 응답 헤더 전체 로깅
+        const headerMap: Record<string, string> = {};
+        res.headers.forEach((value, key) => {
+            headerMap[key] = value.slice(0, 200);
+        });
+
+        results.tests['session'] = {
+            status: res.status,
+            elapsed_ms: elapsed,
+            cookie: sessionCookie || '(empty)',
+            cookie_count: cookies.length,
+            all_headers: headerMap,
+        };
+    } catch (e: any) {
+        results.tests['session'] = { error: e.message };
+    }
+
+    // === Test 1: KRX JSON API + 세션 쿠키 → ETF 시세 ===
+    try {
+        const start = Date.now();
+        const headers: Record<string, string> = {
+            ...KRX_HEADERS,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+        };
+        if (sessionCookie) headers['Cookie'] = sessionCookie;
+
         const res = await fetch('https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
             method: 'POST',
-            headers: {
-                ...KRX_HEADERS,
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'application/json',
-            },
+            headers,
             body: new URLSearchParams({
                 locale: 'ko_KR',
                 mktId: 'ETF',
-                trdDd: '20260418',  // 금요일
+                trdDd: '20260418',
                 share: '1',
                 money: '1',
                 bld: 'dbms/MDC/STAT/standard/MDCSTAT04301',
@@ -49,33 +99,52 @@ export async function GET() {
         });
 
         const elapsed = Date.now() - start;
-        const data = await res.json();
-        const items = data.OutBlock_1 || data.output || data.block1 || [];
-        const keys = Array.isArray(items) && items.length > 0 ? Object.keys(items[0]) : [];
+        const text = await res.text();
 
-        results.tests['json_etf_price'] = {
-            status: res.status,
-            ok: res.ok,
-            elapsed_ms: elapsed,
-            item_count: Array.isArray(items) ? items.length : 'N/A',
-            field_names: keys.slice(0, 15),
-            sample: Array.isArray(items) && items.length > 0 ? items[0] : null,
-            raw_keys: Object.keys(data),
-        };
+        if (text.trim() === 'LOGOUT') {
+            results.tests['json_price_with_session'] = {
+                status: res.status,
+                elapsed_ms: elapsed,
+                result: 'LOGOUT (세션 쿠키 무효)',
+            };
+        } else {
+            try {
+                const data = JSON.parse(text);
+                const items = data.OutBlock_1 || data.output || data.block1 || [];
+                const keys = Array.isArray(items) && items.length > 0 ? Object.keys(items[0]) : [];
+                results.tests['json_price_with_session'] = {
+                    status: res.status,
+                    elapsed_ms: elapsed,
+                    item_count: Array.isArray(items) ? items.length : 'N/A',
+                    field_names: keys.slice(0, 20),
+                    sample: Array.isArray(items) && items.length > 0 ? items[0] : null,
+                    raw_keys: Object.keys(data),
+                };
+            } catch {
+                results.tests['json_price_with_session'] = {
+                    status: res.status,
+                    elapsed_ms: elapsed,
+                    raw_preview: text.slice(0, 300),
+                };
+            }
+        }
     } catch (e: any) {
-        results.tests['json_etf_price'] = { error: e.message };
+        results.tests['json_price_with_session'] = { error: e.message };
     }
 
-    // Test 2: KRX JSON API - ETF 분배금
+    // === Test 2: KRX JSON API + 세션 쿠키 → ETF 분배금 ===
     try {
         const start = Date.now();
+        const headers: Record<string, string> = {
+            ...KRX_HEADERS,
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json',
+        };
+        if (sessionCookie) headers['Cookie'] = sessionCookie;
+
         const res = await fetch('https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd', {
             method: 'POST',
-            headers: {
-                ...KRX_HEADERS,
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'application/json',
-            },
+            headers,
             body: new URLSearchParams({
                 locale: 'ko_KR',
                 searchType: '1',
@@ -89,103 +158,53 @@ export async function GET() {
         });
 
         const elapsed = Date.now() - start;
-        const data = await res.json();
-        const items = data.OutBlock_1 || data.output || data.block1 || [];
-        const keys = Array.isArray(items) && items.length > 0 ? Object.keys(items[0]) : [];
+        const text = await res.text();
 
-        results.tests['json_etf_distribution'] = {
-            status: res.status,
-            ok: res.ok,
-            elapsed_ms: elapsed,
-            item_count: Array.isArray(items) ? items.length : 'N/A',
-            field_names: keys.slice(0, 15),
-            sample: Array.isArray(items) && items.length > 0 ? items[0] : null,
-            raw_keys: Object.keys(data),
-        };
-    } catch (e: any) {
-        results.tests['json_etf_distribution'] = { error: e.message };
-    }
-
-    // Test 3: KRX OTP 방식 - 시세
-    try {
-        const start = Date.now();
-        const otpRes = await fetch('https://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd', {
-            method: 'POST',
-            headers: {
-                ...KRX_HEADERS,
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                locale: 'ko_KR',
-                mktId: 'ETF',
-                trdDd: '20260418',
-                share: '1',
-                money: '1',
-                url: 'dbms/MDC/STAT/standard/MDCSTAT04301',
-                csvxls_isNo: 'false',
-                name: 'fileDown',
-            }).toString(),
-            signal: AbortSignal.timeout(10000),
-        });
-
-        const otp = await otpRes.text();
-        const otpElapsed = Date.now() - start;
-
-        results.tests['otp_price'] = {
-            otp_status: otpRes.status,
-            otp_ok: otpRes.ok,
-            otp_length: otp.length,
-            otp_preview: otp.slice(0, 50),
-            otp_elapsed_ms: otpElapsed,
-        };
-
-        if (otpRes.ok && otp.length >= 10) {
-            const dlStart = Date.now();
-            const dlRes = await fetch('https://data.krx.co.kr/comm/fileDn/download_csv/download.cmd', {
-                method: 'POST',
-                headers: {
-                    ...KRX_HEADERS,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `code=${otp}`,
-                signal: AbortSignal.timeout(10000),
-            });
-
-            const buf = await dlRes.arrayBuffer();
-            const csvText = new TextDecoder('euc-kr').decode(buf);
-            const lines = csvText.trim().split('\n');
-            const dlElapsed = Date.now() - dlStart;
-
-            results.tests['otp_price'].csv_status = dlRes.status;
-            results.tests['otp_price'].csv_ok = dlRes.ok;
-            results.tests['otp_price'].csv_bytes = buf.byteLength;
-            results.tests['otp_price'].csv_lines = lines.length;
-            results.tests['otp_price'].csv_elapsed_ms = dlElapsed;
-            results.tests['otp_price'].csv_header = lines[0]?.slice(0, 200);
-            results.tests['otp_price'].csv_first_row = lines[1]?.slice(0, 200);
+        if (text.trim() === 'LOGOUT') {
+            results.tests['json_distribution_with_session'] = {
+                status: res.status,
+                elapsed_ms: elapsed,
+                result: 'LOGOUT (세션 쿠키 무효)',
+            };
+        } else {
+            try {
+                const data = JSON.parse(text);
+                const items = data.OutBlock_1 || data.output || data.block1 || [];
+                const keys = Array.isArray(items) && items.length > 0 ? Object.keys(items[0]) : [];
+                results.tests['json_distribution_with_session'] = {
+                    status: res.status,
+                    elapsed_ms: elapsed,
+                    item_count: Array.isArray(items) ? items.length : 'N/A',
+                    field_names: keys.slice(0, 20),
+                    sample: Array.isArray(items) && items.length > 0 ? items[0] : null,
+                    raw_keys: Object.keys(data),
+                };
+            } catch {
+                results.tests['json_distribution_with_session'] = {
+                    status: res.status,
+                    elapsed_ms: elapsed,
+                    raw_preview: text.slice(0, 300),
+                };
+            }
         }
     } catch (e: any) {
-        results.tests['otp_price'] = { ...(results.tests['otp_price'] || {}), error: e.message };
+        results.tests['json_distribution_with_session'] = { error: e.message };
     }
 
-    // Test 4: 네이버 금융 ETF API
+    // === Test 3: 네이버 금융 ETF API ===
     try {
         const start = Date.now();
         const res = await fetch('https://finance.naver.com/api/sise/etfItemList.nhn', {
             headers: { 'User-Agent': 'Mozilla/5.0' },
             signal: AbortSignal.timeout(10000),
         });
-
         const data = await res.json();
         const items = data?.result?.etfItemList || [];
         const elapsed = Date.now() - start;
-
         results.tests['naver_etf'] = {
             status: res.status,
-            ok: res.ok,
             elapsed_ms: elapsed,
             item_count: items.length,
-            sample: items.length > 0 ? items[0] : null,
         };
     } catch (e: any) {
         results.tests['naver_etf'] = { error: e.message };
