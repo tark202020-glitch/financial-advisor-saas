@@ -106,7 +106,7 @@ function detectChanges(etfSymbol: string, etfName: string, prev: HoldingItem[], 
         const p = prevMap.get(sym);
         if (p) {
             const diff = c.weight_pct - p.weight_pct;
-            if (Math.abs(diff) >= 1.0) {
+            if (Math.abs(diff) >= 0.01) {
                 changes.push({ etf_symbol: etfSymbol, etf_name: etfName, change_date: today,
                     change_type: 'weight_changed', holding_symbol: sym, holding_name: c.holding_name,
                     prev_weight: p.weight_pct, curr_weight: c.weight_pct,
@@ -235,6 +235,12 @@ export async function GET(request: NextRequest) {
                     if (prevHoldings && prevHoldings.length > 0) {
                         const changes = detectChanges(etf.symbol, etf.name, prevHoldings, holdings, today);
                         if (changes.length > 0) {
+                            // 동일 일자에 여러 번 수행될 경우를 대비해 기존 오늘치 기록을 삭제 후 재기록 (중복 방지)
+                            await supabase.from('etf_changes')
+                                .delete()
+                                .eq('etf_symbol', etf.symbol)
+                                .eq('change_date', today);
+
                             const { error: chErr } = await supabase.from('etf_changes').insert(changes);
                             if (!chErr) {
                                 totalChanges += changes.length;

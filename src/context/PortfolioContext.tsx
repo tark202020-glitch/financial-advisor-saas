@@ -135,6 +135,10 @@ export function PortfolioProvider({ children, initialUser }: { children: ReactNo
                 setAssets(loadedAssets);
             }
         } catch (err: any) {
+            if (err.name === 'AbortError' || (err.message && err.message.toLowerCase().includes('abort'))) {
+                console.warn('fetchPortfolio aborted:', err.message);
+                return;
+            }
             console.error('Error fetching portfolio:', err);
             setError(err.message || "데이터를 불러오는데 실패했습니다.");
         } finally {

@@ -1,3 +1,10 @@
+## [Alpha V1.364] - 2026-04-21 20:51:00
+
+### 🔄 Build Update
+- **Summary**: Auto-generated build update.
+- **Detail** : ETF 분석기 변경 이력 누적 오류(임계치, 중복데이터) 수정
+- **Build Time**: 2026-04-21 20:51:00
+
 ## [Alpha V1.363] - 2026-04-19 15:55:00
 
 ### 🔄 Build Update
