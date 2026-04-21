@@ -1,5 +1,16 @@
 # Daily Report - 2026-04-21
 
+## [Alpha V1.365] - 2026-04-21 21:15:00
+
+### 🔄 Build Update
+- **Summary**: ETF 배당 정보 수집 및 대시보드 노출 기능 추가
+- **Detail**:
+  - `doc/supabase_schema_add_dividend.sql` 스크립트를 작성하여 `etf_tracked_list`에 `dividend_yield`, `dividend_history` 컬럼 추가 구조 마련.
+  - `update-etf-holdings/route.ts` 크론 파이프라인 안에서 KIS `ksdinfo/dividend` API로 1년 단위 분배금 탐색 후 연환산 등재 구현.
+  - `ETFDashboard.tsx`에 `dividend_history` 이력이 있는 경우 최상단 주가 그래프 위쪽에 배당률과 분배 이력을 확인할 수 있는 전용 UI 섹션 추가.
+- **Build Time**: 2026-04-21 21:15:00
+
+---
 ## [Alpha V1.364] - 2026-04-21 20:51:00
 
 ### 🔄 Build Update

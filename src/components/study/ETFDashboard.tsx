@@ -26,6 +26,12 @@ interface TrackedETF {
     market: string;
     memo: string;
     is_active: boolean;
+    dividend_yield?: number;
+    dividend_history?: Array<{
+        record_date: string;
+        pay_date: string;
+        amount: number;
+    }>;
 }
 
 interface Holding {
@@ -689,6 +695,36 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                         ) : (
                             <div className="flex-1 overflow-y-auto p-6 space-y-6">
                                 
+                                {/* 💰 배당 정보 영역 */}
+                                {selectedETF.dividend_history && selectedETF.dividend_history.length > 0 && (
+                                    <div className="bg-emerald-900/10 border border-emerald-800/50 rounded-xl p-5 shadow-inner">
+                                        <h3 className="text-emerald-400 font-bold mb-3 text-lg">
+                                            배분율 : 연 {selectedETF.dividend_yield}%
+                                        </h3>
+                                        <div className="text-xs text-gray-400 mb-2">분배내역 : 조사연도에 집행된 전체 목록 ( 분배락일 | 지급예정일 | 1주당 분배금 )</div>
+                                        <div className="overflow-hidden border border-[#333] rounded-lg">
+                                            <table className="w-full text-xs text-left text-gray-300">
+                                                <thead className="bg-[#222] text-gray-500">
+                                                    <tr>
+                                                        <th className="px-3 py-2 font-medium">분배락일</th>
+                                                        <th className="px-3 py-2 font-medium">지급예정일</th>
+                                                        <th className="px-3 py-2 font-medium text-right">1주당 분배금</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-[#333]">
+                                                    {selectedETF.dividend_history.map((div, i) => (
+                                                        <tr key={i} className="hover:bg-[#2A2A2A] transition-colors">
+                                                            <td className="px-3 py-2">{div.record_date}</td>
+                                                            <td className="px-3 py-2">{div.pay_date || '-'}</td>
+                                                            <td className="px-3 py-2 text-right text-emerald-400 font-semibold">{div.amount.toLocaleString()}원</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* 📈 차트 및 가격 영역 */}
                                 <div className="bg-[#1A1A1A] border border-[#333] rounded-xl p-5 shadow-inner">
                                     {chartLoading ? (

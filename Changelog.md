@@ -1,3 +1,10 @@
+## [Alpha V1.365] - 2026-04-21 21:15:20
+
+### 🔄 Build Update
+- **Summary**: Auto-generated build update.
+- **Detail** : ETF 배당 정보 수집 및 대시보드 UI 연동, DB 스키마 업데이트 스크립트 작성
+- **Build Time**: 2026-04-21 21:15:20
+
 ## [Alpha V1.364] - 2026-04-21 20:51:00
 
 ### 🔄 Build Update

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getAccessToken, BASE_URL, APP_KEY, APP_SECRET } from '@/lib/kis/client';
+import { getAccessToken, BASE_URL, APP_KEY, APP_SECRET, getKsdinfoDividend, getEtfPrice } from '@/lib/kis/client';
 import { appendETFHoldingsHorizontal } from '@/lib/googleSheets';
 
 /**
@@ -185,12 +185,62 @@ export async function GET(request: NextRequest) {
                 const holdings = await fetchETFHoldings(etf.symbol, token);
                 processedCount++;
 
+                // ========== 배당률 계산 및 저장 ==========
+                try {
+                    const priceData = await getEtfPrice(etf.symbol);
+                    if (priceData && priceData.stck_prpr) {
+                        const currentPrice = parseFloat(priceData.stck_prpr);
+                        
+                        const kstTemp = new Date(Date.now() + 9 * 60 * 60 * 1000);
+                        const tDt = kstTemp.toISOString().slice(0, 10).replace(/-/g, '');
+                        kstTemp.setFullYear(kstTemp.getFullYear() - 1);
+                        const fDt = kstTemp.toISOString().slice(0, 10).replace(/-/g, '');
+
+                        const dividends = await getKsdinfoDividend({
+                            gb1: '0',
+                            f_dt: fDt,
+                            t_dt: tDt,
+                            sht_cd: etf.symbol,
+                        });
+
+                        const validDividends = (dividends || []).filter(d => parseFloat(d.per_sto_divi_amt || '0') > 0);
+                        let totalDividend = 0;
+                        const historyRecords = validDividends.map(d => {
+                            const amt = parseFloat(d.per_sto_divi_amt);
+                            totalDividend += amt;
+                            return {
+                                record_date: d.record_date || '', // 분배락일/기준일
+                                pay_date: d.cash_dvdn_pay_dt || d.dvdn_pay_dt || d.pay_date || '', // 지급예정일
+                                amount: amt // 1주당 분배금
+                            };
+                        });
+                        
+                        historyRecords.sort((a, b) => (b.record_date || '').localeCompare(a.record_date || ''));
+
+                        const dividendYield = currentPrice > 0 ? (totalDividend / currentPrice) * 100 : 0;
+                        
+                        if (historyRecords.length > 0) {
+                            await supabase
+                                .from('etf_tracked_list')
+                                .update({
+                                    dividend_yield: dividendYield.toFixed(2),
+                                    dividend_history: historyRecords,
+                                    updated_at: new Date().toISOString()
+                                })
+                                .eq('symbol', etf.symbol);
+                            
+                            console.log(`  [${etf.symbol}] 배당 조회 완료: 연환산 ${dividendYield.toFixed(2)}% (${historyRecords.length}건)`);
+                        }
+                    }
+                } catch (divErr: any) {
+                    console.error(`  [${etf.symbol}] 배당 데이터 갱신 오류:`, divErr.message);
+                }
+                // ==========================================
+
                 if (holdings.length === 0) {
                     errorCount++;
                     continue;
                 }
-
-                // DB 저장
                 const records = holdings.map(h => ({
                     etf_symbol: etf.symbol, snapshot_date: today,
                     holding_symbol: h.holding_symbol, holding_name: h.holding_name, weight_pct: h.weight_pct,
