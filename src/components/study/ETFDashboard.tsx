@@ -365,8 +365,9 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
             const data = await res.json();
             if (data.success) {
                 alert(`수집 완료: ${data.processed}개 처리, ${data.total_holdings}개 보유종목, ${data.total_changes}개 변경 감지`);
+                await fetchTrackedList(); // 목록 새로고침 추가
                 fetchAllChanges();
-                if (selectedETF) handleSelectETF(selectedETF);
+                if (selectedETF) handleSelectETF(selectedETF); // 여기서 selectedETF가 옛날 객체라도, fetchTrackedList 완료 이후에는 렌더링에 업데이트될 수 있도록 해야 함. (완벽하진 않으나 새로고침 역할)
             } else {
                 alert(`수집 실패: ${data.error}`);
             }
@@ -696,7 +697,7 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                             <div className="flex-1 overflow-y-auto p-6 space-y-6">
                                 
                                 {/* 💰 배당 정보 영역 */}
-                                {selectedETF.dividend_history && selectedETF.dividend_history.length > 0 && (
+                                {selectedETF.dividend_yield !== undefined && (
                                     <div className="bg-emerald-900/10 border border-emerald-800/50 rounded-xl p-5 shadow-inner">
                                         <h3 className="text-emerald-400 font-bold mb-3 text-lg">
                                             배분율 : 연 {selectedETF.dividend_yield}%
@@ -712,13 +713,19 @@ export default function ETFDashboard({ isAdmin }: { isAdmin: boolean }) {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-[#333]">
-                                                    {selectedETF.dividend_history.map((div, i) => (
-                                                        <tr key={i} className="hover:bg-[#2A2A2A] transition-colors">
-                                                            <td className="px-3 py-2">{div.record_date}</td>
-                                                            <td className="px-3 py-2">{div.pay_date || '-'}</td>
-                                                            <td className="px-3 py-2 text-right text-emerald-400 font-semibold">{div.amount.toLocaleString()}원</td>
+                                                    {selectedETF.dividend_history && selectedETF.dividend_history.length > 0 ? (
+                                                        selectedETF.dividend_history.map((div, i) => (
+                                                            <tr key={i} className="hover:bg-[#2A2A2A] transition-colors">
+                                                                <td className="px-3 py-2">{div.record_date}</td>
+                                                                <td className="px-3 py-2">{div.pay_date || '-'}</td>
+                                                                <td className="px-3 py-2 text-right text-emerald-400 font-semibold">{div.amount.toLocaleString()}원</td>
+                                                            </tr>
+                                                        ))
+                                                    ) : (
+                                                        <tr>
+                                                            <td colSpan={3} className="px-3 py-4 text-center text-gray-500">최근 1년 이내의 수집된 배당 이력이 없습니다.</td>
                                                         </tr>
-                                                    ))}
+                                                    )}
                                                 </tbody>
                                             </table>
                                         </div>

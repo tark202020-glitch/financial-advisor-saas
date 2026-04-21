@@ -219,18 +219,16 @@ export async function GET(request: NextRequest) {
 
                         const dividendYield = currentPrice > 0 ? (totalDividend / currentPrice) * 100 : 0;
                         
-                        if (historyRecords.length > 0) {
-                            await supabase
-                                .from('etf_tracked_list')
-                                .update({
-                                    dividend_yield: dividendYield.toFixed(2),
-                                    dividend_history: historyRecords,
-                                    updated_at: new Date().toISOString()
-                                })
-                                .eq('symbol', etf.symbol);
-                            
-                            console.log(`  [${etf.symbol}] 배당 조회 완료: 연환산 ${dividendYield.toFixed(2)}% (${historyRecords.length}건)`);
-                        }
+                        await supabase
+                            .from('etf_tracked_list')
+                            .update({
+                                dividend_yield: dividendYield.toFixed(2),
+                                dividend_history: historyRecords, // 비어있더라도 덮어쓰기
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('symbol', etf.symbol);
+                        
+                        console.log(`  [${etf.symbol}] 배당 조회 완료: 연환산 ${dividendYield.toFixed(2)}% (${historyRecords.length}건)`);
                     }
                 } catch (divErr: any) {
                     console.error(`  [${etf.symbol}] 배당 데이터 갱신 오류:`, divErr.message);
