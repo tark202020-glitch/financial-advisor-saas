@@ -79,29 +79,31 @@ export function useReportData(startDate: string, endDate: string) {
 
                 // 기존 DB 스냅샷 폴백 삭제 (dynamic-history가 캐시 역할을 겸하도록 백엔드에서 처리)
 
-                // 2. Fetch Trade Logs
-                const { data: trades, error: tradeError } = await supabase
+                // 2. Fetch ALL Trade Logs up to endDate (매도 수익 계산을 위해 전체 이력 필요)
+                const { data: allTradesRaw, error: tradeError } = await supabase
                     .from('trade_logs')
                     .select('*, portfolios(symbol, name)')
                     .eq('user_id', user.id)
-                    .gte('trade_date', startDate)
                     .lte('trade_date', endDate)
-                    .order('trade_date', { ascending: false });
+                    .order('trade_date', { ascending: true });
 
                 if (tradeError) throw tradeError;
 
                 if (isMounted) {
                     setHistoryData(histData || []);
                     
-                    // 매도 수익 계산을 위해 전체 매매 이력(startDate 이전 포함)을 기반으로 종목별 평균단가 산출
-                    const allTrades = (trades || []).sort((a: any, b: any) => 
+                    // 전체 거래를 날짜순으로 정렬
+                    const allTrades = (allTradesRaw || []).sort((a: any, b: any) => 
                         a.trade_date.localeCompare(b.trade_date) || a.id - b.id
                     );
                     
                     // 종목별 보유 현황 (평균단가 계산용)
                     const holdings: Record<string, { quantity: number; totalCost: number }> = {};
                     
-                    const formattedTrades: TradeLogWithAsset[] = allTrades.map((t: any) => {
+                    // 전체 이력을 순회하며 평균단가 계산, 조회 기간 내 거래만 결과에 포함
+                    const formattedTrades: TradeLogWithAsset[] = [];
+                    
+                    allTrades.forEach((t: any) => {
                         const symbol = t.portfolios?.symbol || '';
                         const name = t.portfolios?.name || 'Unknown';
                         
@@ -134,22 +136,25 @@ export function useReportData(startDate: string, endDate: string) {
                         }
                         // DIVIDEND는 보유 현황에 영향 없음
                         
-                        return {
-                            id: t.id,
-                            trade_date: t.trade_date,
-                            type: t.type,
-                            price: t.price,
-                            quantity: t.quantity,
-                            memo: t.memo,
-                            symbol,
-                            name,
-                            avgBuyPrice,
-                            sellProfit,
-                            sellProfitRate,
-                        };
+                        // 조회 기간 내 거래만 결과에 포함
+                        if (t.trade_date >= startDate) {
+                            formattedTrades.push({
+                                id: t.id,
+                                trade_date: t.trade_date,
+                                type: t.type,
+                                price: t.price,
+                                quantity: t.quantity,
+                                memo: t.memo,
+                                symbol,
+                                name,
+                                avgBuyPrice,
+                                sellProfit,
+                                sellProfitRate,
+                            });
+                        }
                     });
                     
-                    // 날짜 내림차순으로 다시 정렬 (표시용)
+                    // 날짜 내림차순으로 정렬 (표시용)
                     formattedTrades.sort((a, b) => b.trade_date.localeCompare(a.trade_date));
                     setTradeLogs(formattedTrades);
                 }
