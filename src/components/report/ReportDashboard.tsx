@@ -125,7 +125,7 @@ export default function ReportDashboard() {
                                         />
                                         <Tooltip 
                                             contentStyle={{ backgroundColor: '#252525', borderColor: '#444', borderRadius: '8px' }}
-                                            formatter={(value: number, name: string) => [formatKrw(value), name === 'cumulativeProfit' ? '누적수익' : '일수익']}
+                                            formatter={(value: any, name: any) => [formatKrw(Number(value) || 0), name === 'cumulativeProfit' ? '누적수익' : '일수익']}
                                             labelStyle={{ color: '#ccc', marginBottom: '4px' }}
                                         />
                                         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
@@ -161,7 +161,7 @@ export default function ReportDashboard() {
                                         />
                                         <Tooltip 
                                             contentStyle={{ backgroundColor: '#252525', borderColor: '#444', borderRadius: '8px' }}
-                                            formatter={(value: number, name: string) => [formatKrw(value), name === 'valuation' ? '평가액' : '투자액']}
+                                            formatter={(value: any, name: any) => [formatKrw(Number(value) || 0), name === 'valuation' ? '평가액' : '투자액']}
                                             labelStyle={{ color: '#ccc', marginBottom: '4px' }}
                                         />
                                         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
