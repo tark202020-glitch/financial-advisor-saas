@@ -1,3 +1,16 @@
+## [Alpha V1.375] - 2026-04-27 00:11:14
+
+### ✨ New Feature: AI Deep Research 투자 리포트 코멘트
+- **Summary**: Google Deep Research 에이전트(Interactions API)를 활용한 AI 투자 분석 코멘트 기능 추가
+- **Detail** :
+  - **Deep Research 에이전트 통합**: `@google/genai` SDK + Interactions API로 `deep-research-preview-04-2026` 에이전트 호출
+  - **코스피 벤치마크 비교**: KIS API로 기간별 코스피 지수를 조회하여 포트폴리오 수익률과 자동 비교
+  - **비동기 polling 아키텍처**: POST(작업 시작) → GET(10초 간격 polling) → 결과 렌더링
+  - **친절한 로딩 UI**: 6단계 진행 상태 표시(시장 데이터 수집 → 포트폴리오 분석 → 웹 탐색 → 뉴스 분석 → 인사이트 생성 → 보고서 작성)
+  - **마크다운 리포트 렌더링**: 섹션별 아이콘 자동 매핑, 볼드/이탈릭/코드 인라인 스타일링
+  - **프리미엄 UI**: 보라-파랑 그라디언트 카드, 진행률 바, 경과 시간 타이머
+- **Build Time**: 2026-04-27 00:11:14
+
 ## [Alpha V1.374] - 2026-04-26 23:40:56
 
 ### 🔧 Critical Fix: 해외 주식 과거 주가 조회 전면 수정
