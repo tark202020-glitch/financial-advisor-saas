@@ -512,6 +512,68 @@ export async function getDomesticIndexHistory(symbol: string, startDate: string,
     return data.output2 || [];
 }
 
+export async function getDomesticStockHistory(symbol: string, startDate: string, endDate: string): Promise<any[] | null> {
+    const token = await getAccessToken();
+
+    // TR ID: FHKST03010100 (국내주식 기간별 일봉 차트)
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${startDate}&FID_INPUT_DATE_2=${endDate}&FID_PERIOD_DIV_CODE=D&FID_ORG_ADJ_PRC=0`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "FHKST03010100",
+        },
+    }));
+
+    if (!response.ok) {
+        console.error(`Failed to fetch DOM Stock History for ${symbol}:`, await response.text());
+        return null;
+    }
+
+    const data = await response.json();
+
+    if (data.rt_cd !== "0") {
+        console.error(`KIS API Error (DOM Stock History): ${data.msg1}`);
+        return null;
+    }
+
+    return data.output2 || [];
+}
+
+export async function getOverseasStockHistory(symbol: string, startDate: string, endDate: string): Promise<any[] | null> {
+    const token = await getAccessToken();
+    const exchangeCode = getUSExchangeCode(symbol);
+
+    // TR_ID: FHKST03030100 (해외주식 기간별 일봉 차트)
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/inquire-daily-chartprice?FID_COND_MRKT_DIV_CODE=N&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${startDate}&FID_INPUT_DATE_2=${endDate}&FID_PERIOD_DIV_CODE=D`, {
+        method: "GET",
+        headers: {
+            "content-type": "application/json",
+            "authorization": `Bearer ${token}`,
+            "appkey": APP_KEY!,
+            "appsecret": APP_SECRET!,
+            "tr_id": "FHKST03030100",
+        },
+    }));
+
+    if (!response.ok) {
+        console.error(`Failed to fetch OV Stock History for ${symbol}:`, await response.text());
+        return null;
+    }
+
+    const data = await response.json();
+
+    if (data.rt_cd !== "0") {
+        console.error(`KIS API Error (OV Stock History): ${data.msg1}`);
+        return null;
+    }
+
+    return data.output2 || [];
+}
+
+
 let cachedApprovalKey: string | null = null;
 let approvalKeyExpiresAt: number = 0;
 const APPROVAL_KEY_TTL = 30 * 60 * 1000; // 30분 TTL

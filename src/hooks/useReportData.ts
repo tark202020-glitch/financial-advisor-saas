@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { usePortfolio } from '@/context/PortfolioContext';
+import { getDynamicValuationHistory } from '@/app/report/actions';
 
 export interface ReportSnapshot {
     date: string;
@@ -45,16 +46,14 @@ export function useReportData(startDate: string, endDate: string) {
             const supabase = createClient();
             
             try {
-                // 1. Fetch History Data
-                const { data: histData, error: histError } = await supabase
-                    .from('portfolio_daily_history')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .gte('record_date', startDate)
-                    .lte('record_date', endDate)
-                    .order('record_date', { ascending: true });
-                
-                if (histError) throw histError;
+                // 1. Fetch History Data dynamically via Report Engine
+                const currentExRate = exchangeRate || 1350;
+                let histData: any[] = [];
+                try {
+                    histData = await getDynamicValuationHistory(startDate, endDate, currentExRate);
+                } catch (err) {
+                    console.error("Failed to generate dynamic history:", err);
+                }
 
                 // 2. Fetch Trade Logs
                 const { data: trades, error: tradeError } = await supabase
@@ -113,12 +112,12 @@ export function useReportData(startDate: string, endDate: string) {
                     total_valuation += asset.current_price * asset.quantity * exRateMultiplier;
                 });
             } else {
-                total_investment = snap.total_investment;
-                total_valuation = snap.total_valuation;
+                total_investment = snap.total_investment || 0;
+                total_valuation = snap.total_valuation || 0;
             }
             
             return {
-                date: snap.record_date,
+                date: snap.record_date || snap.date,
                 total_investment,
                 total_valuation
             };

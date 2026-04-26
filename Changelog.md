@@ -1,3 +1,14 @@
+## [Alpha V1.368] - 2026-04-26 14:45:00
+
+### 🔄 Build Update
+- **Summary**: Auto-generated build update.
+- **Detail** : KIS API 과거 주가 활용 스냅샷 동적 재구성(Dynamic Reconstruction) 파이프라인 탑재
+  - `src/lib/kis/client.ts`: 과거 기간의 일봉 차트 요청 API 함수 구축
+  - `src/app/report/actions.ts`: `trade_logs` 역 추적을 통한 일자별 종목/수량 연산 및 당시 종가 매핑 
+  - `src/hooks/useReportData.ts`: DB 스냅샷 의존성 제거 및 서버액션 역산 파이프라인 연동
+  - (이제 DB 스냅샷 없이도 지정 기간의 자산 평가 상태 다이내믹 렌더링 지원)
+- **Build Time**: 2026-04-26 14:45:00
+
 ## [Alpha V1.367] - 2026-04-26 14:26:00
 
 ### 🔄 Build Update
