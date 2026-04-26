@@ -1,3 +1,13 @@
+## [Alpha V1.367] - 2026-04-26 14:26:00
+
+### 🔄 Build Update
+- **Summary**: Auto-generated build update.
+- **Detail** : 자동 로그인(로그인 유지) 기능 추가 적용
+  - 로그인 화면에 자동로그인 체크박스 UI 추가
+  - Supabase 쿠키 미들웨어 및 서버 토큰의 Session/Persistent 속성 제어
+  - 해제 시 브라우저 종료와 함께 로그아웃 되도록 생명주기 관리
+- **Build Time**: 2026-04-26 14:26:00
+
 ## [Alpha V1.366] - 2026-04-26 14:15:00
 
 ### 🔄 Build Update

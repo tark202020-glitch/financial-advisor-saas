@@ -16,15 +16,27 @@ export async function updateSession(request: NextRequest) {
                     return request.cookies.getAll()
                 },
                 setAll(cookiesToSet) {
-                    cookiesToSet.forEach(({ name, value, options }) =>
+                    const isAutoLogin = request.cookies.get('sb-auto-login')?.value === 'true';
+
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        let finalOptions = { ...options };
+                        if (!isAutoLogin) {
+                            delete finalOptions.maxAge;
+                            delete finalOptions.expires;
+                        }
                         request.cookies.set(name, value)
-                    )
+                    })
                     supabaseResponse = NextResponse.next({
                         request,
                     })
-                    cookiesToSet.forEach(({ name, value, options }) =>
-                        supabaseResponse.cookies.set(name, value, options)
-                    )
+                    cookiesToSet.forEach(({ name, value, options }) => {
+                        let finalOptions = { ...options };
+                        if (!isAutoLogin) {
+                            delete finalOptions.maxAge;
+                            delete finalOptions.expires;
+                        }
+                        supabaseResponse.cookies.set(name, value, finalOptions)
+                    })
                 },
             },
         }

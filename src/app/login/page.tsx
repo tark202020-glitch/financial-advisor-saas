@@ -59,7 +59,19 @@ export default function LoginPage() {
                             </div>
                         </div>
 
-                        <div className="flex justify-end">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center">
+                                <input
+                                    id="autoLogin"
+                                    name="autoLogin"
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                                />
+                                <label htmlFor="autoLogin" className="ml-2 block text-sm text-slate-700 font-medium cursor-pointer">
+                                    자동 로그인 유지
+                                </label>
+                            </div>
                             <Link href="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
                                 Forgot Password?
                             </Link>

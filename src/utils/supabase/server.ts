@@ -14,9 +14,15 @@ export async function createClient() {
                 },
                 setAll(cookiesToSet) {
                     try {
-                        cookiesToSet.forEach(({ name, value, options }) =>
-                            cookieStore.set(name, value, options)
-                        )
+                        const isAutoLogin = cookieStore.get('sb-auto-login')?.value === 'true';
+                        cookiesToSet.forEach(({ name, value, options }) => {
+                            let finalOptions = { ...options };
+                            if (!isAutoLogin) {
+                                delete finalOptions.maxAge;
+                                delete finalOptions.expires;
+                            }
+                            cookieStore.set(name, value, finalOptions)
+                        })
                     } catch {
                         // The `setAll` method was called from a Server Component.
                         // This can be ignored if you have middleware refreshing

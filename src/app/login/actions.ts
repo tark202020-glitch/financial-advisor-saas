@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/utils/supabase/server'
 
 export async function login(prevState: any, formData: FormData) {
@@ -15,11 +16,18 @@ export async function login(prevState: any, formData: FormData) {
         password,
     })
 
-    // console.log("[Login Action] Attempt:", email, error ? `Error: ${error.message}` : "Success");
-
     if (error) {
         return { error: error.message }
     }
+
+    const isAutoLogin = formData.get('autoLogin') === 'on'
+    const cookieStore = await cookies()
+    cookieStore.set('sb-auto-login', isAutoLogin ? 'true' : 'false', {
+        path: '/',
+        maxAge: 31536000, // 1년
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+    })
 
     revalidatePath('/', 'layout')
     redirect('/dashboard')
@@ -28,6 +36,11 @@ export async function login(prevState: any, formData: FormData) {
 export async function signout() {
     const supabase = await createClient()
     await supabase.auth.signOut()
+    
+    // 로그아웃 시 자동 로그인 쿠키 파기
+    const cookieStore = await cookies()
+    cookieStore.delete('sb-auto-login')
+
     revalidatePath('/', 'layout')
     redirect('/login')
 }
