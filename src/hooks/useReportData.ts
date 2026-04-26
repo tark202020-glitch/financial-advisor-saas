@@ -245,20 +245,14 @@ export function useReportData(startDate: string, endDate: string) {
             }
         }
 
-        // Calculate Profit Diff based on the FIRST day of the period
-        const baseInvestment = normalized[0].total_investment;
-        const baseValuation = normalized[0].total_valuation;
-
         const results: ChartDataPoint[] = [];
 
         for (let i = 0; i < normalized.length; i++) {
             const current = normalized[i];
             const prev = i > 0 ? normalized[i - 1] : null;
 
-            // 누적 수익금: (오늘 평가금 - 기준일 평가금) - (오늘 투자금 - 기준일 투자금: 순입출금)
-            const valuationDiff = current.total_valuation - baseValuation;
-            const investmentDiff = current.total_investment - baseInvestment;
-            const cumulativeProfit = valuationDiff - investmentDiff;
+            // 누적 수익금(총 평가손익): 해당 일자의 순수 (평가액 - 투자액)
+            const cumulativeProfit = current.total_valuation - current.total_investment;
 
             // 전일 대비 일일 손익
             let dailyProfitChange = 0;
