@@ -44,11 +44,12 @@ export async function getDynamicValuationHistory(startDateStr: string, endDateSt
 
     // 2. Compute Unique Symbols and their categories
     const symbolsMap: Record<string, 'US' | '국내'> = {};
-    const tradesData = trades || [];
+    const tradesData: any[] = trades || [];
     
     tradesData.forEach(t => {
-        if (t.portfolios && t.portfolios.symbol) {
-            symbolsMap[t.portfolios.symbol] = t.portfolios.category;
+        const port = Array.isArray(t.portfolios) ? t.portfolios[0] : t.portfolios;
+        if (port && port.symbol) {
+            symbolsMap[port.symbol] = port.category;
         }
     });
 
@@ -105,7 +106,8 @@ export async function getDynamicValuationHistory(startDateStr: string, endDateSt
     // Pre-process trades before startDate
     while (currentTradesIndex < tradesData.length && tradesData[currentTradesIndex].trade_date < startDateStr) {
         const t = tradesData[currentTradesIndex];
-        const sym = t.portfolios?.symbol;
+        const port = Array.isArray(t.portfolios) ? t.portfolios[0] : t.portfolios;
+        const sym = port?.symbol;
         if (sym) {
             if (!holdings[sym]) holdings[sym] = { quantity: 0, totalCost: 0 };
             const exRate = symbolsMap[sym] === 'US' ? currentExchangeRate : 1;
@@ -134,7 +136,8 @@ export async function getDynamicValuationHistory(startDateStr: string, endDateSt
         // Process trades that happened exactly on this 'dt'
         while (currentTradesIndex < tradesData.length && tradesData[currentTradesIndex].trade_date === dt) {
             const t = tradesData[currentTradesIndex];
-            const sym = t.portfolios?.symbol;
+            const port = Array.isArray(t.portfolios) ? t.portfolios[0] : t.portfolios;
+            const sym = port?.symbol;
             if (sym) {
                 if (!holdings[sym]) holdings[sym] = { quantity: 0, totalCost: 0 };
                 const exRate = symbolsMap[sym] === 'US' ? currentExchangeRate : 1;

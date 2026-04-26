@@ -59,6 +59,35 @@ export default function ReportDashboard() {
         return 'text-gray-400';
     };
 
+    // Calculate Summary inside the period
+    const summary = useMemo(() => {
+        if (!chartData || chartData.length === 0) return null;
+        const firstData = chartData[0];
+        const lastData = chartData[chartData.length - 1];
+
+        // 1. 기간내 수익금: 마지막날 평가액 - 첫날 평가액
+        const periodProfit = lastData.valuation - firstData.valuation;
+        
+        // 2. 투자금 변경: 마지막날 투자액 - 첫날 투자액
+        const periodInvestmentChange = lastData.investment - firstData.investment;
+
+        return {
+            periodProfit,
+            periodInvestmentChange,
+        };
+    }, [chartData]);
+
+    const tradeSummary = useMemo(() => {
+        let totalBuy = 0;
+        let totalSell = 0;
+        tradeLogs.forEach(log => {
+            const amt = log.price * log.quantity;
+            if (log.type === 'BUY') totalBuy += amt;
+            else if (log.type === 'SELL') totalSell += amt;
+        });
+        return { totalBuy, totalSell };
+    }, [tradeLogs]);
+
     return (
         <div className="space-y-6">
             {/* Headers & Controls */}
@@ -135,6 +164,14 @@ export default function ReportDashboard() {
                                     </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
+                            {summary && (
+                                <div className="mt-4 pt-4 border-t border-[#333] flex justify-between items-center">
+                                    <div className="text-sm font-medium text-gray-400">기간 내 수익금 (평가액 변동)</div>
+                                    <div className={`text-lg font-bold ${summary.periodProfit > 0 ? 'text-red-400' : summary.periodProfit < 0 ? 'text-blue-400' : 'text-gray-300'}`}>
+                                        {summary.periodProfit > 0 ? '+' : ''}{formatKrw(summary.periodProfit)}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* 2. Valuation/Investment Chart */}
@@ -170,18 +207,36 @@ export default function ReportDashboard() {
                                     </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
+                            {summary && (
+                                <div className="mt-4 pt-4 border-t border-[#333] flex justify-between items-center">
+                                    <div className="text-sm font-medium text-gray-400">기간 내 투자금 변동</div>
+                                    <div className={`text-lg font-bold ${summary.periodInvestmentChange > 0 ? 'text-red-400' : summary.periodInvestmentChange < 0 ? 'text-blue-400' : 'text-gray-300'}`}>
+                                        {summary.periodInvestmentChange > 0 ? '+' : ''}{formatKrw(summary.periodInvestmentChange)}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Trade Logs Table */}
                     <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl overflow-hidden">
-                        <div className="p-6 border-b border-[#333] flex justify-between items-center">
+                        <div className="p-6 border-b border-[#333] flex justify-between items-center flex-wrap gap-4">
                             <div>
                                 <h3 className="text-lg font-bold text-white">지정 기간 매매 내역</h3>
                                 <p className="text-xs text-gray-400 mt-1">선택하신 기간 동안 이루어진 주식 매수 및 매도 기록입니다.</p>
                             </div>
-                            <div className="text-sm font-bold text-[#F7D047] bg-[#F7D047]/10 px-3 py-1 rounded-lg">
-                                총 {tradeLogs.length}건
+                            <div className="flex items-center gap-4">
+                                <div className="text-sm font-medium bg-[#252525] px-3 py-1.5 rounded-lg border border-[#333]">
+                                    <span className="text-gray-400 mr-2">매수 총액</span>
+                                    <span className="text-red-400">{formatKrw(tradeSummary.totalBuy)}</span>
+                                </div>
+                                <div className="text-sm font-medium bg-[#252525] px-3 py-1.5 rounded-lg border border-[#333]">
+                                    <span className="text-gray-400 mr-2">매도 총액</span>
+                                    <span className="text-blue-400">{formatKrw(tradeSummary.totalSell)}</span>
+                                </div>
+                                <div className="text-sm font-bold text-[#F7D047] bg-[#F7D047]/10 px-3 py-1.5 rounded-lg border border-[#F7D047]/20">
+                                    총 {tradeLogs.length}건
+                                </div>
                             </div>
                         </div>
                         {tradeLogs.length > 0 ? (
