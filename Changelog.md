@@ -1,3 +1,11 @@
+## [Alpha V1.373] - 2026-04-26 22:48:21
+
+### 🔄 Build Update
+- **Summary**: Auto-generated build update.
+- **Detail** : 
+  - 해외 주식 금액 표기 원화(KRW) 일원화 (US 뱃지는 유지하되 단가/총금액 표시를 환율 적용된 "원" 단위로 소수점 없이 일괄 적용)
+- **Build Time**: 2026-04-26 22:48:21
+
 ## [Alpha V1.372] - 2026-04-26 22:30:10
 
 ### 🔄 Build Update

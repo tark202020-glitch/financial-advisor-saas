@@ -119,6 +119,8 @@ export async function GET(request: NextRequest) {
         const failedSymbols: string[] = [];
 
         const fetchWithRetry = async (symbol: string, category: string, retries = 3): Promise<any[]> => {
+            if (category === 'GOLD') return []; // 금현물은 과거 이력 API 미지원, fallback(스냅샷 현재가)으로 처리
+
             // KR 종목은 .KS/.KQ 접미사 제거 (KIS API는 순수 6자리 코드 필요)
             const cleanSymbol = category === 'KR' ? symbol.replace(/\.(KS|KQ)$/i, '') : symbol;
 
@@ -160,7 +162,7 @@ export async function GET(request: NextRequest) {
                     const closePrice = parseFloat(category === 'US' ? (day.ovrs_nmix_prpr || day.clos || '0') : (day.stck_clpr || '0'));
                     if (dateCode && closePrice) historicalPrices[symbol][dateCode] = closePrice;
                 });
-            } else {
+            } else if (category !== 'GOLD') {
                 console.warn(`[DynamicHistory] Completely failed to fetch history for ${symbol}`);
                 failedSymbols.push(symbol);
             }

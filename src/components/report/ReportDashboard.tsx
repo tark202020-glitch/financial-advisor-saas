@@ -154,9 +154,9 @@ export default function ReportDashboard() {
                 case 'trade_date': valA = a.trade_date; valB = b.trade_date; break;
                 case 'type': valA = a.type; valB = b.type; break;
                 case 'name': valA = a.name; valB = b.name; break;
-                case 'price': valA = a.price; valB = b.price; break;
+                case 'price': valA = a.price * (a.exchangeRateUsed || 1); valB = b.price * (b.exchangeRateUsed || 1); break;
                 case 'quantity': valA = a.quantity; valB = b.quantity; break;
-                case 'totalAmt': valA = a.price * a.quantity; valB = b.price * b.quantity; break;
+                case 'totalAmt': valA = a.price * a.quantity * (a.exchangeRateUsed || 1); valB = b.price * b.quantity * (b.exchangeRateUsed || 1); break;
                 case 'sellProfit': valA = a.sellProfit ?? -Infinity; valB = b.sellProfit ?? -Infinity; break;
                 case 'sellProfitRate': valA = a.sellProfitRate ?? -Infinity; valB = b.sellProfitRate ?? -Infinity; break;
                 default: valA = a.trade_date; valB = b.trade_date;
@@ -531,21 +531,18 @@ export default function ReportDashboard() {
                                     </thead>
                                     <tbody className="divide-y divide-[#333]">
                                         {sortedTradeLogs.map((log) => {
-                                            const totalAmt = log.price * log.quantity;
+                                            const rate = log.exchangeRateUsed || 1;
+                                            const krwPrice = Math.round(log.price * rate);
+                                            const krwTotal = Math.round(log.price * log.quantity * rate);
+
                                             const typeLabel = log.type === 'BUY' ? '매수' : log.type === 'SELL' ? '매도' : '배당';
                                             const typeStyle = log.type === 'BUY' 
                                                 ? 'bg-red-500/10 text-red-400' 
                                                 : log.type === 'SELL' 
                                                     ? 'bg-blue-500/10 text-blue-400'
                                                     : 'bg-emerald-500/10 text-emerald-400';
-                                            const currency = log.isUS ? '$' : '';
-                                            const currencySuffix = log.isUS ? '' : ' 원';
-                                            const priceDisplay = log.isUS 
-                                                ? `$${log.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                : `${log.price.toLocaleString()} 원`;
-                                            const totalDisplay = log.isUS 
-                                                ? `$${totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                : `${totalAmt.toLocaleString()} 원`;
+                                            const priceDisplay = `${krwPrice.toLocaleString()} 원`;
+                                            const totalDisplay = `${krwTotal.toLocaleString()} 원`;
                                             return (
                                                 <tr key={log.id} className="hover:bg-[#2A2A2A] transition-colors">
                                                     <td className="px-6 py-4 font-medium text-white">{log.trade_date}</td>

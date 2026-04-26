@@ -546,15 +546,16 @@ export async function getOverseasStockHistory(symbol: string, startDate: string,
     const token = await getAccessToken();
     const exchangeCode = getUSExchangeCode(symbol);
 
-    // TR_ID: FHKST03030100 (해외주식 기간별 일봉 차트)
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/inquire-daily-chartprice?FID_COND_MRKT_DIV_CODE=N&FID_INPUT_ISCD=${symbol}&FID_INPUT_DATE_1=${startDate}&FID_INPUT_DATE_2=${endDate}&FID_PERIOD_DIV_CODE=D`, {
+    // TR_ID: HHDFS76240000 (해외주식 일별가격)
+    // FHKST03030100 대신 더 안정적이고 EXCD를 명시할 수 있는 이 API를 사용
+    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/dailyprice?AUTH=&EXCD=${exchangeCode}&SYMB=${symbol}&GUBN=0&BYMD=${endDate}&MODP=1`, {
         method: "GET",
         headers: {
             "content-type": "application/json",
             "authorization": `Bearer ${token}`,
             "appkey": APP_KEY!,
             "appsecret": APP_SECRET!,
-            "tr_id": "FHKST03030100",
+            "tr_id": "HHDFS76240000",
             "custtype": "P",
         },
     }));
