@@ -67,7 +67,7 @@ export async function getDynamicValuationHistory(startDateStr: string, endDateSt
         const category = symbolsMap[symbol];
         
         try {
-            let historyData = [];
+            let historyData: any[] | null = [];
             if (category === 'US') {
                 historyData = await getOverseasStockHistory(symbol, kisStartDate, kisEndDate);
                 if (historyData) {
