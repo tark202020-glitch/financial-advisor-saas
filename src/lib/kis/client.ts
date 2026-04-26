@@ -555,6 +555,7 @@ export async function getOverseasStockHistory(symbol: string, startDate: string,
             "appkey": APP_KEY!,
             "appsecret": APP_SECRET!,
             "tr_id": "FHKST03030100",
+            "custtype": "P",
         },
     }));
 

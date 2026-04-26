@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { usePortfolio } from '@/context/PortfolioContext';
-import { getDynamicValuationHistory } from '@/app/report/actions';
 
 export interface ReportSnapshot {
     date: string;
@@ -46,21 +45,29 @@ export function useReportData(startDate: string, endDate: string) {
             const supabase = createClient();
             
             try {
-                // 1. Fetch History Data - 동적 재구성 우선 시도, 실패 시 DB 폴백
+                // 1. 동적 재구성 API 우선 시도, 실패 시 DB 폴백
                 const currentExRate = exchangeRate || 1350;
                 let histData: any[] = [];
                 
                 try {
-                    const dynamicData = await getDynamicValuationHistory(startDate, endDate, currentExRate);
-                    if (dynamicData && dynamicData.length > 0) {
-                        histData = dynamicData;
+                    const res = await fetch(`/api/report/dynamic-history?startDate=${startDate}&endDate=${endDate}&exchangeRate=${currentExRate}`);
+                    if (res.ok) {
+                        const dynamicData = await res.json();
+                        if (Array.isArray(dynamicData) && dynamicData.length > 0) {
+                            histData = dynamicData;
+                            console.log(`[ReportData] Dynamic history loaded: ${dynamicData.length} points`);
+                        }
+                    } else {
+                        const errBody = await res.text();
+                        console.error("[ReportData] Dynamic history API error:", res.status, errBody);
                     }
                 } catch (err) {
-                    console.error("Dynamic history failed, falling back to DB:", err);
+                    console.error("[ReportData] Dynamic history fetch failed:", err);
                 }
 
                 // 동적 재구성 실패 시 기존 DB 스냅샷 폴백
                 if (histData.length === 0) {
+                    console.log("[ReportData] Falling back to DB snapshots");
                     const { data: dbData, error: histError } = await supabase
                         .from('portfolio_daily_history')
                         .select('*')
@@ -73,6 +80,7 @@ export function useReportData(startDate: string, endDate: string) {
                         histData = dbData;
                     }
                 }
+
 
                 // 2. Fetch Trade Logs
                 const { data: trades, error: tradeError } = await supabase

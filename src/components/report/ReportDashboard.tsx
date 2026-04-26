@@ -88,6 +88,20 @@ export default function ReportDashboard() {
         return { totalBuy, totalSell };
     }, [tradeLogs]);
 
+    // 날짜별 매수/매도 금액 집계 (막대 차트용)
+    const dailyTradeChartData = useMemo(() => {
+        if (tradeLogs.length === 0) return [];
+        const dayMap: Record<string, { date: string; buyAmount: number; sellAmount: number }> = {};
+        tradeLogs.forEach(log => {
+            const dt = log.trade_date;
+            if (!dayMap[dt]) dayMap[dt] = { date: dt, buyAmount: 0, sellAmount: 0 };
+            const amt = log.price * log.quantity;
+            if (log.type === 'BUY') dayMap[dt].buyAmount += amt;
+            else if (log.type === 'SELL') dayMap[dt].sellAmount += amt;
+        });
+        return Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
+    }, [tradeLogs]);
+
     return (
         <div className="space-y-6">
             {/* Headers & Controls */}
@@ -217,6 +231,42 @@ export default function ReportDashboard() {
                             )}
                         </div>
                     </div>
+
+                    {/* Daily Buy/Sell Bar Chart */}
+                    {dailyTradeChartData.length > 0 && (
+                        <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl p-6">
+                            <div className="mb-6">
+                                <h3 className="text-lg font-bold text-white">일별 매매 금액 추이</h3>
+                                <p className="text-xs text-gray-400 mt-1">날짜별 매수(빨강) 및 매도(파랑) 거래 금액입니다.</p>
+                            </div>
+                            <div className="h-[250px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ComposedChart data={dailyTradeChartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                        <XAxis
+                                            dataKey="date"
+                                            stroke="#666"
+                                            tick={{ fill: '#888', fontSize: 12 }}
+                                            tickFormatter={(val) => val.slice(5)}
+                                        />
+                                        <YAxis
+                                            stroke="#666"
+                                            tick={{ fill: '#888', fontSize: 12 }}
+                                            tickFormatter={(val) => `${(val / 10000).toFixed(0)}만`}
+                                        />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#252525', borderColor: '#444', borderRadius: '8px' }}
+                                            formatter={(value: any, name: any) => [formatKrw(Number(value) || 0), name === 'buyAmount' ? '매수' : '매도']}
+                                            labelStyle={{ color: '#ccc', marginBottom: '4px' }}
+                                        />
+                                        <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                                        <Bar dataKey="buyAmount" fill="#ef4444" opacity={0.8} name="매수" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="sellAmount" fill="#3b82f6" opacity={0.8} name="매도" radius={[4, 4, 0, 0]} />
+                                    </ComposedChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Trade Logs Table */}
                     <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl overflow-hidden">
