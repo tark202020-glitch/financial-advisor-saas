@@ -128,7 +128,7 @@ export function useReportData(startDate: string, endDate: string) {
         const currentExRate = exchangeRate || 1350;
 
         // Apply exchange rate to normalize data as usePortfolioHistory does
-        const normalized = historyData.map(snap => {
+        const rawNormalized = historyData.map(snap => {
             let total_investment = 0;
             let total_valuation = 0;
             
@@ -149,6 +149,38 @@ export function useReportData(startDate: string, endDate: string) {
                 total_valuation
             };
         });
+
+        // 빈 날짜(주말/공휴일 등)를 이전 데이터로 채워 차트의 X축 간격을 실제 시간 비례로 맞춤
+        const normalized: any[] = [];
+        if (rawNormalized.length > 0) {
+            rawNormalized.sort((a, b) => a.date.localeCompare(b.date));
+            const startStr = rawNormalized[0].date;
+            const endStr = rawNormalized[rawNormalized.length - 1].date;
+            
+            let currentStr = startStr;
+            let dataIdx = 0;
+            let lastData = rawNormalized[0];
+
+            while (currentStr <= endStr) {
+                while (dataIdx < rawNormalized.length && rawNormalized[dataIdx].date <= currentStr) {
+                    lastData = rawNormalized[dataIdx];
+                    dataIdx++;
+                }
+
+                normalized.push({
+                    date: currentStr,
+                    total_investment: lastData.total_investment,
+                    total_valuation: lastData.total_valuation
+                });
+
+                const d = new Date(currentStr);
+                d.setDate(d.getDate() + 1);
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                currentStr = `${year}-${month}-${day}`;
+            }
+        }
 
         // Calculate Profit Diff based on the FIRST day of the period
         const baseInvestment = normalized[0].total_investment;

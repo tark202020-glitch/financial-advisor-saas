@@ -92,12 +92,30 @@ export default function ReportDashboard() {
     const dailyTradeChartData = useMemo(() => {
         if (tradeLogs.length === 0) return [];
         const dayMap: Record<string, { date: string; buyAmount: number; sellAmount: number }> = {};
+        
+        const dates = tradeLogs.map(l => l.trade_date);
+        const minDateStr = dates.reduce((a, b) => a < b ? a : b);
+        const maxDateStr = dates.reduce((a, b) => a > b ? a : b);
+        
+        let currentStr = minDateStr;
+        while (currentStr <= maxDateStr) {
+            dayMap[currentStr] = { date: currentStr, buyAmount: 0, sellAmount: 0 };
+            
+            const d = new Date(currentStr);
+            d.setDate(d.getDate() + 1);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            currentStr = `${year}-${month}-${day}`;
+        }
+
         tradeLogs.forEach(log => {
             const dt = log.trade_date;
-            if (!dayMap[dt]) dayMap[dt] = { date: dt, buyAmount: 0, sellAmount: 0 };
-            const amt = log.price * log.quantity;
-            if (log.type === 'BUY') dayMap[dt].buyAmount += amt;
-            else if (log.type === 'SELL') dayMap[dt].sellAmount -= amt; // 음수로 저장
+            if (dayMap[dt]) {
+                const amt = log.price * log.quantity;
+                if (log.type === 'BUY') dayMap[dt].buyAmount += amt;
+                else if (log.type === 'SELL') dayMap[dt].sellAmount -= amt; // 음수로 저장
+            }
         });
         return Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
     }, [tradeLogs]);
@@ -142,7 +160,7 @@ export default function ReportDashboard() {
             ) : (
                 <div className="space-y-6">
                     {/* Charts Grid */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                         
                         {/* 1. Profit Chart */}
                         <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl p-6">
@@ -159,6 +177,7 @@ export default function ReportDashboard() {
                                             stroke="#666" 
                                             tick={{ fill: '#888', fontSize: 12 }} 
                                             tickFormatter={(val) => val.slice(5)} // MM-DD
+                                            minTickGap={30}
                                         />
                                         <YAxis 
                                             stroke="#666" 
@@ -203,6 +222,7 @@ export default function ReportDashboard() {
                                             stroke="#666" 
                                             tick={{ fill: '#888', fontSize: 12 }} 
                                             tickFormatter={(val) => val.slice(5)}
+                                            minTickGap={30}
                                         />
                                         <YAxis 
                                             stroke="#666" 
@@ -248,6 +268,7 @@ export default function ReportDashboard() {
                                             stroke="#666"
                                             tick={{ fill: '#888', fontSize: 12 }}
                                             tickFormatter={(val) => val.slice(5)}
+                                            minTickGap={30}
                                         />
                                         <YAxis
                                             stroke="#666"

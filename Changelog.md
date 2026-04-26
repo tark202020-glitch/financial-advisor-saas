@@ -1,5 +1,14 @@
-## [Alpha V1.368] - 2026-04-26 14:45:00
+## [Alpha V1.369] - 2026-04-26 19:14:00
 
+### 🔄 Build Update
+- **Summary**: Auto-generated build update.
+- **Detail** : 투자 리포트 대시보드 차트 시각화(비율 및 레이아웃) 구조 개선
+  - X축 간격(Time Scale) 정상화: 데이터가 없는 빈 날짜(휴일 등)를 이전 데이터로 보정하여 채워넣어 차트의 가로 간격이 실제 시간의 흐름과 완벽히 비례하게 표시되도록 `useReportData` 훅 수정
+  - X축 라벨 겹침 방지를 위해 `minTickGap={30}` 적용
+  - 레이아웃 최적화: 가독성 향상을 위해 2열(grid-cols-2) 레이아웃을 1열(grid-cols-1)로 통합 적용
+- **Build Time**: 2026-04-26 19:14:00
+
+## [Alpha V1.368] - 2026-04-26 14:45:00
 ### 🔄 Build Update
 - **Summary**: Auto-generated build update.
 - **Detail** : KIS API 과거 주가 활용 스냅샷 동적 재구성(Dynamic Reconstruction) 파이프라인 탑재
