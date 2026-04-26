@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { getDomesticStockHistory, getOverseasStockHistory } from '@/lib/kis/client';
+import { getMarketType } from '@/utils/market';
 
 function formatAsKisDate(dateStr: string) {
     return dateStr.replace(/-/g, '');
@@ -48,25 +49,36 @@ export async function GET(request: NextRequest) {
             .from('trade_logs')
             .select(`
                 id, trade_date, type, price, quantity, 
-                portfolios (symbol, category, name)
+                portfolios(symbol, name)
             `)
             .eq('user_id', user.id)
             .lte('trade_date', endDateStr)
             .order('trade_date', { ascending: true });
 
         if (error) {
-            console.error('[DynamicHistory] Trade logs query error:', error);
-            return NextResponse.json({ error: 'Failed to fetch trade logs' }, { status: 500 });
+            console.error('[DynamicHistory] Trade logs query error:', JSON.stringify(error));
+            return NextResponse.json({ error: 'Failed to fetch trade logs', detail: error.message }, { status: 500 });
         }
 
         const tradesData: any[] = trades || [];
+        console.log(`[DynamicHistory] Trade logs found: ${tradesData.length}`);
+        
+        // 거래 내역이 없으면 빈 데이터를 반환
+        if (tradesData.length === 0) {
+            console.log('[DynamicHistory] No trade logs found. Returning empty data.');
+            const dateArray = getDaysArray(start, end).map(d => d.toISOString().split('T')[0]);
+            return NextResponse.json({
+                data: dateArray.map(dt => ({ date: dt, total_investment: 0, total_valuation: 0 })),
+                failedSymbols: []
+            });
+        }
 
         // 3. Compute Unique Symbols
-        const symbolsMap: Record<string, 'US' | '국내'> = {};
+        const symbolsMap: Record<string, string> = {};
         tradesData.forEach(t => {
             const port = Array.isArray(t.portfolios) ? t.portfolios[0] : t.portfolios;
             if (port && port.symbol) {
-                symbolsMap[port.symbol] = port.category;
+                symbolsMap[port.symbol] = getMarketType(port.symbol);
             }
         });
 
@@ -107,24 +119,38 @@ export async function GET(request: NextRequest) {
         const failedSymbols: string[] = [];
 
         const fetchWithRetry = async (symbol: string, category: string, retries = 3): Promise<any[]> => {
+            // KR 종목은 .KS/.KQ 접미사 제거 (KIS API는 순수 6자리 코드 필요)
+            const cleanSymbol = category === 'KR' ? symbol.replace(/\.(KS|KQ)$/i, '') : symbol;
+            
             for (let i = 0; i < retries; i++) {
                 try {
                     const data = category === 'US' 
-                        ? await getOverseasStockHistory(symbol, kisStartDateCode, kisEndDateCode)
-                        : await getDomesticStockHistory(symbol, kisStartDateCode, kisEndDateCode);
+                        ? await getOverseasStockHistory(cleanSymbol, kisStartDateCode, kisEndDateCode)
+                        : await getDomesticStockHistory(cleanSymbol, kisStartDateCode, kisEndDateCode);
                     if (data && data.length > 0) return data;
                 } catch (e: any) {
                     console.error(`[DynamicHistory] Fetch failed for ${symbol} (Attempt ${i+1}/${retries}):`, e.message);
                 }
+                // 재시도 전 대기 (점진적 증가: 1초, 2초, 3초)
                 if (i < retries - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 500)); // 짧은 대기 후 재시도
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
                 }
             }
-            return []; // Failed after 3 retries
+            return []; // Failed after retries
         };
 
-        const fetchPromises = uniqueSymbols.map(async (symbol) => {
+        // 순차 실행: 초당 거래건수 제한 방지를 위해 한 종목씩 요청 + 딜레이
+        console.log(`[DynamicHistory] Fetching ${uniqueSymbols.length} symbols sequentially...`);
+        for (let idx = 0; idx < uniqueSymbols.length; idx++) {
+            const symbol = uniqueSymbols[idx];
             const category = symbolsMap[symbol];
+            
+            // 요청 간 500ms 딜레이 (첫 번째 요청 제외)
+            if (idx > 0) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            console.log(`[DynamicHistory] Fetching [${idx + 1}/${uniqueSymbols.length}] ${symbol} (${category})...`);
             const data = await fetchWithRetry(symbol, category);
             historicalPrices[symbol] = {};
             
@@ -138,9 +164,8 @@ export async function GET(request: NextRequest) {
                 console.warn(`[DynamicHistory] Completely failed to fetch history for ${symbol}`);
                 failedSymbols.push(symbol);
             }
-        });
-
-        await Promise.all(fetchPromises);
+        }
+        console.log(`[DynamicHistory] Fetch complete. Failed: ${failedSymbols.length} symbols.`);
 
         // 6. Generate daily timeline & calculate
         const dateArray = getDaysArray(start, end).map(d => d.toISOString().split('T')[0]);

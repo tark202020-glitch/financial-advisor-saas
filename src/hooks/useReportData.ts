@@ -19,12 +19,16 @@ export interface ChartDataPoint {
 export interface TradeLogWithAsset {
     id: number;
     trade_date: string;
-    type: 'BUY' | 'SELL';
+    type: 'BUY' | 'SELL' | 'DIVIDEND';
     price: number;
     quantity: number;
     memo?: string;
     symbol: string;
     name: string;
+    // 매도 시 수익 정보
+    avgBuyPrice?: number;
+    sellProfit?: number;
+    sellProfitRate?: number;
 }
 
 export function useReportData(startDate: string, endDate: string) {
@@ -89,16 +93,64 @@ export function useReportData(startDate: string, endDate: string) {
                 if (isMounted) {
                     setHistoryData(histData || []);
                     
-                    const formattedTrades = (trades || []).map((t: any) => ({
-                        id: t.id,
-                        trade_date: t.trade_date,
-                        type: t.type,
-                        price: t.price,
-                        quantity: t.quantity,
-                        memo: t.memo,
-                        symbol: t.portfolios?.symbol || '',
-                        name: t.portfolios?.name || 'Unknown',
-                    }));
+                    // 매도 수익 계산을 위해 전체 매매 이력(startDate 이전 포함)을 기반으로 종목별 평균단가 산출
+                    const allTrades = (trades || []).sort((a: any, b: any) => 
+                        a.trade_date.localeCompare(b.trade_date) || a.id - b.id
+                    );
+                    
+                    // 종목별 보유 현황 (평균단가 계산용)
+                    const holdings: Record<string, { quantity: number; totalCost: number }> = {};
+                    
+                    const formattedTrades: TradeLogWithAsset[] = allTrades.map((t: any) => {
+                        const symbol = t.portfolios?.symbol || '';
+                        const name = t.portfolios?.name || 'Unknown';
+                        
+                        if (!holdings[symbol]) holdings[symbol] = { quantity: 0, totalCost: 0 };
+                        
+                        let avgBuyPrice: number | undefined;
+                        let sellProfit: number | undefined;
+                        let sellProfitRate: number | undefined;
+                        
+                        if (t.type === 'BUY') {
+                            holdings[symbol].quantity += t.quantity;
+                            holdings[symbol].totalCost += t.price * t.quantity;
+                        } else if (t.type === 'SELL') {
+                            // 매도 시점의 평균 매입단가
+                            avgBuyPrice = holdings[symbol].quantity > 0 
+                                ? holdings[symbol].totalCost / holdings[symbol].quantity 
+                                : 0;
+                            // 매도 수익금 = (매도가 - 평균매입가) × 수량
+                            sellProfit = (t.price - avgBuyPrice) * t.quantity;
+                            // 매도 수익률 = (매도가 - 평균매입가) / 평균매입가 × 100
+                            sellProfitRate = avgBuyPrice > 0 
+                                ? ((t.price - avgBuyPrice) / avgBuyPrice) * 100 
+                                : 0;
+                            // 보유 수량/비용 업데이트
+                            if (holdings[symbol].quantity > 0) {
+                                const costPerShare = holdings[symbol].totalCost / holdings[symbol].quantity;
+                                holdings[symbol].totalCost -= costPerShare * t.quantity;
+                                holdings[symbol].quantity -= t.quantity;
+                            }
+                        }
+                        // DIVIDEND는 보유 현황에 영향 없음
+                        
+                        return {
+                            id: t.id,
+                            trade_date: t.trade_date,
+                            type: t.type,
+                            price: t.price,
+                            quantity: t.quantity,
+                            memo: t.memo,
+                            symbol,
+                            name,
+                            avgBuyPrice,
+                            sellProfit,
+                            sellProfitRate,
+                        };
+                    });
+                    
+                    // 날짜 내림차순으로 다시 정렬 (표시용)
+                    formattedTrades.sort((a, b) => b.trade_date.localeCompare(a.trade_date));
                     setTradeLogs(formattedTrades);
                 }
             } catch (err) {
