@@ -144,9 +144,52 @@ export async function GET(request: NextRequest) {
 
         if (interaction.status === 'completed') {
             const outputs = interaction.outputs || [];
-            // outputs 요소가 TextContent | ImageContent union이므로 안전하게 text 추출
-            const lastOutput = outputs.length > 0 ? outputs[outputs.length - 1] : null;
-            const report = lastOutput ? (lastOutput as any).text || '' : '';
+            
+            // 디버그: outputs 구조를 로그로 출력
+            console.log(`[AI Comment] outputs count: ${outputs.length}`);
+            outputs.forEach((o: any, i: number) => {
+                console.log(`[AI Comment] output[${i}] type=${o.type}, hasText=${!!o.text}, textLen=${o.text?.length || 0}`);
+            });
+
+            // 모든 text 타입 output을 합치되, grounding/source URL만 있는 항목은 분리
+            const textParts: string[] = [];
+            const sourceParts: string[] = [];
+            
+            for (const output of outputs) {
+                const o = output as any;
+                if (o.type === 'text' && o.text) {
+                    // "Sources:" 로 시작하거나 URL 링크만으로 이루어진 항목은 소스로 분류
+                    const trimmed = o.text.trim();
+                    if (trimmed.startsWith('Sources:') || trimmed.startsWith('Source:')) {
+                        sourceParts.push(trimmed);
+                    } else {
+                        textParts.push(trimmed);
+                    }
+                } else if (!o.type && o.text) {
+                    // type이 없는 경우도 text로 처리
+                    const trimmed = o.text.trim();
+                    if (trimmed.startsWith('Sources:') || trimmed.startsWith('Source:')) {
+                        sourceParts.push(trimmed);
+                    } else {
+                        textParts.push(trimmed);
+                    }
+                }
+            }
+            
+            // 분석 리포트 본문 + 소스 참조 순서로 합치기
+            let report = textParts.join('\n\n');
+            if (sourceParts.length > 0) {
+                report += '\n\n---\n\n' + sourceParts.join('\n\n');
+            }
+            
+            // fallback: 텍스트가 없으면 전체 outputs에서 text 추출 시도
+            if (!report.trim()) {
+                const allTexts = outputs
+                    .map((o: any) => o.text || '')
+                    .filter((t: string) => t.trim().length > 0);
+                report = allTexts.join('\n\n') || '분석 결과를 가져오지 못했습니다.';
+            }
+            
             return NextResponse.json({ status: 'completed', report });
         } else if (interaction.status === 'failed' || interaction.status === 'cancelled') {
             return NextResponse.json({ status: 'failed', report: null });

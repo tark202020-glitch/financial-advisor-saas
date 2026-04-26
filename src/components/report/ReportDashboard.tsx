@@ -6,7 +6,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     ComposedChart, Bar, Line, Legend, ReferenceLine, Cell
 } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Percent, Sparkles, Search, BarChart3, CheckCircle2, XCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Percent, Sparkles, Search, BarChart3, CheckCircle2, XCircle, Copy, Download, Check } from 'lucide-react';
 import { Loader2, RefreshCw, AlertCircle, AlertTriangle } from 'lucide-react';
 
 function formatDateForInput(date: Date) {
@@ -636,6 +636,7 @@ function DeepResearchSection({ startDate, endDate, summary, tradeSummary, tradeC
     const [researchState, setResearchState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
     const [report, setReport] = useState<string>('');
     const [errorMsg, setErrorMsg] = useState<string>('');
+    const [copied, setCopied] = useState(false);
     const [loadingStage, setLoadingStage] = useState(0);
     const [elapsedSec, setElapsedSec] = useState(0);
     const [kospiInfo, setKospiInfo] = useState<{ kospiReturn: string; kospiStartPrice: number; kospiEndPrice: number } | null>(null);
@@ -870,13 +871,43 @@ function DeepResearchSection({ startDate, endDate, summary, tradeSummary, tradeC
                         </button>
                     )}
                     {researchState === 'done' && (
-                        <button
-                            onClick={() => { setResearchState('idle'); setReport(''); setKospiInfo(null); }}
-                            className="flex items-center gap-2 px-4 py-2 bg-[#252525] hover:bg-[#333] text-gray-300 rounded-xl text-sm transition-colors border border-[#444]"
-                        >
-                            <RefreshCw size={14} />
-                            다시 분석
-                        </button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                                onClick={() => {
+                                    navigator.clipboard.writeText(report).then(() => {
+                                        setCopied(true);
+                                        setTimeout(() => setCopied(false), 2000);
+                                    });
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 rounded-xl text-xs font-medium transition-colors border border-emerald-500/30"
+                            >
+                                {copied ? <Check size={14} /> : <Copy size={14} />}
+                                {copied ? '복사됨!' : '복사'}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const header = `# AI Deep Research 투자 분석 리포트\n\n- 분석 기간: ${startDate} ~ ${endDate}\n- 생성 시각: ${new Date().toLocaleString('ko-KR')}\n\n---\n\n`;
+                                    const blob = new Blob([header + report], { type: 'text/markdown;charset=utf-8' });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `투자분석_${startDate}_${endDate}.md`;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-xl text-xs font-medium transition-colors border border-blue-500/30"
+                            >
+                                <Download size={14} />
+                                저장
+                            </button>
+                            <button
+                                onClick={() => { setResearchState('idle'); setReport(''); setKospiInfo(null); }}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-[#252525] hover:bg-[#333] text-gray-400 rounded-xl text-xs font-medium transition-colors border border-[#444]"
+                            >
+                                <RefreshCw size={14} />
+                                다시 분석
+                            </button>
+                        </div>
                     )}
                     {researchState === 'error' && (
                         <button
