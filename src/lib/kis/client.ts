@@ -544,35 +544,79 @@ export async function getDomesticStockHistory(symbol: string, startDate: string,
 
 export async function getOverseasStockHistory(symbol: string, startDate: string, endDate: string): Promise<any[] | null> {
     const token = await getAccessToken();
-    const exchangeCode = getUSExchangeCode(symbol);
+    const primaryExchange = getUSExchangeCode(symbol);
 
-    // TR_ID: HHDFS76240000 (해외주식 일별가격)
-    // FHKST03030100 대신 더 안정적이고 EXCD를 명시할 수 있는 이 API를 사용
-    const response = await kisRateLimiter.add(() => fetch(`${BASE_URL}/uapi/overseas-price/v1/quotations/dailyprice?AUTH=&EXCD=${exchangeCode}&SYMB=${symbol}&GUBN=0&BYMD=${endDate}&MODP=1`, {
-        method: "GET",
-        headers: {
-            "content-type": "application/json",
-            "authorization": `Bearer ${token}`,
-            "appkey": APP_KEY!,
-            "appsecret": APP_SECRET!,
-            "tr_id": "HHDFS76240000",
-            "custtype": "P",
-        },
-    }));
+    // TR_ID: HHDFS76240000 (해외주식 기간별시세)
+    // output2 필드: xymd(날짜), clos(종가), open(시가), high(고가), low(저가), tvol(거래량)
+    const fetchHistory = async (excd: string): Promise<any[] | null> => {
+        const response = await kisRateLimiter.add(() => fetch(
+            `${BASE_URL}/uapi/overseas-price/v1/quotations/dailyprice?AUTH=&EXCD=${excd}&SYMB=${symbol}&GUBN=0&BYMD=${endDate}&MODP=1`,
+            {
+                method: "GET",
+                headers: {
+                    "content-type": "application/json",
+                    "authorization": `Bearer ${token}`,
+                    "appkey": APP_KEY!,
+                    "appsecret": APP_SECRET!,
+                    "tr_id": "HHDFS76240000",
+                    "custtype": "P",
+                },
+            }
+        ));
 
-    if (!response.ok) {
-        console.error(`Failed to fetch OV Stock History for ${symbol}:`, await response.text());
-        return null;
+        if (!response.ok) {
+            console.error(`[OV History] HTTP ${response.status} for ${symbol}(${excd})`);
+            return null;
+        }
+
+        const data = await response.json();
+
+        if (data.rt_cd !== "0") {
+            console.warn(`[OV History] API error for ${symbol}(${excd}): ${data.msg1}`);
+            return null;
+        }
+
+        const output2 = data.output2;
+        if (!output2 || !Array.isArray(output2) || output2.length === 0) {
+            console.warn(`[OV History] Empty output2 for ${symbol}(${excd})`);
+            return null;
+        }
+
+        // HHDFS76240000 응답 필드를 통일 형식으로 변환
+        // xymd: 날짜(YYYYMMDD), clos: 종가
+        const normalized = output2
+            .filter((d: any) => d.xymd && parseFloat(d.clos || '0') > 0)
+            .map((d: any) => ({
+                stck_bsop_date: d.xymd,
+                ovrs_nmix_prpr: d.clos,
+                clos: d.clos,
+            }));
+
+        return normalized.length > 0 ? normalized : null;
+    };
+
+    // 1차: primary 거래소 시도
+    let result = await fetchHistory(primaryExchange);
+    if (result && result.length > 0) {
+        console.log(`[OV History] ${symbol}(${primaryExchange}): ${result.length} records OK`);
+        return result;
     }
 
-    const data = await response.json();
+    // 2차: fallback 거래소들 시도 (NYS ↔ NAS ↔ AMS)
+    const allExchanges = ['NAS', 'NYS', 'AMS'];
+    const fallbacks = allExchanges.filter(e => e !== primaryExchange);
 
-    if (data.rt_cd !== "0") {
-        console.error(`KIS API Error (OV Stock History): ${data.msg1}`);
-        return null;
+    for (const altExch of fallbacks) {
+        console.warn(`[OV History] Retrying ${symbol} with ${altExch}...`);
+        result = await fetchHistory(altExch);
+        if (result && result.length > 0) {
+            console.log(`[OV History] ${symbol}(${altExch} fallback): ${result.length} records OK`);
+            return result;
+        }
     }
 
-    return data.output2 || [];
+    console.error(`[OV History] All exchanges failed for ${symbol}`);
+    return null;
 }
 
 
