@@ -88,7 +88,7 @@ export default function ReportDashboard() {
         return { totalBuy, totalSell };
     }, [tradeLogs]);
 
-    // 날짜별 매수/매도 금액 집계 (막대 차트용)
+    // 날짜별 매수/매도 금액 집계 (막대 차트용 - 매도는 음수)
     const dailyTradeChartData = useMemo(() => {
         if (tradeLogs.length === 0) return [];
         const dayMap: Record<string, { date: string; buyAmount: number; sellAmount: number }> = {};
@@ -97,7 +97,7 @@ export default function ReportDashboard() {
             if (!dayMap[dt]) dayMap[dt] = { date: dt, buyAmount: 0, sellAmount: 0 };
             const amt = log.price * log.quantity;
             if (log.type === 'BUY') dayMap[dt].buyAmount += amt;
-            else if (log.type === 'SELL') dayMap[dt].sellAmount += amt;
+            else if (log.type === 'SELL') dayMap[dt].sellAmount -= amt; // 음수로 저장
         });
         return Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
     }, [tradeLogs]);
@@ -241,7 +241,7 @@ export default function ReportDashboard() {
                             </div>
                             <div className="h-[250px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <ComposedChart data={dailyTradeChartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                                    <ComposedChart data={dailyTradeChartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} stackOffset="sign">
                                         <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
                                         <XAxis
                                             dataKey="date"
@@ -252,16 +252,17 @@ export default function ReportDashboard() {
                                         <YAxis
                                             stroke="#666"
                                             tick={{ fill: '#888', fontSize: 12 }}
-                                            tickFormatter={(val) => `${(val / 10000).toFixed(0)}만`}
+                                            tickFormatter={(val) => `${(Math.abs(val) / 10000).toFixed(0)}만`}
                                         />
                                         <Tooltip
                                             contentStyle={{ backgroundColor: '#252525', borderColor: '#444', borderRadius: '8px' }}
-                                            formatter={(value: any, name: any) => [formatKrw(Number(value) || 0), name === 'buyAmount' ? '매수' : '매도']}
+                                            formatter={(value: any, name: any) => [formatKrw(Math.abs(Number(value)) || 0), name === '매수' ? '매수' : '매도']}
                                             labelStyle={{ color: '#ccc', marginBottom: '4px' }}
                                         />
                                         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                                        <ReferenceLine y={0} stroke="#555" strokeDasharray="3 3" />
                                         <Bar dataKey="buyAmount" fill="#ef4444" opacity={0.8} name="매수" radius={[4, 4, 0, 0]} />
-                                        <Bar dataKey="sellAmount" fill="#3b82f6" opacity={0.8} name="매도" radius={[4, 4, 0, 0]} />
+                                        <Bar dataKey="sellAmount" fill="#3b82f6" opacity={0.8} name="매도" radius={[0, 0, 4, 4]} />
                                     </ComposedChart>
                                 </ResponsiveContainer>
                             </div>
