@@ -46,13 +46,32 @@ export function useReportData(startDate: string, endDate: string) {
             const supabase = createClient();
             
             try {
-                // 1. Fetch History Data dynamically via Report Engine
+                // 1. Fetch History Data - 동적 재구성 우선 시도, 실패 시 DB 폴백
                 const currentExRate = exchangeRate || 1350;
                 let histData: any[] = [];
+                
                 try {
-                    histData = await getDynamicValuationHistory(startDate, endDate, currentExRate);
+                    const dynamicData = await getDynamicValuationHistory(startDate, endDate, currentExRate);
+                    if (dynamicData && dynamicData.length > 0) {
+                        histData = dynamicData;
+                    }
                 } catch (err) {
-                    console.error("Failed to generate dynamic history:", err);
+                    console.error("Dynamic history failed, falling back to DB:", err);
+                }
+
+                // 동적 재구성 실패 시 기존 DB 스냅샷 폴백
+                if (histData.length === 0) {
+                    const { data: dbData, error: histError } = await supabase
+                        .from('portfolio_daily_history')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .gte('record_date', startDate)
+                        .lte('record_date', endDate)
+                        .order('record_date', { ascending: true });
+                    
+                    if (!histError && dbData) {
+                        histData = dbData;
+                    }
                 }
 
                 // 2. Fetch Trade Logs
