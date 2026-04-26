@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useReportData } from '@/hooks/useReportData';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     ComposedChart, Bar, Line, Legend, ReferenceLine
 } from 'recharts';
-import { Loader2, TrendingUp, TrendingDown, RefreshCw, AlertCircle } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, RefreshCw, AlertCircle, AlertTriangle } from 'lucide-react';
 
 function formatDateForInput(date: Date) {
     const year = date.getFullYear();
@@ -41,7 +41,26 @@ export default function ReportDashboard() {
     const [startDate, setStartDate] = useState(defaultDates.startDate);
     const [endDate, setEndDate] = useState(defaultDates.endDate);
 
-    const { isLoading, chartData, tradeLogs } = useReportData(startDate, endDate);
+    // 100일 초과 방지 로직
+    useEffect(() => {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const diffTime = Math.abs(end.getTime() - start.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 100) {
+            alert('조회 기간은 100일을 초과할 수 없습니다. 시작일을 자동으로 조정합니다.');
+            const newStart = new Date(end);
+            newStart.setDate(newStart.getDate() - 100);
+            
+            const year = newStart.getFullYear();
+            const month = String(newStart.getMonth() + 1).padStart(2, '0');
+            const day = String(newStart.getDate()).padStart(2, '0');
+            setStartDate(`${year}-${month}-${day}`);
+        }
+    }, [startDate, endDate]);
+
+    const { isLoading, chartData, tradeLogs, failedSymbols } = useReportData(startDate, endDate);
 
     // Number formatter
     const formatKrw = (val: number) => {
@@ -146,6 +165,20 @@ export default function ReportDashboard() {
                     </div>
                 </div>
             </div>
+
+            {/* 실패 종목 경고창 */}
+            {failedSymbols && failedSymbols.length > 0 && (
+                <div className="bg-red-900/30 border border-red-500/50 rounded-xl p-4 flex items-start gap-3">
+                    <AlertTriangle className="text-red-400 shrink-0 mt-0.5" size={20} />
+                    <div>
+                        <h4 className="text-red-400 font-bold text-sm mb-1">데이터 조회 실패 알림</h4>
+                        <p className="text-red-200 text-xs leading-relaxed">
+                            다음 종목의 과거 주가 데이터를 불러오지 못했습니다: <span className="font-bold text-red-100">{failedSymbols.join(', ')}</span><br/>
+                            3회 이상 재시도하였으나 해당 일자의 주가를 확보하지 못하여, 위 종목의 평가 금액이 차트에서 부정확하게 표시될 수 있습니다.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center py-20 bg-[#1E1E1E] rounded-2xl border border-[#333]">

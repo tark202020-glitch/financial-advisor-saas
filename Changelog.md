@@ -1,5 +1,24 @@
-## [Alpha V1.369] - 2026-04-26 19:14:00
+## [Alpha V1.371] - 2026-04-26 20:04:09
 
+### 🚀 Feature: 누적 수익금 동적 재구성 파이프라인 전면 개편
+- **Summary**: 과거 매매 기록을 기반으로 누적 수익금 및 평가금 추이를 완벽하게 추적할 수 있도록 API 및 연산 구조를 전면 재구축
+- **Detail** : 
+  - `portfolio_daily_history` DB 스냅샷 의존성 제거 및 매매 기록 역산 로직 도입 (4월 9일 이전 데이터 복구)
+  - 조회 기간 한정 방어 로직 추가 (최대 100일) 및 UI 자동 보정 처리
+  - 주가 조회 3회 재시도(Retry) 및 조회 실패 종목(`failedSymbols`) 명시화 알림 모달 UI 구현
+  - 휴장일 초기 기준가 누락 방지를 위한 검색일자 15일 버퍼 스캔 기능 적용
+  - API 부하 및 로딩 시간 단축을 위해 `portfolio_daily_history` 테이블에 동적 연산 결과 자동 캐싱(Upsert) 도입
+- **Build Time**: 2026-04-26 20:04:09
+
+## [Alpha V1.370] - 2026-04-26 19:43:00
+### 🔧 Fix: 리포트 대시보드 차트 Tooltip 라벨 표시 오류 수정
+- **Summary**: 차트에서 마우스 오버 시 표시되는 Tooltip 모달 내 항목명과 색상이 일치하지 않고 하드코딩된 값으로 강제 표시되던 버그 수정
+- **Detail** : 
+  - `ReportDashboard.tsx` 내의 모든 `Tooltip` formatter 로직에서 잘못된 삼항 연산자(예: `name === 'cumulativeProfit'`)를 제거
+  - `ComposedChart`에서 전달하는 고유 `name` 속성("누적 수익금", "일별 손익" 등)을 Tooltip에서 그대로 반환하도록 수정하여 범례 색상과 텍스트가 정상적으로 매칭되도록 복구
+- **Build Time**: 2026-04-26 19:43:00
+
+## [Alpha V1.369] - 2026-04-26 19:14:00
 ### 🔄 Build Update
 - **Summary**: Auto-generated build update.
 - **Detail** : 투자 리포트 대시보드 차트 시각화(비율 및 레이아웃) 구조 개선

@@ -31,6 +31,7 @@ export function useReportData(startDate: string, endDate: string) {
     const { user, exchangeRate } = usePortfolio();
     const [historyData, setHistoryData] = useState<any[]>([]);
     const [tradeLogs, setTradeLogs] = useState<TradeLogWithAsset[]>([]);
+    const [failedSymbols, setFailedSymbols] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -53,34 +54,26 @@ export function useReportData(startDate: string, endDate: string) {
                     const res = await fetch(`/api/report/dynamic-history?startDate=${startDate}&endDate=${endDate}&exchangeRate=${currentExRate}`);
                     if (res.ok) {
                         const dynamicData = await res.json();
-                        if (Array.isArray(dynamicData) && dynamicData.length > 0) {
+                        if (dynamicData.data && Array.isArray(dynamicData.data) && dynamicData.data.length > 0) {
+                            histData = dynamicData.data;
+                            setFailedSymbols(dynamicData.failedSymbols || []);
+                            console.log(`[ReportData] Dynamic history loaded: ${dynamicData.data.length} points`);
+                        } else if (Array.isArray(dynamicData) && dynamicData.length > 0) {
+                            // 하위호환
                             histData = dynamicData;
-                            console.log(`[ReportData] Dynamic history loaded: ${dynamicData.length} points`);
                         }
                     } else {
                         const errBody = await res.text();
                         console.error("[ReportData] Dynamic history API error:", res.status, errBody);
+                        if (res.status === 400 && errBody.includes('100')) {
+                            alert('조회 기간은 100일을 초과할 수 없습니다.');
+                        }
                     }
                 } catch (err) {
                     console.error("[ReportData] Dynamic history fetch failed:", err);
                 }
 
-                // 동적 재구성 실패 시 기존 DB 스냅샷 폴백
-                if (histData.length === 0) {
-                    console.log("[ReportData] Falling back to DB snapshots");
-                    const { data: dbData, error: histError } = await supabase
-                        .from('portfolio_daily_history')
-                        .select('*')
-                        .eq('user_id', user.id)
-                        .gte('record_date', startDate)
-                        .lte('record_date', endDate)
-                        .order('record_date', { ascending: true });
-                    
-                    if (!histError && dbData) {
-                        histData = dbData;
-                    }
-                }
-
+                // 기존 DB 스냅샷 폴백 삭제 (dynamic-history가 캐시 역할을 겸하도록 백엔드에서 처리)
 
                 // 2. Fetch Trade Logs
                 const { data: trades, error: tradeError } = await supabase
@@ -219,7 +212,9 @@ export function useReportData(startDate: string, endDate: string) {
 
     return {
         isLoading,
+        historyData,
         chartData,
-        tradeLogs
+        tradeLogs,
+        failedSymbols
     };
 }

@@ -32,9 +32,18 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        console.log(`[DynamicHistory] START: ${startDateStr} ~ ${endDateStr}, ExRate: ${currentExchangeRate}`);
+        const start = new Date(startDateStr);
+        const end = new Date(endDateStr);
+        const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // 1. Validation for 100 days
+        if (diffDays > 100) {
+            return NextResponse.json({ error: 'Date range cannot exceed 100 days' }, { status: 400 });
+        }
 
-        // 1. Fetch ALL trade logs up to endDate
+        console.log(`[DynamicHistory] START: ${startDateStr} ~ ${endDateStr}, Diff: ${diffDays} days`);
+
+        // 2. Fetch ALL trade logs up to endDate
         const { data: trades, error } = await supabase
             .from('trade_logs')
             .select(`
@@ -51,9 +60,8 @@ export async function GET(request: NextRequest) {
         }
 
         const tradesData: any[] = trades || [];
-        console.log(`[DynamicHistory] Loaded ${tradesData.length} trade logs`);
 
-        // 2. Compute Unique Symbols
+        // 3. Compute Unique Symbols
         const symbolsMap: Record<string, 'US' | '국내'> = {};
         tradesData.forEach(t => {
             const port = Array.isArray(t.portfolios) ? t.portfolios[0] : t.portfolios;
@@ -63,55 +71,83 @@ export async function GET(request: NextRequest) {
         });
 
         const uniqueSymbols = Object.keys(symbolsMap);
-        console.log(`[DynamicHistory] Unique symbols: ${uniqueSymbols.join(', ')}`);
+        
+        // 4. Check DB Cache (portfolio_daily_history)
+        // 만약 이미 해당 기간에 대한 캐시가 DB에 있다면 KIS API를 우회하여 반환
+        const { data: cachedData } = await supabase
+            .from('portfolio_daily_history')
+            .select('record_date, total_investment, total_valuation')
+            .eq('user_id', user.id)
+            .gte('record_date', startDateStr)
+            .lte('record_date', endDateStr)
+            .order('record_date', { ascending: true });
 
-        // 3. Fetch KIS Historical Prices
-        const kisStartDate = formatAsKisDate(startDateStr);
-        const kisEndDate = formatAsKisDate(endDateStr);
-        const historicalPrices: Record<string, Record<string, number>> = {};
-
-        // 순차 처리 (Rate Limit 방지)
-        for (const symbol of uniqueSymbols) {
-            historicalPrices[symbol] = {};
-            const category = symbolsMap[symbol];
-
-            try {
-                if (category === 'US') {
-                    const historyData = await getOverseasStockHistory(symbol, kisStartDate, kisEndDate);
-                    console.log(`[DynamicHistory] US ${symbol}: ${historyData ? historyData.length : 'null'} records`);
-                    if (historyData) {
-                        historyData.forEach((day: any) => {
-                            const dateCode = day.stck_bsop_date;
-                            const closePrice = parseFloat(day.ovrs_nmix_prpr || day.clos || '0');
-                            if (dateCode && closePrice) historicalPrices[symbol][dateCode] = closePrice;
-                        });
-                    }
-                } else {
-                    const historyData = await getDomesticStockHistory(symbol, kisStartDate, kisEndDate);
-                    console.log(`[DynamicHistory] DOM ${symbol}: ${historyData ? historyData.length : 'null'} records`);
-                    if (historyData) {
-                        historyData.forEach((day: any) => {
-                            const dateCode = day.stck_bsop_date;
-                            const closePrice = parseFloat(day.stck_clpr || '0');
-                            if (dateCode && closePrice) historicalPrices[symbol][dateCode] = closePrice;
-                        });
-                    }
-                }
-            } catch (e: any) {
-                console.error(`[DynamicHistory] Error fetching history for ${symbol}:`, e.message);
-            }
+        // 조회하고자 하는 날짜 수(diffDays + 1)와 캐시된 데이터 수가 정확히 일치한다면 온전한 캐시로 간주
+        if (cachedData && cachedData.length === diffDays + 1) {
+            console.log(`[DynamicHistory] Full cache hit! Returning ${cachedData.length} records from DB.`);
+            return NextResponse.json({
+                data: cachedData.map(c => ({
+                    date: c.record_date,
+                    total_investment: c.total_investment,
+                    total_valuation: c.total_valuation
+                })),
+                failedSymbols: []
+            });
         }
+        
+        console.log(`[DynamicHistory] Cache miss or incomplete (Found ${cachedData?.length || 0} / Needed ${diffDays + 1}). Reconstructing...`);
 
-        // 4. Generate daily timeline
-        const start = new Date(startDateStr);
-        const end = new Date(endDateStr);
+        // 5. KIS API Fetching (with 15 days buffer for initial price & 3 Retries)
+        const kisStart = new Date(start);
+        kisStart.setDate(kisStart.getDate() - 15);
+        const kisStartDateCode = formatAsKisDate(kisStart.toISOString().split('T')[0]);
+        const kisEndDateCode = formatAsKisDate(endDateStr);
+
+        const historicalPrices: Record<string, Record<string, number>> = {};
+        const failedSymbols: string[] = [];
+
+        const fetchWithRetry = async (symbol: string, category: string, retries = 3): Promise<any[]> => {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const data = category === 'US' 
+                        ? await getOverseasStockHistory(symbol, kisStartDateCode, kisEndDateCode)
+                        : await getDomesticStockHistory(symbol, kisStartDateCode, kisEndDateCode);
+                    if (data && data.length > 0) return data;
+                } catch (e: any) {
+                    console.error(`[DynamicHistory] Fetch failed for ${symbol} (Attempt ${i+1}/${retries}):`, e.message);
+                }
+                if (i < retries - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 500)); // 짧은 대기 후 재시도
+                }
+            }
+            return []; // Failed after 3 retries
+        };
+
+        const fetchPromises = uniqueSymbols.map(async (symbol) => {
+            const category = symbolsMap[symbol];
+            const data = await fetchWithRetry(symbol, category);
+            historicalPrices[symbol] = {};
+            
+            if (data && data.length > 0) {
+                data.forEach((day: any) => {
+                    const dateCode = day.stck_bsop_date;
+                    const closePrice = parseFloat(category === 'US' ? (day.ovrs_nmix_prpr || day.clos || '0') : (day.stck_clpr || '0'));
+                    if (dateCode && closePrice) historicalPrices[symbol][dateCode] = closePrice;
+                });
+            } else {
+                console.warn(`[DynamicHistory] Completely failed to fetch history for ${symbol}`);
+                failedSymbols.push(symbol);
+            }
+        });
+
+        await Promise.all(fetchPromises);
+
+        // 6. Generate daily timeline & calculate
         const dateArray = getDaysArray(start, end).map(d => d.toISOString().split('T')[0]);
-
-        // 5. Walk through time day by day
         let currentTradesIndex = 0;
         const holdings: Record<string, { quantity: number; totalCost: number }> = {};
 
-        // Pre-process trades before startDate
+        // Pre-process trades BEFORE startDate
         while (currentTradesIndex < tradesData.length && tradesData[currentTradesIndex].trade_date < startDateStr) {
             const t = tradesData[currentTradesIndex];
             const port = Array.isArray(t.portfolios) ? t.portfolios[0] : t.portfolios;
@@ -135,13 +171,20 @@ export async function GET(request: NextRequest) {
             currentTradesIndex++;
         }
 
-        console.log(`[DynamicHistory] Holdings at startDate:`, JSON.stringify(holdings));
+        // 초기 가격 확보를 위해 startDate 이전 버퍼 기간(-15일)의 데이터로 lastKnownPrice 웜업
+        const lastKnownPrice: Record<string, number> = {};
+        for (let bDate = new Date(kisStart); bDate < start; bDate.setDate(bDate.getDate() + 1)) {
+            const kCode = formatAsKisDate(bDate.toISOString().split('T')[0]);
+            for (const sym of uniqueSymbols) {
+                const p = historicalPrices[sym]?.[kCode];
+                if (p) lastKnownPrice[sym] = p;
+            }
+        }
 
         const reportData = [];
-        const lastKnownPrice: Record<string, number> = {};
 
+        // 메인 루프: startDate 부터 endDate 까지 Day-by-Day 전진
         for (const dt of dateArray) {
-            // Process trades on this date
             while (currentTradesIndex < tradesData.length && tradesData[currentTradesIndex].trade_date === dt) {
                 const t = tradesData[currentTradesIndex];
                 const port = Array.isArray(t.portfolios) ? t.portfolios[0] : t.portfolios;
@@ -179,6 +222,8 @@ export async function GET(request: NextRequest) {
                         lastKnownPrice[sym] = priceToday;
                     }
 
+                    // 매입가를 Fallback으로 쓰지 않고 직전 거래일의 종가(lastKnownPrice)를 유지함.
+                    // 애초에 조회를 100% 실패(failedSymbols)했더라도 평균단가를 억지로 쓰지 않음(평가액 0으로 처리되거나 직전 가격 유지).
                     const priceToUse = lastKnownPrice[sym] || 0;
                     dailyValuation += priceToUse * holding.quantity * exRate;
                 }
@@ -191,8 +236,31 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        console.log(`[DynamicHistory] Generated ${reportData.length} data points`);
-        return NextResponse.json(reportData);
+        // 7. DB Cache Upsert
+        // API 한도나 에러로 인해 failedSymbols가 생긴 날은 부정확할 수 있으므로 캐시하지 않음
+        if (reportData.length > 0 && failedSymbols.length === 0) {
+            const upsertPayload = reportData.map(d => ({
+                user_id: user.id,
+                record_date: d.date,
+                total_investment: d.total_investment,
+                total_valuation: d.total_valuation,
+            }));
+
+            const { error: upsertError } = await supabase
+                .from('portfolio_daily_history')
+                .upsert(upsertPayload, { onConflict: 'user_id, record_date' });
+            
+            if (upsertError) {
+                console.error('[DynamicHistory] Cache upsert failed:', upsertError);
+            } else {
+                console.log(`[DynamicHistory] Successfully cached ${reportData.length} records.`);
+            }
+        }
+
+        return NextResponse.json({
+            data: reportData,
+            failedSymbols: failedSymbols
+        });
 
     } catch (err: any) {
         console.error('[DynamicHistory] Unhandled error:', err.message, err.stack);
