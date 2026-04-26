@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const startDateStr = searchParams.get('startDate');
     const endDateStr = searchParams.get('endDate');
     const currentExchangeRate = parseFloat(searchParams.get('exchangeRate') || '1450');
+    const noCache = searchParams.get('noCache') === '1';
 
     if (!startDateStr || !endDateStr) {
         return NextResponse.json({ error: 'Missing startDate or endDate' }, { status: 400 });
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
             .order('record_date', { ascending: true });
 
         // 조회하고자 하는 날짜 수(diffDays + 1)와 캐시된 데이터 수가 정확히 일치한다면 온전한 캐시로 간주
-        if (cachedData && cachedData.length === diffDays + 1) {
+        if (!noCache && cachedData && cachedData.length === diffDays + 1) {
             console.log(`[DynamicHistory] Full cache hit! Returning ${cachedData.length} records from DB.`);
             return NextResponse.json({
                 data: cachedData.map(c => ({
@@ -249,9 +250,11 @@ export async function GET(request: NextRequest) {
                         lastKnownPrice[sym] = priceToday;
                     }
 
-                    // 매입가를 Fallback으로 쓰지 않고 직전 거래일의 종가(lastKnownPrice)를 유지함.
-                    // 애초에 조회를 100% 실패(failedSymbols)했더라도 평균단가를 억지로 쓰지 않음(평가액 0으로 처리되거나 직전 가격 유지).
-                    const priceToUse = lastKnownPrice[sym] || 0;
+                    // 매입가를 Fallback으로 사용: 시세 조회 실패 시 평가금이 0이 되어
+                    // 투자금보다 평가금이 낮아지는 왜곡을 방지합니다.
+                    // 매입단가 = totalCost(원화) / quantity / exRate → 원래 통화 단위 가격
+                    const avgBuyPriceInCurrency = holding.quantity > 0 ? (holding.totalCost / holding.quantity / exRate) : 0;
+                    const priceToUse = lastKnownPrice[sym] || avgBuyPriceInCurrency;
                     dailyValuation += priceToUse * holding.quantity * exRate;
                 }
             }

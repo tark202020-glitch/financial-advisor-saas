@@ -59,7 +59,7 @@ export function useReportData(startDate: string, endDate: string) {
                 let histData: any[] = [];
                 
                 try {
-                    const res = await fetch(`/api/report/dynamic-history?startDate=${startDate}&endDate=${endDate}&exchangeRate=${currentExRate}`);
+                    const res = await fetch(`/api/report/dynamic-history?startDate=${startDate}&endDate=${endDate}&exchangeRate=${currentExRate}&noCache=1`);
                     if (res.ok) {
                         const dynamicData = await res.json();
                         if (dynamicData.data && Array.isArray(dynamicData.data) && dynamicData.data.length > 0) {
@@ -187,31 +187,15 @@ export function useReportData(startDate: string, endDate: string) {
     // Process Chart Data
     const chartData = useMemo(() => {
         if (historyData.length === 0) return [];
-        
-        const currentExRate = exchangeRate || 1450;
 
-        // Apply exchange rate to normalize data as usePortfolioHistory does
-        const rawNormalized = historyData.map(snap => {
-            let total_investment = 0;
-            let total_valuation = 0;
-            
-            if (snap.assets_snapshot && snap.assets_snapshot.length > 0) {
-                snap.assets_snapshot.forEach((asset: any) => {
-                    const exRateMultiplier = asset.category === 'US' ? currentExRate : 1;
-                    total_investment += asset.buy_price * asset.quantity * exRateMultiplier;
-                    total_valuation += asset.current_price * asset.quantity * exRateMultiplier;
-                });
-            } else {
-                total_investment = snap.total_investment || 0;
-                total_valuation = snap.total_valuation || 0;
-            }
-            
-            return {
-                date: snap.record_date || snap.date,
-                total_investment,
-                total_valuation
-            };
-        });
+
+        // 서버 API(dynamic-history)에서 이미 환율이 적용된 원화 기준 값을 반환하므로
+        // 프론트에서는 그대로 사용합니다.
+        const rawNormalized = historyData.map(snap => ({
+            date: snap.record_date || snap.date,
+            total_investment: snap.total_investment || 0,
+            total_valuation: snap.total_valuation || 0,
+        }));
 
         // 빈 날짜(주말/공휴일 등)를 이전 데이터로 채워 차트의 X축 간격을 실제 시간 비례로 맞춤
         const normalized: any[] = [];
@@ -245,14 +229,20 @@ export function useReportData(startDate: string, endDate: string) {
             }
         }
 
+        // Calculate Profit Diff based on the FIRST day of the period
+        const baseInvestment = normalized[0].total_investment;
+        const baseValuation = normalized[0].total_valuation;
+
         const results: ChartDataPoint[] = [];
 
         for (let i = 0; i < normalized.length; i++) {
             const current = normalized[i];
             const prev = i > 0 ? normalized[i - 1] : null;
 
-            // 누적 수익금(총 평가손익): 해당 일자의 순수 (평가액 - 투자액)
-            const cumulativeProfit = current.total_valuation - current.total_investment;
+            // 누적 수익금: (오늘 평가금 - 기준일 평가금) - (오늘 투자금 - 기준일 투자금: 순입출금)
+            const valuationDiff = current.total_valuation - baseValuation;
+            const investmentDiff = current.total_investment - baseInvestment;
+            const cumulativeProfit = valuationDiff - investmentDiff;
 
             // 전일 대비 일일 손익
             let dailyProfitChange = 0;
