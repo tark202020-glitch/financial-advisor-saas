@@ -144,7 +144,9 @@ export async function GET(request: NextRequest) {
 
         if (interaction.status === 'completed') {
             const outputs = interaction.outputs || [];
-            const report = outputs.length > 0 ? outputs[outputs.length - 1].text : '';
+            // outputs 요소가 TextContent | ImageContent union이므로 안전하게 text 추출
+            const lastOutput = outputs.length > 0 ? outputs[outputs.length - 1] : null;
+            const report = lastOutput ? (lastOutput as any).text || '' : '';
             return NextResponse.json({ status: 'completed', report });
         } else if (interaction.status === 'failed' || interaction.status === 'cancelled') {
             return NextResponse.json({ status: 'failed', report: null });
