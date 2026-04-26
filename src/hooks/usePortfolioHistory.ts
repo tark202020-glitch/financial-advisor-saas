@@ -59,7 +59,7 @@ export function usePortfolioHistory() {
     // 과거 이력의 평가금과 투자금을 현재 환율(오늘 환율 기준)로 일괄 재계산
     // 환율 변동으로 인한 투자금액 변동성을 제거하고 기준을 통일하기 위함
     const processedHistory = useMemo(() => {
-        const currentExRate = exchangeRate || 1350;
+        const currentExRate = exchangeRate || 1450;
         return historyData.map(snap => {
             let total_investment = 0;
             let total_valuation = 0;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { usePortfolio } from '@/context/PortfolioContext';
+import { getMarketType } from '@/utils/market';
 
 export interface ReportSnapshot {
     date: string;
@@ -29,6 +30,9 @@ export interface TradeLogWithAsset {
     avgBuyPrice?: number;
     sellProfit?: number;
     sellProfitRate?: number;
+    // 해외 주식 여부 및 적용 환율
+    isUS?: boolean;
+    exchangeRateUsed?: number;
 }
 
 export function useReportData(startDate: string, endDate: string) {
@@ -51,7 +55,7 @@ export function useReportData(startDate: string, endDate: string) {
             
             try {
                 // 1. 동적 재구성 API 우선 시도, 실패 시 DB 폴백
-                const currentExRate = exchangeRate || 1350;
+                const currentExRate = exchangeRate || 1450;
                 let histData: any[] = [];
                 
                 try {
@@ -92,12 +96,15 @@ export function useReportData(startDate: string, endDate: string) {
                 if (isMounted) {
                     setHistoryData(histData || []);
                     
+                    // 현재 환율 (US 종목 원화 환산용)
+                    const exRate = exchangeRate || 1450;
+                    
                     // 전체 거래를 날짜순으로 정렬
                     const allTrades = (allTradesRaw || []).sort((a: any, b: any) => 
                         a.trade_date.localeCompare(b.trade_date) || a.id - b.id
                     );
                     
-                    // 종목별 보유 현황 (평균단가 계산용)
+                    // 종목별 보유 현황 (평균단가 계산용 - 원화 기준)
                     const holdings: Record<string, { quantity: number; totalCost: number }> = {};
                     
                     // 전체 이력을 순회하며 평균단가 계산, 조회 기간 내 거래만 결과에 포함
@@ -106,6 +113,8 @@ export function useReportData(startDate: string, endDate: string) {
                     allTrades.forEach((t: any) => {
                         const symbol = t.portfolios?.symbol || '';
                         const name = t.portfolios?.name || 'Unknown';
+                        const isUS = getMarketType(symbol) === 'US';
+                        const rate = isUS ? exRate : 1;
                         
                         if (!holdings[symbol]) holdings[symbol] = { quantity: 0, totalCost: 0 };
                         
@@ -115,17 +124,19 @@ export function useReportData(startDate: string, endDate: string) {
                         
                         if (t.type === 'BUY') {
                             holdings[symbol].quantity += t.quantity;
-                            holdings[symbol].totalCost += t.price * t.quantity;
+                            // 원화 기준으로 비용 누적
+                            holdings[symbol].totalCost += t.price * t.quantity * rate;
                         } else if (t.type === 'SELL') {
-                            // 매도 시점의 평균 매입단가
+                            // 매도 시점의 평균 매입단가 (원화 기준)
                             avgBuyPrice = holdings[symbol].quantity > 0 
                                 ? holdings[symbol].totalCost / holdings[symbol].quantity 
                                 : 0;
-                            // 매도 수익금 = (매도가 - 평균매입가) × 수량
-                            sellProfit = (t.price - avgBuyPrice) * t.quantity;
-                            // 매도 수익률 = (매도가 - 평균매입가) / 평균매입가 × 100
+                            // 매도 수익금 = (매도가(원화) - 평균매입가(원화)) × 수량
+                            const sellPriceKrw = t.price * rate;
+                            sellProfit = (sellPriceKrw - avgBuyPrice) * t.quantity;
+                            // 매도 수익률 = (매도가 - 평균매입가) / 평균매입가 × 100 (통화 무관)
                             sellProfitRate = avgBuyPrice > 0 
-                                ? ((t.price - avgBuyPrice) / avgBuyPrice) * 100 
+                                ? ((sellPriceKrw - avgBuyPrice) / avgBuyPrice) * 100 
                                 : 0;
                             // 보유 수량/비용 업데이트
                             if (holdings[symbol].quantity > 0) {
@@ -150,6 +161,8 @@ export function useReportData(startDate: string, endDate: string) {
                                 avgBuyPrice,
                                 sellProfit,
                                 sellProfitRate,
+                                isUS,
+                                exchangeRateUsed: isUS ? exRate : undefined,
                             });
                         }
                     });
@@ -175,7 +188,7 @@ export function useReportData(startDate: string, endDate: string) {
     const chartData = useMemo(() => {
         if (historyData.length === 0) return [];
         
-        const currentExRate = exchangeRate || 1350;
+        const currentExRate = exchangeRate || 1450;
 
         // Apply exchange rate to normalize data as usePortfolioHistory does
         const rawNormalized = historyData.map(snap => {

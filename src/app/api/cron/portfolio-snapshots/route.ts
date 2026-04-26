@@ -119,14 +119,14 @@ export async function GET(request: NextRequest) {
         await Promise.all(fetchPromises);
 
         // 4. 환율 동기화 (US 종목 자산가치 원화 환산용)
-        let exchangeRate = 1350; // default fallback
+        let exchangeRate = 1450; // default fallback
         try {
              // API Route 재귀 호출 (자기 주소 참조) 또는 market-extra
              const origin = request.nextUrl.origin;
              const exRes = await fetch(`${origin}/api/market-extra`, { cache: 'no-store' });
              if (exRes.ok) {
                  const exData = await exRes.json();
-                 exchangeRate = exData.exchangeRates?.usd_krw?.price || 1350;
+                 exchangeRate = exData.exchangeRates?.usd_krw?.price || 1450;
              }
         } catch (err) {
             console.warn('[Portfolio Snapshot] Exchange rate fetch failed, using fallback.');

@@ -239,7 +239,7 @@ export default function PortfolioSummaryBlock() {
             })
             .forEach(a => {
                 const price = getPrice(a);
-                const exRate = exchangeRate || 1350; // Fallback
+                const exRate = exchangeRate || 1450; // Fallback
 
                 const purchaseInCurrency = a.pricePerShare * a.quantity;
                 const valuationInCurrency = price * a.quantity;
@@ -319,7 +319,7 @@ export default function PortfolioSummaryBlock() {
                 const tradeMemo = Array.from(new Set(dividendTrades.map(t => t.memo).filter(m => m && m.trim() !== ''))).join(' / ');
                 
                 if (tDividend > 0) {
-                    const exRate = exchangeRate || 1350;
+                    const exRate = exchangeRate || 1450;
                     const isUs = a.category === 'US';
                     const dividendKRW = isUs ? tDividend * exRate : tDividend;
 
@@ -378,7 +378,7 @@ export default function PortfolioSummaryBlock() {
                 if (data) { change = data.change || 0; hasData = true; }
             }
             
-            const exRate = exchangeRate || 1350;
+            const exRate = exchangeRate || 1450;
             const isUs = a.category === 'US';
             const dailyProfitKRW = change * a.quantity * (isUs ? exRate : 1);
             
@@ -424,7 +424,7 @@ export default function PortfolioSummaryBlock() {
                 else if (t.type === 'SELL') sellAmt += amount;
             });
 
-            const exRate = exchangeRate || 1350;
+            const exRate = exchangeRate || 1450;
             const isUs = a.category === 'US';
 
             const buyAmtKRW = isUs ? buyAmt * exRate : buyAmt;
@@ -1029,7 +1029,7 @@ export default function PortfolioSummaryBlock() {
                             {realizedGains.items.map((item, idx) => {
                                 const isProfit = item.profit >= 0;
                                 const isUs = item.category === 'US';
-                                const exRate = exchangeRate || 1350; // Add exRate reference for mapping
+                                const exRate = exchangeRate || 1450; // Add exRate reference for mapping
                                 return (
                                     <div key={idx} className="flex items-center justify-between bg-[#252525] rounded-lg px-4 py-3 border border-[#333] hover:border-[#555] transition-colors gap-3">
                                         <div className="flex items-center gap-3 min-w-0 flex-1">

@@ -91,15 +91,15 @@ export async function GET(request: NextRequest) {
         }
 
         // 3. 환율 조회
-        let exchangeRate = 1350;
+        let exchangeRate = 1450;
         try {
             const origin = request.nextUrl.origin;
             const exRes = await fetch(`${origin}/api/market-extra`, { cache: 'no-store' });
             if (exRes.ok) {
                 const exData = await exRes.json();
-                exchangeRate = exData.exchangeRates?.usd_krw?.price || 1350;
+                exchangeRate = exData.exchangeRates?.usd_krw?.price || 1450;
             }
-        } catch {}
+        } catch { }
         console.log(`[FixSnapshot] Exchange rate: ${exchangeRate}`);
 
         // 4. 각 스냅샷을 재계산
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
         for (const snap of existingSnapshots) {
             const dateKis = snap.record_date.replace(/-/g, '');
             const assetsSnapshot = snap.assets_snapshot || [];
-            
+
             let totalInvested = 0;
             let totalValuation = 0;
             const newAssetsSnapshot: any[] = [];
@@ -122,10 +122,10 @@ export async function GET(request: NextRequest) {
 
                 // KIS 과거 종가로 현재가 교체
                 const cleanSymbol = asset.symbol.replace('.KS', '');
-                const kisPrice = historicalPrices[asset.symbol]?.[dateKis] 
+                const kisPrice = historicalPrices[asset.symbol]?.[dateKis]
                     || historicalPrices[cleanSymbol]?.[dateKis]
                     || 0;
-                
+
                 const currentPrice = kisPrice > 0 ? kisPrice : Number(asset.current_price);
 
                 const investedKrw = buyPrice * qty * exRateMultiplier;
@@ -159,8 +159,8 @@ export async function GET(request: NextRequest) {
                 results.push({ date: snap.record_date, status: 'error', error: updateErr.message });
             } else {
                 console.log(`[FixSnapshot] Updated ${snap.record_date}: investment=${totalInvested.toFixed(0)}, valuation=${totalValuation.toFixed(0)}`);
-                results.push({ 
-                    date: snap.record_date, 
+                results.push({
+                    date: snap.record_date,
                     status: 'updated',
                     total_investment: totalInvested,
                     total_valuation: totalValuation,

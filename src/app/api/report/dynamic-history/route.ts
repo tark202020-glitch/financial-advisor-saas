@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const startDateStr = searchParams.get('startDate');
     const endDateStr = searchParams.get('endDate');
-    const currentExchangeRate = parseFloat(searchParams.get('exchangeRate') || '1350');
+    const currentExchangeRate = parseFloat(searchParams.get('exchangeRate') || '1450');
 
     if (!startDateStr || !endDateStr) {
         return NextResponse.json({ error: 'Missing startDate or endDate' }, { status: 400 });
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         const start = new Date(startDateStr);
         const end = new Date(endDateStr);
         const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         // 1. Validation for 100 days
         if (diffDays > 100) {
             return NextResponse.json({ error: 'Date range cannot exceed 100 days' }, { status: 400 });
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
         const tradesData: any[] = trades || [];
         console.log(`[DynamicHistory] Trade logs found: ${tradesData.length}`);
-        
+
         // 거래 내역이 없으면 빈 데이터를 반환
         if (tradesData.length === 0) {
             console.log('[DynamicHistory] No trade logs found. Returning empty data.');
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
         });
 
         const uniqueSymbols = Object.keys(symbolsMap);
-        
+
         // 4. Check DB Cache (portfolio_daily_history)
         // 만약 이미 해당 기간에 대한 캐시가 DB에 있다면 KIS API를 우회하여 반환
         const { data: cachedData } = await supabase
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
                 failedSymbols: []
             });
         }
-        
+
         console.log(`[DynamicHistory] Cache miss or incomplete (Found ${cachedData?.length || 0} / Needed ${diffDays + 1}). Reconstructing...`);
 
         // 5. KIS API Fetching (with 15 days buffer for initial price & 3 Retries)
@@ -121,15 +121,15 @@ export async function GET(request: NextRequest) {
         const fetchWithRetry = async (symbol: string, category: string, retries = 3): Promise<any[]> => {
             // KR 종목은 .KS/.KQ 접미사 제거 (KIS API는 순수 6자리 코드 필요)
             const cleanSymbol = category === 'KR' ? symbol.replace(/\.(KS|KQ)$/i, '') : symbol;
-            
+
             for (let i = 0; i < retries; i++) {
                 try {
-                    const data = category === 'US' 
+                    const data = category === 'US'
                         ? await getOverseasStockHistory(cleanSymbol, kisStartDateCode, kisEndDateCode)
                         : await getDomesticStockHistory(cleanSymbol, kisStartDateCode, kisEndDateCode);
                     if (data && data.length > 0) return data;
                 } catch (e: any) {
-                    console.error(`[DynamicHistory] Fetch failed for ${symbol} (Attempt ${i+1}/${retries}):`, e.message);
+                    console.error(`[DynamicHistory] Fetch failed for ${symbol} (Attempt ${i + 1}/${retries}):`, e.message);
                 }
                 // 재시도 전 대기 (점진적 증가: 1초, 2초, 3초)
                 if (i < retries - 1) {
@@ -144,16 +144,16 @@ export async function GET(request: NextRequest) {
         for (let idx = 0; idx < uniqueSymbols.length; idx++) {
             const symbol = uniqueSymbols[idx];
             const category = symbolsMap[symbol];
-            
+
             // 요청 간 500ms 딜레이 (첫 번째 요청 제외)
             if (idx > 0) {
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
-            
+
             console.log(`[DynamicHistory] Fetching [${idx + 1}/${uniqueSymbols.length}] ${symbol} (${category})...`);
             const data = await fetchWithRetry(symbol, category);
             historicalPrices[symbol] = {};
-            
+
             if (data && data.length > 0) {
                 data.forEach((day: any) => {
                     const dateCode = day.stck_bsop_date;
@@ -274,7 +274,7 @@ export async function GET(request: NextRequest) {
             const { error: upsertError } = await supabase
                 .from('portfolio_daily_history')
                 .upsert(upsertPayload, { onConflict: 'user_id, record_date' });
-            
+
             if (upsertError) {
                 console.error('[DynamicHistory] Cache upsert failed:', upsertError);
             } else {

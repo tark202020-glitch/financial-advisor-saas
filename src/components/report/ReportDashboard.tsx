@@ -123,7 +123,8 @@ export default function ReportDashboard() {
         let totalSell = 0;
         let totalDividend = 0;
         tradeLogs.forEach(log => {
-            const amt = log.price * log.quantity;
+            const rate = log.exchangeRateUsed || 1;
+            const amt = log.price * log.quantity * rate;
             if (log.type === 'BUY') totalBuy += amt;
             else if (log.type === 'SELL') totalSell += amt;
             else if (log.type === 'DIVIDEND') totalDividend += amt;
@@ -537,6 +538,14 @@ export default function ReportDashboard() {
                                                 : log.type === 'SELL' 
                                                     ? 'bg-blue-500/10 text-blue-400'
                                                     : 'bg-emerald-500/10 text-emerald-400';
+                                            const currency = log.isUS ? '$' : '';
+                                            const currencySuffix = log.isUS ? '' : ' 원';
+                                            const priceDisplay = log.isUS 
+                                                ? `$${log.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                : `${log.price.toLocaleString()} 원`;
+                                            const totalDisplay = log.isUS 
+                                                ? `$${totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                : `${totalAmt.toLocaleString()} 원`;
                                             return (
                                                 <tr key={log.id} className="hover:bg-[#2A2A2A] transition-colors">
                                                     <td className="px-6 py-4 font-medium text-white">{log.trade_date}</td>
@@ -547,14 +556,15 @@ export default function ReportDashboard() {
                                                     </td>
                                                     <td className="px-6 py-4 font-bold text-white">
                                                         {log.name} <span className="text-gray-500 font-normal ml-1">({log.symbol})</span>
+                                                        {log.isUS && <span className="ml-1.5 px-1.5 py-0.5 bg-purple-500/15 text-purple-400 text-[10px] font-bold rounded">US</span>}
                                                     </td>
-                                                    <td className="px-6 py-4 text-right">{log.price.toLocaleString()} 원</td>
+                                                    <td className="px-6 py-4 text-right">{priceDisplay}</td>
                                                     <td className="px-6 py-4 text-right">{log.quantity.toLocaleString()} 주</td>
-                                                    <td className="px-6 py-4 text-right font-bold text-white">{totalAmt.toLocaleString()} 원</td>
+                                                    <td className="px-6 py-4 text-right font-bold text-white">{totalDisplay}</td>
                                                     <td className="px-6 py-4 text-right">
                                                         {log.type === 'SELL' && log.sellProfit !== undefined ? (
                                                             <span className={`font-bold ${log.sellProfit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                                                                {log.sellProfit >= 0 ? '+' : ''}{log.sellProfit.toLocaleString()} 원
+                                                                {log.sellProfit >= 0 ? '+' : ''}{Math.round(log.sellProfit).toLocaleString()} 원
                                                             </span>
                                                         ) : (
                                                             <span className="text-gray-600">-</span>
