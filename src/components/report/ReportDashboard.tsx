@@ -6,7 +6,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     ComposedChart, Bar, Line, Legend, ReferenceLine, Cell
 } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Percent, Sparkles, Search, BarChart3, CheckCircle2, XCircle, Copy, Download, Check } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Percent, Sparkles, Search, BarChart3, CheckCircle2, XCircle, Copy, Download, Check, Save, FolderOpen, Trash2, Eye, X, FileText, Calendar } from 'lucide-react';
 import { Loader2, RefreshCw, AlertCircle, AlertTriangle } from 'lucide-react';
 
 function formatDateForInput(date: Date) {
@@ -71,6 +71,88 @@ export default function ReportDashboard() {
     };
 
     const { isLoading, chartData, tradeLogs, failedSymbols } = useReportData(queryStartDate, queryEndDate);
+
+    // ── 탭 상태 ──
+    const [activeTab, setActiveTab] = useState<'write' | 'saved'>('write');
+
+    // ── 저장 기능 ──
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+
+    const handleSaveReport = async () => {
+        if (chartData.length === 0) {
+            alert('저장할 리포트 데이터가 없습니다. 먼저 데이터를 불러와주세요.');
+            return;
+        }
+        setIsSaving(true);
+        try {
+            const res = await fetch('/api/report/saved', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    startDate: queryStartDate,
+                    endDate: queryEndDate,
+                    chartData,
+                    tradeLogs,
+                    summary: summary,
+                    tradeSummary,
+                }),
+            });
+            if (!res.ok) throw new Error('저장 실패');
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+        } catch (e: any) {
+            alert(`리포트 저장 실패: ${e.message}`);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // ── 저장된 리포트 목록 ──
+    const [savedReports, setSavedReports] = useState<any[]>([]);
+    const [loadingSaved, setLoadingSaved] = useState(false);
+    const [selectedReport, setSelectedReport] = useState<any>(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
+
+    const fetchSavedReports = useCallback(async () => {
+        setLoadingSaved(true);
+        try {
+            const res = await fetch('/api/report/saved');
+            if (res.ok) {
+                const data = await res.json();
+                setSavedReports(data);
+            }
+        } catch { /* ignore */ }
+        finally { setLoadingSaved(false); }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'saved') {
+            fetchSavedReports();
+        }
+    }, [activeTab, fetchSavedReports]);
+
+    const handleViewSavedReport = async (id: string) => {
+        setLoadingDetail(true);
+        try {
+            const res = await fetch(`/api/report/saved/${id}`);
+            if (res.ok) {
+                const data = await res.json();
+                setSelectedReport(data);
+            }
+        } catch { /* ignore */ }
+        finally { setLoadingDetail(false); }
+    };
+
+    const handleDeleteSavedReport = async (id: string) => {
+        if (!confirm('이 리포트를 삭제하시겠습니까?')) return;
+        try {
+            const res = await fetch(`/api/report/saved?id=${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setSavedReports(prev => prev.filter(r => r.id !== id));
+            }
+        } catch { /* ignore */ }
+    };
 
     // Number formatter
     const formatKrw = (val: number) => {
@@ -207,6 +289,214 @@ export default function ReportDashboard() {
 
     return (
         <div className="space-y-6">
+            {/* ── 탭 네비게이션 ── */}
+            <div className="flex gap-1 bg-[#1E1E1E] border border-[#333] rounded-2xl p-1.5">
+                <button
+                    onClick={() => setActiveTab('write')}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                        activeTab === 'write'
+                            ? 'bg-[#F7D047] text-black shadow-lg'
+                            : 'text-gray-400 hover:text-white hover:bg-[#2A2A2A]'
+                    }`}
+                >
+                    <FileText size={16} />
+                    리포트 작성
+                </button>
+                <button
+                    onClick={() => setActiveTab('saved')}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                        activeTab === 'saved'
+                            ? 'bg-[#F7D047] text-black shadow-lg'
+                            : 'text-gray-400 hover:text-white hover:bg-[#2A2A2A]'
+                    }`}
+                >
+                    <FolderOpen size={16} />
+                    저장된 리포트 보기
+                    {savedReports.length > 0 && activeTab !== 'saved' && (
+                        <span className="text-[10px] bg-[#333] text-gray-300 px-1.5 py-0.5 rounded-full">{savedReports.length}</span>
+                    )}
+                </button>
+            </div>
+
+            {/* ── 저장된 리포트 보기 탭 ── */}
+            {activeTab === 'saved' && (
+                <div className="space-y-4">
+                    {loadingSaved ? (
+                        <div className="flex items-center justify-center py-20 bg-[#1E1E1E] rounded-2xl border border-[#333]">
+                            <Loader2 className="animate-spin text-[#F7D047]" size={32} />
+                            <span className="ml-3 text-gray-400">목록을 불러오는 중...</span>
+                        </div>
+                    ) : savedReports.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 bg-[#1E1E1E] rounded-2xl border border-[#333]">
+                            <FolderOpen className="text-gray-500 mb-4" size={48} />
+                            <p className="text-gray-400 font-medium mb-2">저장된 리포트가 없습니다</p>
+                            <p className="text-gray-500 text-sm">리포트 작성 탭에서 데이터를 조회한 후 저장해 주세요.</p>
+                        </div>
+                    ) : (
+                        <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl overflow-hidden">
+                            <div className="p-5 border-b border-[#333]">
+                                <h3 className="text-lg font-bold text-white">저장된 리포트 목록</h3>
+                                <p className="text-xs text-gray-400 mt-1">총 {savedReports.length}개의 저장된 리포트가 있습니다.</p>
+                            </div>
+                            <div className="divide-y divide-[#333]">
+                                {savedReports.map((report: any) => (
+                                    <div key={report.id} className="flex items-center justify-between p-5 hover:bg-[#252525] transition-colors">
+                                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F7D047]/20 to-[#F59E0B]/10 flex items-center justify-center shrink-0">
+                                                <BarChart3 size={18} className="text-[#F7D047]" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-white text-sm truncate">{report.title}</p>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                                                        <Calendar size={11} />
+                                                        {report.start_date} ~ {report.end_date}
+                                                    </span>
+                                                    {report.summary && (
+                                                        <span className={`text-xs font-bold ${report.summary.returnRate >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                                            {report.summary.returnRate >= 0 ? '+' : ''}{report.summary.returnRate?.toFixed(2)}%
+                                                        </span>
+                                                    )}
+                                                    <span className="text-xs text-gray-600">
+                                                        {new Date(report.created_at).toLocaleDateString('ko-KR')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0 ml-4">
+                                            <button
+                                                onClick={() => handleViewSavedReport(report.id)}
+                                                className="px-3 py-2 bg-[#2A2A2A] hover:bg-[#333] text-white text-xs font-bold rounded-lg border border-[#444] transition-colors flex items-center gap-1.5"
+                                            >
+                                                <Eye size={14} /> 보기
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteSavedReport(report.id)}
+                                                className="p-2 hover:bg-red-500/10 text-gray-500 hover:text-red-400 rounded-lg transition-colors"
+                                                title="삭제"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── 저장된 리포트 상세 보기 모달 ── */}
+                    {(selectedReport || loadingDetail) && (
+                        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-start justify-center overflow-y-auto p-4 pt-8">
+                            <div className="bg-[#1A1A1A] border border-[#333] rounded-2xl w-full max-w-[1200px] max-h-[90vh] overflow-y-auto relative">
+                                {/* 모달 헤더 */}
+                                <div className="sticky top-0 bg-[#1A1A1A] border-b border-[#333] p-5 flex items-center justify-between z-10">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white">
+                                            {loadingDetail ? '불러오는 중...' : selectedReport?.title}
+                                        </h3>
+                                        {selectedReport && (
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                저장일: {new Date(selectedReport.created_at).toLocaleString('ko-KR')}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => { setSelectedReport(null); }}
+                                        className="p-2 hover:bg-[#333] rounded-lg transition-colors"
+                                    >
+                                        <X size={20} className="text-gray-400" />
+                                    </button>
+                                </div>
+
+                                {/* 모달 본문 */}
+                                {loadingDetail ? (
+                                    <div className="flex items-center justify-center py-20">
+                                        <Loader2 className="animate-spin text-[#F7D047]" size={32} />
+                                    </div>
+                                ) : selectedReport?.payload ? (
+                                    <div className="p-5 space-y-5">
+                                        {/* 요약 KPI */}
+                                        {selectedReport.payload.summary && (() => {
+                                            const s = selectedReport.payload.summary;
+                                            return (
+                                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                                    <div className="bg-[#252525] border border-[#333] rounded-xl p-4">
+                                                        <p className="text-xs text-gray-400 mb-1">순수 평가손익</p>
+                                                        <p className={`text-lg font-bold ${s.pureProfit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                                            {s.pureProfit >= 0 ? '+' : ''}{formatKrw(s.pureProfit)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="bg-[#252525] border border-[#333] rounded-xl p-4">
+                                                        <p className="text-xs text-gray-400 mb-1">기간 수익률</p>
+                                                        <p className={`text-lg font-bold ${s.returnRate >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                                                            {s.returnRate >= 0 ? '+' : ''}{s.returnRate.toFixed(2)}%
+                                                        </p>
+                                                    </div>
+                                                    <div className="bg-[#252525] border border-[#333] rounded-xl p-4">
+                                                        <p className="text-xs text-gray-400 mb-1">추가 투입금</p>
+                                                        <p className="text-lg font-bold text-emerald-400">
+                                                            {s.periodInvestmentChange >= 0 ? '+' : ''}{formatKrw(s.periodInvestmentChange)}
+                                                        </p>
+                                                    </div>
+                                                    <div className="bg-[#252525] border border-[#333] rounded-xl p-4">
+                                                        <p className="text-xs text-gray-400 mb-1">기간 총 변동</p>
+                                                        <p className={`text-lg font-bold ${s.periodTotalChange >= 0 ? 'text-yellow-400' : 'text-blue-400'}`}>
+                                                            {s.periodTotalChange >= 0 ? '+' : ''}{formatKrw(s.periodTotalChange)}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* 매매 내역 */}
+                                        {selectedReport.payload.tradeLogs && selectedReport.payload.tradeLogs.length > 0 && (
+                                            <div className="bg-[#252525] border border-[#333] rounded-xl overflow-hidden">
+                                                <div className="p-4 border-b border-[#333]">
+                                                    <h4 className="font-bold text-white text-sm">매매 내역 ({selectedReport.payload.tradeLogs.length}건)</h4>
+                                                </div>
+                                                <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                                                    <table className="w-full text-sm text-gray-400">
+                                                        <thead className="bg-[#2A2A2A] text-xs text-gray-500 sticky top-0">
+                                                            <tr>
+                                                                <th className="px-4 py-3 text-left">일자</th>
+                                                                <th className="px-4 py-3 text-left">구분</th>
+                                                                <th className="px-4 py-3 text-left">종목</th>
+                                                                <th className="px-4 py-3 text-right">단가</th>
+                                                                <th className="px-4 py-3 text-right">수량</th>
+                                                                <th className="px-4 py-3 text-right">총 금액</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-[#333]">
+                                                            {selectedReport.payload.tradeLogs.map((log: any, idx: number) => {
+                                                                const typeLabel = log.type === 'BUY' ? '매수' : log.type === 'SELL' ? '매도' : '배당';
+                                                                const typeColor = log.type === 'BUY' ? 'text-red-400' : log.type === 'SELL' ? 'text-blue-400' : 'text-emerald-400';
+                                                                const rate = log.exchangeRateUsed || 1;
+                                                                return (
+                                                                    <tr key={idx} className="hover:bg-[#333] transition-colors">
+                                                                        <td className="px-4 py-2.5 text-white">{log.trade_date}</td>
+                                                                        <td className="px-4 py-2.5"><span className={`font-bold ${typeColor}`}>{typeLabel}</span></td>
+                                                                        <td className="px-4 py-2.5 text-white font-medium">{log.name}</td>
+                                                                        <td className="px-4 py-2.5 text-right">{Math.round(log.price * rate).toLocaleString()}원</td>
+                                                                        <td className="px-4 py-2.5 text-right">{log.quantity}주</td>
+                                                                        <td className="px-4 py-2.5 text-right font-bold text-white">{Math.round(log.price * log.quantity * rate).toLocaleString()}원</td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── 리포트 작성 탭 ── */}
+            {activeTab === 'write' && (<>
             {/* Headers & Controls */}
             <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -214,7 +504,7 @@ export default function ReportDashboard() {
                         <h2 className="text-xl font-bold text-white mb-1">조사 기간 설정</h2>
                         <p className="text-sm text-gray-400">지정한 기간 동안의 데이터와 매매 이력을 불러옵니다.</p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                         <div className="flex items-center gap-3 bg-[#2A2A2A] p-2.5 rounded-xl border border-[#444]">
                             <input 
                                 type="date"
@@ -237,6 +527,19 @@ export default function ReportDashboard() {
                         >
                             {isLoading ? '조회 중...' : '데이터 불러오기'}
                         </button>
+                        {chartData.length > 0 && (
+                            <button
+                                onClick={handleSaveReport}
+                                disabled={isSaving}
+                                className={`px-4 py-2.5 font-bold text-sm rounded-xl transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                                    saveSuccess
+                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                        : 'bg-[#2A2A2A] hover:bg-[#333] text-white border border-[#444]'
+                                } disabled:opacity-50`}
+                            >
+                                {saveSuccess ? <><Check size={14} /> 저장 완료</> : isSaving ? <><Loader2 size={14} className="animate-spin" /> 저장 중...</> : <><Save size={14} /> 저장하기</>}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -1035,6 +1338,7 @@ function DeepResearchSection({ startDate, endDate, summary, tradeSummary, tradeC
                     </div>
                 </div>
             )}
+        </>)}
         </div>
     );
 }
