@@ -127,7 +127,7 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
                   <div className="min-w-0">
                     <p className="text-xs text-gray-400">🔥 월간 최대 상승</p>
                     <p className="text-sm font-bold text-white truncate">{weeklyHighlights.topGainer.name}</p>
-                    <p className="text-xs text-red-400 font-bold">+{weeklyHighlights.topGainer.changeRate.toFixed(2)}%</p>
+                    <p className="text-xs text-red-400 font-bold">+{Number(weeklyHighlights.topGainer.changeRate || 0).toFixed(2)}%</p>
                   </div>
                 </div>
               )}
@@ -139,7 +139,7 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
                   <div className="min-w-0">
                     <p className="text-xs text-gray-400">❄️ 월간 최대 하락</p>
                     <p className="text-sm font-bold text-white truncate">{weeklyHighlights.topLoser.name}</p>
-                    <p className="text-xs text-blue-400 font-bold">{weeklyHighlights.topLoser.changeRate.toFixed(2)}%</p>
+                    <p className="text-xs text-blue-400 font-bold">{Number(weeklyHighlights.topLoser.changeRate || 0).toFixed(2)}%</p>
                   </div>
                 </div>
               )}
@@ -282,14 +282,14 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
                   <>
                     <div className="text-sm font-medium bg-[#252525] px-3 py-1.5 rounded-lg border border-[#333]">
                       <span className="text-gray-400 mr-2">매수</span>
-                      <span className="text-red-400">{formatKrw(tradeSummary.totalBuy)}</span>
+                      <span className="text-red-400">{formatKrw(tradeSummary.totalBuy || 0)}</span>
                     </div>
                     <div className="text-sm font-medium bg-[#252525] px-3 py-1.5 rounded-lg border border-[#333]">
                       <span className="text-gray-400 mr-2">매도</span>
-                      <span className="text-blue-400">{formatKrw(tradeSummary.totalSell)}</span>
+                      <span className="text-blue-400">{formatKrw(tradeSummary.totalSell || 0)}</span>
                     </div>
                     <div className="text-sm font-bold text-[#F7D047] bg-[#F7D047]/10 px-3 py-1.5 rounded-lg border border-[#F7D047]/20">
-                      총 {tradeSummary.tradeCount}건
+                      총 {tradeSummary.tradeCount || tradeLogs.length}건
                     </div>
                   </>
                 )}
@@ -323,11 +323,11 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
                           <span className={`px-2 py-1 rounded text-xs font-bold ${typeStyle}`}>{typeLabel}</span>
                         </td>
                         <td className="px-6 py-4 font-bold text-white">
-                          {log.name} <span className="text-gray-500 font-normal ml-1">({log.symbol})</span>
+                          {log.name || '알 수 없음'} <span className="text-gray-500 font-normal ml-1">({log.ticker || log.symbol || ''})</span>
                         </td>
-                        <td className="px-6 py-4 text-right">{Math.round(log.price).toLocaleString()} 원</td>
-                        <td className="px-6 py-4 text-right">{log.quantity.toLocaleString()} 주</td>
-                        <td className="px-6 py-4 text-right font-bold text-white">{Math.round(log.price * log.quantity).toLocaleString()} 원</td>
+                        <td className="px-6 py-4 text-right">{Math.round(Number(log.price) || 0).toLocaleString()} 원</td>
+                        <td className="px-6 py-4 text-right">{(Number(log.quantity) || 0).toLocaleString()} 주</td>
+                        <td className="px-6 py-4 text-right font-bold text-white">{Math.round((Number(log.price) || 0) * (Number(log.quantity) || 0)).toLocaleString()} 원</td>
                       </tr>
                     );
                   })}
@@ -361,33 +361,43 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#333]">
-                  {holdings.map((h: any) => (
-                    <tr key={h.symbol} className="hover:bg-[#2A2A2A] transition-colors">
-                      <td className="px-6 py-4">
-                        <span className="font-bold text-white">{h.name}</span>
-                        <span className="text-gray-500 text-xs ml-1.5">({h.symbol})</span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className={`font-bold ${h.profitRate >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                          {h.profitRate >= 0 ? '+' : ''}{h.profitRate.toFixed(2)}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">{h.quantity.toLocaleString()}주</td>
-                      <td className="px-6 py-4 text-right">{Math.round(h.buyPrice).toLocaleString()}원</td>
-                      <td className="px-6 py-4 text-right">
-                        <span className={h.currentPrice >= h.buyPrice ? 'text-red-400' : 'text-blue-400'}>
-                          {Math.round(h.currentPrice).toLocaleString()}원
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right font-bold text-white">{formatKrw(h.totalValuation)}</td>
-                    </tr>
-                  ))}
+                  {holdings.map((h: any, idx: number) => {
+                    const buyPrice = Number(h.avgPrice || h.buyPrice || h.pricePerShare || 0);
+                    const curPrice = Number(h.currentPrice || 0);
+                    const qty = Number(h.quantity || 0);
+                    const rate = Number(h.exchangeRate || 1);
+                    const profitRate = buyPrice > 0 ? ((curPrice - buyPrice) / buyPrice) * 100 : 0;
+                    const totalVal = curPrice * qty * rate;
+                    const displaySymbol = h.ticker || h.symbol || '';
+
+                    return (
+                      <tr key={displaySymbol || idx} className="hover:bg-[#2A2A2A] transition-colors">
+                        <td className="px-6 py-4">
+                          <span className="font-bold text-white">{h.name || '알 수 없음'}</span>
+                          {displaySymbol && <span className="text-gray-500 text-xs ml-1.5">({displaySymbol})</span>}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className={`font-bold ${profitRate >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                            {profitRate >= 0 ? '+' : ''}{profitRate.toFixed(2)}%
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">{qty.toLocaleString()}주</td>
+                        <td className="px-6 py-4 text-right">{Math.round(buyPrice).toLocaleString()}원</td>
+                        <td className="px-6 py-4 text-right">
+                          <span className={curPrice >= buyPrice ? 'text-red-400' : 'text-blue-400'}>
+                            {Math.round(curPrice).toLocaleString()}원
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right font-bold text-white">{formatKrw(totalVal)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot className="bg-[#252525] border-t border-[#444]">
                   <tr>
                     <td className="px-6 py-4 font-bold text-white" colSpan={5}>합계</td>
                     <td className="px-6 py-4 text-right font-black text-[#F7D047] text-base">
-                      {formatKrw(holdings.reduce((s: number, h: any) => s + h.totalValuation, 0))}
+                      {formatKrw(holdings.reduce((s: number, h: any) => s + (Number(h.currentPrice || 0) * Number(h.quantity || 0) * Number(h.exchangeRate || 1)), 0))}
                     </td>
                   </tr>
                 </tfoot>
