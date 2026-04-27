@@ -132,6 +132,45 @@ async function generateMonthlyReport(userId: string, baseUrl: string, isTest: bo
     valuation: d.total_valuation,
   }));
 
+  // 2-1. 전체 기간 데이터 조회 (최초 기록 + 최신 기록)
+  let overallSummary: any = null;
+  try {
+    const { data: firstRecord } = await supabase
+      .from('portfolio_daily_history')
+      .select('record_date, total_investment, total_valuation')
+      .eq('user_id', userId)
+      .order('record_date', { ascending: true })
+      .limit(1)
+      .single();
+
+    const { data: latestRecord } = await supabase
+      .from('portfolio_daily_history')
+      .select('record_date, total_investment, total_valuation')
+      .eq('user_id', userId)
+      .order('record_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (firstRecord && latestRecord) {
+      const totalInvestment = latestRecord.total_investment;
+      const totalValuation = latestRecord.total_valuation;
+      const totalProfit = totalValuation - totalInvestment;
+      const totalReturnRate = totalInvestment > 0 ? (totalProfit / totalInvestment) * 100 : 0;
+
+      overallSummary = {
+        totalInvestment,
+        totalValuation,
+        totalProfit,
+        totalReturnRate,
+        firstDate: firstRecord.record_date,
+        latestDate: latestRecord.record_date,
+      };
+      console.log(`[Monthly Report] 전체 기간: ${firstRecord.record_date} ~ ${latestRecord.record_date}, 수익률: ${totalReturnRate.toFixed(2)}%`);
+    }
+  } catch (e) {
+    console.warn('[Monthly Report] 전체 기간 데이터 조회 실패:', e);
+  }
+
   // 3. 매매 내역 조회
   const { data: trades } = await supabase
     .from('trade_logs')
@@ -297,6 +336,7 @@ async function generateMonthlyReport(userId: string, baseUrl: string, isTest: bo
         tradeSummary,
         holdings,
         weeklyHighlights: monthlyHighlights,
+        overallSummary,
       },
       status: chartData.length > 0 ? 'ready' : 'failed',
       expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90일 보관

@@ -41,6 +41,7 @@ export function useReportData(startDate: string, endDate: string) {
     const [tradeLogs, setTradeLogs] = useState<TradeLogWithAsset[]>([]);
     const [failedSymbols, setFailedSymbols] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [overallSummary, setOverallSummary] = useState<any>(null);
 
     useEffect(() => {
         if (!user || !startDate || !endDate) {
@@ -99,6 +100,42 @@ export function useReportData(startDate: string, endDate: string) {
                 }
 
                 // 기존 DB 스냅샷 폴백 삭제 (dynamic-history가 캐시 역할을 겸하도록 백엔드에서 처리)
+
+                // 1.5. 전체 기간 데이터 조회 (최초/최신 레코드)
+                try {
+                    const { data: firstRec } = await supabase
+                        .from('portfolio_daily_history')
+                        .select('record_date, total_investment, total_valuation')
+                        .eq('user_id', user.id)
+                        .order('record_date', { ascending: true })
+                        .limit(1)
+                        .single();
+
+                    const { data: latestRec } = await supabase
+                        .from('portfolio_daily_history')
+                        .select('record_date, total_investment, total_valuation')
+                        .eq('user_id', user.id)
+                        .order('record_date', { ascending: false })
+                        .limit(1)
+                        .single();
+
+                    if (firstRec && latestRec) {
+                        const totalInvestment = latestRec.total_investment;
+                        const totalValuation = latestRec.total_valuation;
+                        const totalProfit = totalValuation - totalInvestment;
+                        const totalReturnRate = totalInvestment > 0 ? (totalProfit / totalInvestment) * 100 : 0;
+                        setOverallSummary({
+                            totalInvestment,
+                            totalValuation,
+                            totalProfit,
+                            totalReturnRate,
+                            firstDate: firstRec.record_date,
+                            latestDate: latestRec.record_date,
+                        });
+                    }
+                } catch (e) {
+                    console.warn('[ReportData] Overall summary fetch failed:', e);
+                }
 
                 // 2. Fetch ALL Trade Logs up to endDate (매도 수익 계산을 위해 전체 이력 필요)
                 const { data: allTradesRaw, error: tradeError } = await supabase
@@ -295,6 +332,7 @@ export function useReportData(startDate: string, endDate: string) {
         historyData,
         chartData,
         tradeLogs,
-        failedSymbols
+        failedSymbols,
+        overallSummary
     };
 }

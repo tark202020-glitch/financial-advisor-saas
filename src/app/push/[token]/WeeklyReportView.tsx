@@ -5,7 +5,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ComposedChart, Bar, Line, Legend, ReferenceLine, Cell
 } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Percent, Bot, ArrowLeft, Flame, Snowflake, BarChart3, Briefcase } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Percent, Bot, ArrowLeft, Flame, Snowflake, BarChart3, Briefcase, AlertTriangle, Wallet, PiggyBank } from 'lucide-react';
 import type { PushContent } from '@/lib/push/types';
 
 interface WeeklyReportViewProps {
@@ -22,7 +22,8 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
     startDate = '', 
     endDate = '', 
     holdings = [], 
-    weeklyHighlights = null 
+    weeklyHighlights = null,
+    overallSummary = null 
   } = payload || {};
 
   // 차트 데이터 가공
@@ -92,6 +93,56 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
 
       {/* Content */}
       <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+        {/* ──── 기간 안내 배너 ──── */}
+        <div className="flex items-start gap-3 bg-gradient-to-r from-amber-500/10 to-orange-500/5 border border-amber-500/20 rounded-2xl p-4">
+          <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-300">기간 한정 리포트</p>
+            <p className="text-xs text-gray-400 mt-1">
+              이 리포트는 <span className="text-white font-bold">{startDate} ~ {endDate}</span> 기간 동안의 성과입니다. 전체 투자 성적과는 다를 수 있습니다.
+            </p>
+          </div>
+        </div>
+
+        {/* ──── 전체 포트폴리오 현황 ──── */}
+        {overallSummary && (
+          <div className="bg-gradient-to-br from-[#1a1a2e] to-[#1E1E1E] border border-[#333] rounded-2xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Wallet size={18} className="text-[#F7D047]" />
+              <h3 className="text-lg font-bold text-white">💰 전체 포트폴리오 현황</h3>
+              <span className="text-[10px] text-gray-500 ml-auto">
+                {overallSummary.firstDate} ~ {overallSummary.latestDate}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-[#252525] rounded-xl p-4 border border-[#333]">
+                <p className="text-xs text-gray-400 mb-1">전체 평가손익</p>
+                <p className={`text-lg font-black ${(overallSummary.totalProfit || 0) >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                  {(overallSummary.totalProfit || 0) >= 0 ? '+' : ''}{formatKrw(overallSummary.totalProfit || 0)}
+                </p>
+              </div>
+              <div className="bg-[#252525] rounded-xl p-4 border border-[#333]">
+                <p className="text-xs text-gray-400 mb-1">전체 수익률</p>
+                <p className={`text-lg font-black ${(overallSummary.totalReturnRate || 0) >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                  {(overallSummary.totalReturnRate || 0) >= 0 ? '+' : ''}{Number(overallSummary.totalReturnRate || 0).toFixed(2)}%
+                </p>
+              </div>
+              <div className="bg-[#252525] rounded-xl p-4 border border-[#333]">
+                <p className="text-xs text-gray-400 mb-1">총 투자금</p>
+                <p className="text-lg font-black text-emerald-400">
+                  {formatKrw(overallSummary.totalInvestment || 0)}
+                </p>
+              </div>
+              <div className="bg-[#252525] rounded-xl p-4 border border-[#333]">
+                <p className="text-xs text-gray-400 mb-1">총 평가금</p>
+                <p className="text-lg font-black text-[#F7D047]">
+                  {formatKrw(overallSummary.totalValuation || 0)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ──── 월간 요약 (최상단) ──── */}
         {weeklyHighlights && (
