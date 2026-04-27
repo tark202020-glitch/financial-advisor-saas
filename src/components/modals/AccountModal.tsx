@@ -83,10 +83,25 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
             const res = await fetch('/api/push/generate-weekly-report');
             const data = await res.json();
             if (data.success) {
-                setTestResult({
-                    status: 'success',
-                    message: `리포트 발송 완료! (${data.period}, ${data.dataPoints}일 데이터, ${data.tradeCount}건 거래)`,
-                });
+                // dispatch 결과까지 확인하여 실제 이메일 발송 여부 판별
+                const dispatchInfo = data.dispatch;
+                if (dispatchInfo && dispatchInfo.sent > 0) {
+                    setTestResult({
+                        status: 'success',
+                        message: `✅ 이메일 발송 완료! (${data.period}, ${data.dataPoints}일 데이터, ${data.tradeCount}건 거래)`,
+                    });
+                } else if (dispatchInfo && dispatchInfo.failed > 0) {
+                    const errMsg = dispatchInfo.errors?.join(', ') || '알 수 없는 오류';
+                    setTestResult({
+                        status: 'error',
+                        message: `리포트는 생성되었으나 이메일 발송 실패: ${errMsg}`,
+                    });
+                } else {
+                    setTestResult({
+                        status: 'error',
+                        message: '리포트는 생성되었으나 활성화된 발송 채널이 없습니다. 알림 설정을 확인해주세요.',
+                    });
+                }
             } else {
                 setTestResult({ status: 'error', message: data.error || '발송 실패' });
             }
