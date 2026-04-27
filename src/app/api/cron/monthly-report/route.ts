@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { dispatch } from '@/lib/push/dispatcher';
 import { getMarketType } from '@/utils/market';
+import { fetchBatchPrices } from '@/lib/kis/batchPrice';
 
 /**
  * /api/cron/monthly-report
@@ -186,7 +187,7 @@ async function generateMonthlyReport(userId: string, baseUrl: string, isTest: bo
   });
   const tradeSummary = { totalBuy, totalSell, totalDividend };
 
-  // 6. 보유 종목 현황 (마지막 날의 스냅샷)
+  // 6. 보유 종목 현황 (마지막 날의 스냅샷 + KIS API 현재가 조회)
   let holdings: any[] = [];
   const lastHistory = historyData?.[historyData.length - 1];
   if (lastHistory?.assets_snapshot) {
@@ -201,14 +202,53 @@ async function generateMonthlyReport(userId: string, baseUrl: string, isTest: bo
           ticker: asset.ticker || '',
           quantity: asset.quantity || 0,
           avgPrice: asset.avg_price || asset.avgPrice || 0,
-          currentPrice: asset.current_price || asset.currentPrice || 0,
+          currentPrice: asset.current_price || asset.currentPrice || 0, // 스냅샷 가격 (폴백)
           market: asset.market || 'KRX',
-          marketType: getMarketType(asset.market || 'KRX'),
+          marketType: getMarketType(asset.ticker || ''),
           exchangeRate: asset.exchange_rate || asset.exchangeRate || 1,
         }));
       }
     } catch (e) {
       console.error('[Monthly Report] Holdings parse error:', e);
+    }
+  }
+
+  // 6-1. KIS API로 실시간 현재가 배치 조회 (rate limit 회피 로직 내장)
+  if (holdings.length > 0) {
+    try {
+      // KR / US 종목 분류
+      const krSymbols = holdings.filter(h => h.marketType === 'KR').map(h => h.ticker).filter(Boolean);
+      const usSymbols = holdings.filter(h => h.marketType === 'US').map(h => h.ticker).filter(Boolean);
+
+      console.log(`[Monthly Report] 현재가 조회: KR ${krSymbols.length}개, US ${usSymbols.length}개`);
+
+      // KR 현재가 조회
+      const krPrices = krSymbols.length > 0 ? await fetchBatchPrices(krSymbols, 'KR') : {};
+
+      // KR → US 간 2초 간격 (토큰 공유 시 rate limit 보호)
+      if (krSymbols.length > 0 && usSymbols.length > 0) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      // US 현재가 조회
+      const usPrices = usSymbols.length > 0 ? await fetchBatchPrices(usSymbols, 'US') : {};
+
+      // holdings에 현재가 업데이트 (API 성공 시 스냅샷 가격 대체)
+      let updatedCount = 0;
+      holdings = holdings.map(h => {
+        const prices = h.marketType === 'KR' ? krPrices : usPrices;
+        const livePrice = prices[h.ticker];
+        if (livePrice && livePrice.price > 0) {
+          updatedCount++;
+          return { ...h, currentPrice: livePrice.price };
+        }
+        return h; // API 실패 시 스냅샷 가격 유지
+      });
+
+      console.log(`[Monthly Report] 현재가 업데이트: ${updatedCount}/${holdings.length}개 종목`);
+    } catch (e: any) {
+      console.error('[Monthly Report] 현재가 조회 실패 (스냅샷 가격 유지):', e.message);
+      // 실패 시에도 스냅샷 가격으로 계속 진행
     }
   }
 
