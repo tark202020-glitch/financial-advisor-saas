@@ -4,7 +4,7 @@
 
 // 지원하는 이벤트 유형
 export type PushEventType =
-  | 'weekly_report'      // 주간 투자리포트
+  | 'monthly_report'     // 월간 투자리포트
   | 'daily_briefing'     // 일일 시장 브리핑
   | 'portfolio_alert'    // 포트폴리오 급변 알림
   | 'system_notice';     // 시스템 공지
@@ -33,7 +33,7 @@ export interface UserNotificationSettings {
   email_enabled: boolean;
   sms_enabled: boolean;
   kakao_enabled: boolean;
-  weekly_report_enabled: boolean;
+  monthly_report_enabled: boolean;
   daily_briefing_enabled: boolean;
   portfolio_alert_enabled: boolean;
   system_notice_enabled: boolean;
@@ -86,7 +86,7 @@ export interface ChannelAdapter {
 
 // 이벤트 유형별 한국어 라벨
 export const EVENT_TYPE_LABELS: Record<PushEventType, string> = {
-  weekly_report: '주간 투자리포트',
+  monthly_report: '월간 투자리포트',
   daily_briefing: '일일 시장 브리핑',
   portfolio_alert: '포트폴리오 급변 알림',
   system_notice: '시스템 공지',
@@ -94,7 +94,7 @@ export const EVENT_TYPE_LABELS: Record<PushEventType, string> = {
 
 // 이벤트 유형별 설정 필드 매핑
 export const EVENT_SETTINGS_MAP: Record<PushEventType, keyof UserNotificationSettings> = {
-  weekly_report: 'weekly_report_enabled',
+  monthly_report: 'monthly_report_enabled',
   daily_briefing: 'daily_briefing_enabled',
   portfolio_alert: 'portfolio_alert_enabled',
   system_notice: 'system_notice_enabled',

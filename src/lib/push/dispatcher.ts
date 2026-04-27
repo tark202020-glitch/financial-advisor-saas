@@ -48,7 +48,7 @@ export async function dispatch(event: PushEvent, baseUrl: string): Promise<{
       email_enabled: true,
       sms_enabled: false,
       kakao_enabled: false,
-      weekly_report_enabled: true,
+      monthly_report_enabled: true,
       daily_briefing_enabled: false,
       portfolio_alert_enabled: true,
       system_notice_enabled: true,

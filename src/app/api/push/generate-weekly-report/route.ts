@@ -6,7 +6,7 @@ import { getMarketType } from '@/utils/market';
 /**
  * /api/push/generate-weekly-report
  * 
- * 주간 투자리포트를 생성하고 Push 알림을 발송합니다.
+ * 월간 투자리포트를 생성하고 Push 알림을 발송합니다.
  * 
  * Hobby 플랜 제약으로 Vercel Cron 대신 수동/외부 트리거 방식으로 호출됩니다.
  * - 수동 테스트: 계정 설정에서 "테스트 발송" 버튼
@@ -30,7 +30,7 @@ function formatAsKisDate(dateStr: string) {
 }
 
 /**
- * GET — 현재 로그인한 사용자의 주간 리포트 생성 (테스트용)
+ * GET — 현재 로그인한 사용자의 월간 리포트 생성 (테스트용)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -44,11 +44,11 @@ export async function GET(request: NextRequest) {
     }
 
     const baseUrl = request.nextUrl.origin;
-    const result = await generateWeeklyReport(user.id, baseUrl);
+    const result = await generateMonthlyReport(user.id, baseUrl);
 
     return NextResponse.json(result);
   } catch (error: any) {
-    console.error('[Weekly Report] GET Error:', error.message);
+    console.error('[Monthly Report] GET Error:', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       const { data: settings } = await supabase
         .from('user_notification_settings')
         .select('user_id')
-        .eq('weekly_report_enabled', true)
+        .eq('monthly_report_enabled', true)
         .eq('email_enabled', true)
         .not('notification_email', 'is', null);
 
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
     const results = [];
     for (const userId of userIds) {
       try {
-        const result = await generateWeeklyReport(userId, baseUrl);
+        const result = await generateMonthlyReport(userId, baseUrl);
         results.push({ userId, ...result });
       } catch (e: any) {
         results.push({ userId, success: false, error: e.message });
@@ -116,28 +116,28 @@ export async function POST(request: NextRequest) {
       results,
     });
   } catch (error: any) {
-    console.error('[Weekly Report] POST Error:', error.message);
+    console.error('[Monthly Report] POST Error:', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 /**
- * 개별 사용자의 주간 리포트 생성
+ * 개별 사용자의 월간 리포트 생성
  */
-async function generateWeeklyReport(userId: string, baseUrl: string) {
+async function generateMonthlyReport(userId: string, baseUrl: string) {
   const supabase = getServiceClient();
 
-  // 1. 기간 계산 (오늘 기준 7일 전 ~ 어제)
+  // 1. 기간 계산 (오늘 기준 30일 전 ~ 어제)
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const endDate = new Date(kstNow);
   endDate.setDate(endDate.getDate() - 1); // 어제
   const startDate = new Date(endDate);
-  startDate.setDate(startDate.getDate() - 6); // 7일 전
+  startDate.setDate(startDate.getDate() - 29); // 30일 전
 
   const startDateStr = startDate.toISOString().split('T')[0];
   const endDateStr = endDate.toISOString().split('T')[0];
 
-  console.log(`[Weekly Report] Generating for user ${userId}: ${startDateStr} ~ ${endDateStr}`);
+  console.log(`[Monthly Report] Generating for user ${userId}: ${startDateStr} ~ ${endDateStr}`);
 
   // 2. portfolio_daily_history에서 캐시된 데이터 조회
   const { data: historyData } = await supabase
@@ -296,8 +296,8 @@ async function generateWeeklyReport(userId: string, baseUrl: string) {
     .from('push_content')
     .insert({
       user_id: userId,
-      content_type: 'weekly_report',
-      title: `주간 투자리포트 (${startDateStr} ~ ${endDateStr})`,
+      content_type: 'monthly_report',
+      title: `월간 투자리포트 (${startDateStr} ~ ${endDateStr})`,
       payload: {
         startDate: startDateStr,
         endDate: endDateStr,
@@ -315,7 +315,7 @@ async function generateWeeklyReport(userId: string, baseUrl: string) {
     .single();
 
   if (contentError) {
-    console.error('[Weekly Report] Content save error:', contentError);
+    console.error('[Monthly Report] Content save error:', contentError);
     throw new Error(`리포트 저장 실패: ${contentError.message}`);
   }
 
@@ -331,9 +331,9 @@ async function generateWeeklyReport(userId: string, baseUrl: string) {
     : '데이터 부족';
 
   const dispatchResult = await dispatch({
-    eventType: 'weekly_report',
+    eventType: 'monthly_report',
     userId,
-    title: '주간리포트가 발행되었습니다',
+    title: '월간리포트가 발행되었습니다',
     body: `${startDateStr} ~ ${endDateStr} 투자 성과: ${profitText}`,
     contentId: content.id,
     contentUrl: '/report',
@@ -341,7 +341,7 @@ async function generateWeeklyReport(userId: string, baseUrl: string) {
     expiresInDays: 30,
   }, baseUrl);
 
-  console.log(`[Weekly Report] User ${userId}: sent=${dispatchResult.sent}, failed=${dispatchResult.failed}`);
+  console.log(`[Monthly Report] User ${userId}: sent=${dispatchResult.sent}, failed=${dispatchResult.failed}`);
 
   return {
     success: true,

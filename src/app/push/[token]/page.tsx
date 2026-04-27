@@ -233,6 +233,7 @@ export default function PushContentPage({ params }: PushContentPageProps) {
 
     // content_type에 따라 적절한 뷰 렌더링
     switch (content?.content_type) {
+      case 'monthly_report':
       case 'weekly_report':
         return <WeeklyReportView content={content} />;
 

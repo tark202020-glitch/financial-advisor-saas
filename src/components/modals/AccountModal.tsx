@@ -18,7 +18,7 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
 
     // ---- 푸시 알림 설정 ----
     const [notifEmail, setNotifEmail] = useState('');
-    const [weeklyReportEnabled, setWeeklyReportEnabled] = useState(true);
+    const [monthlyReportEnabled, setMonthlyReportEnabled] = useState(true);
     const [emailEnabled, setEmailEnabled] = useState(true);
     const [notifLoading, setNotifLoading] = useState(false);
     const [notifSaved, setNotifSaved] = useState(false);
@@ -32,7 +32,7 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
             .then(res => res.json())
             .then(data => {
                 setNotifEmail(data.notification_email || '');
-                setWeeklyReportEnabled(data.weekly_report_enabled ?? true);
+                setMonthlyReportEnabled(data.monthly_report_enabled ?? data.weekly_report_enabled ?? true);
                 setEmailEnabled(data.email_enabled ?? true);
             })
             .catch(() => {});
@@ -48,7 +48,7 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
                 body: JSON.stringify({
                     notification_email: notifEmail || null,
                     email_enabled: emailEnabled,
-                    weekly_report_enabled: weeklyReportEnabled,
+                    monthly_report_enabled: monthlyReportEnabled,
                 }),
             });
             setNotifSaved(true);
@@ -76,7 +76,7 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
                 body: JSON.stringify({
                     notification_email: notifEmail,
                     email_enabled: true,
-                    weekly_report_enabled: true,
+                    monthly_report_enabled: true,
                 }),
             });
 
@@ -287,16 +287,16 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
                             <div className="flex items-center justify-between p-3 bg-[#252525] rounded-xl border border-[#333]">
                                 <div className="flex items-center gap-2">
                                     <Bell size={14} className="text-[#F7D047]" />
-                                    <span className="text-sm text-gray-300">주간 투자리포트</span>
+                                    <span className="text-sm text-gray-300">월간 투자리포트</span>
                                 </div>
                                 <button
-                                    onClick={() => setWeeklyReportEnabled(!weeklyReportEnabled)}
+                                    onClick={() => setMonthlyReportEnabled(!monthlyReportEnabled)}
                                     className={`w-10 h-5 rounded-full transition-colors relative ${
-                                        weeklyReportEnabled ? 'bg-[#F7D047]' : 'bg-[#444]'
+                                        monthlyReportEnabled ? 'bg-[#F7D047]' : 'bg-[#444]'
                                     }`}
                                 >
                                     <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all`}
-                                         style={{ left: weeklyReportEnabled ? '22px' : '2px' }} />
+                                         style={{ left: monthlyReportEnabled ? '22px' : '2px' }} />
                                 </button>
                             </div>
                         </div>
@@ -321,8 +321,8 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
                                 {testSending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
                             </div>
                             <div className="flex flex-col text-left">
-                                <span className="text-sm font-bold text-white">주간 리포트 테스트 발송</span>
-                                <span className="text-xs text-gray-500">현재 날짜 기준 1주일 데이터로 리포트를 생성합니다</span>
+                                <span className="text-sm font-bold text-white">월간 리포트 테스트 발송</span>
+                                <span className="text-xs text-gray-500">현재 날짜 기준 1개월 데이터로 리포트를 생성합니다</span>
                             </div>
                         </button>
 

@@ -490,7 +490,7 @@ export default function ReportDashboard() {
                                                                     <Tooltip contentStyle={{ backgroundColor: '#252525', borderColor: '#444', borderRadius: '8px' }} formatter={(value: any, name: any) => [formatKrw(Number(value) || 0), name]} />
                                                                     <Legend wrapperStyle={{ fontSize: '11px' }} />
                                                                     <ReferenceLine y={0} stroke="#555" strokeDasharray="3 3" />
-                                                                    <Bar dataKey="dailyProfitChange" opacity={0.7} name="일별 손익" radius={[3, 3, 0, 0]}>
+                                                                    <Bar dataKey="dailyProfitChange" fill="#F59E0B" opacity={0.7} name="일별 손익" radius={[3, 3, 0, 0]}>
                                                                         {processed.map((_: any, index: number) => (
                                                                             <Cell key={`cell-${index}`} fill={processed[index].dailyProfitChange >= 0 ? '#ef4444' : '#3b82f6'} />
                                                                         ))}
@@ -791,7 +791,7 @@ export default function ReportDashboard() {
                                         />
                                         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
                                         <ReferenceLine y={0} yAxisId="left" stroke="#555" strokeDasharray="3 3" />
-                                        <Bar yAxisId="left" dataKey="dailyProfitChange" opacity={0.7} name="일별 손익" radius={[4, 4, 0, 0]}>
+                                        <Bar yAxisId="left" dataKey="dailyProfitChange" fill="#F59E0B" opacity={0.7} name="일별 손익" radius={[4, 4, 0, 0]}>
                                             {chartData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.dailyProfitChange >= 0 ? '#ef4444' : '#3b82f6'} />
                                             ))}

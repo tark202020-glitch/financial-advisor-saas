@@ -33,7 +33,7 @@ export async function GET() {
         email_enabled: true,
         sms_enabled: false,
         kakao_enabled: false,
-        weekly_report_enabled: true,
+        monthly_report_enabled: true,
         daily_briefing_enabled: false,
         portfolio_alert_enabled: true,
         system_notice_enabled: true,
@@ -65,7 +65,7 @@ export async function PUT(request: NextRequest) {
     const allowedFields = [
       'notification_email', 'phone_number', 'kakao_id',
       'email_enabled', 'sms_enabled', 'kakao_enabled',
-      'weekly_report_enabled', 'daily_briefing_enabled',
+      'monthly_report_enabled', 'daily_briefing_enabled',
       'portfolio_alert_enabled', 'system_notice_enabled',
     ];
 

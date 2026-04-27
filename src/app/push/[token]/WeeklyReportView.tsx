@@ -71,7 +71,7 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
               <Bot size={22} className="text-black" strokeWidth={2.5} />
             </div>
             <div>
-              <h1 className="text-xl font-black text-white tracking-tight">주간 투자리포트</h1>
+              <h1 className="text-xl font-black text-white tracking-tight">월간 투자리포트</h1>
               <p className="text-sm text-gray-400">
                 {startDate} ~ {endDate}
               </p>
@@ -83,12 +83,12 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
       {/* Content */}
       <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-6 space-y-6">
 
-        {/* ──── 주간 요약 (최상단) ──── */}
+        {/* ──── 월간 요약 (최상단) ──── */}
         {weeklyHighlights && (
           <div className="bg-gradient-to-br from-[#1a1a2e] to-[#1E1E1E] border border-[#333] rounded-2xl p-6">
             <div className="flex items-center gap-2 mb-4">
               <BarChart3 size={18} className="text-[#F7D047]" />
-              <h3 className="text-lg font-bold text-white">📋 주간 리포트 요약</h3>
+              <h3 className="text-lg font-bold text-white">📋 월간 리포트 요약</h3>
             </div>
 
             {/* 보유 종목 변동 현황 */}
@@ -115,7 +115,7 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
                     <Flame size={20} className="text-red-400" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-400">🔥 주간 최대 상승</p>
+                    <p className="text-xs text-gray-400">🔥 월간 최대 상승</p>
                     <p className="text-sm font-bold text-white truncate">{weeklyHighlights.topGainer.name}</p>
                     <p className="text-xs text-red-400 font-bold">+{weeklyHighlights.topGainer.changeRate.toFixed(2)}%</p>
                   </div>
@@ -127,7 +127,7 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
                     <Snowflake size={20} className="text-blue-400" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs text-gray-400">❄️ 주간 최대 하락</p>
+                    <p className="text-xs text-gray-400">❄️ 월간 최대 하락</p>
                     <p className="text-sm font-bold text-white truncate">{weeklyHighlights.topLoser.name}</p>
                     <p className="text-xs text-blue-400 font-bold">{weeklyHighlights.topLoser.changeRate.toFixed(2)}%</p>
                   </div>
