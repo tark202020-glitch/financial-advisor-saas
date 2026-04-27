@@ -52,10 +52,11 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
     });
   }, [rawChartData]);
 
-  const formatKrw = (val: number) => {
-    if (Math.abs(val) >= 100000000) return `${(val / 100000000).toFixed(2)}억 원`;
-    if (Math.abs(val) >= 10000) return `${(val / 10000).toFixed(0)}만 원`;
-    return `${val.toLocaleString()} 원`;
+  const formatKrw = (val: number | undefined | null) => {
+    const num = Number(val) || 0;
+    if (Math.abs(num) >= 100000000) return `${(num / 100000000).toFixed(2)}억 원`;
+    if (Math.abs(num) >= 10000) return `${(num / 10000).toFixed(0)}만 원`;
+    return `${num.toLocaleString()} 원`;
   };
 
   if (!rawChartData || rawChartData.length === 0) {
@@ -151,23 +152,23 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
           const cards = [
             {
               label: '순수 평가손익',
-              formatted: `${summary.pureProfit >= 0 ? '+' : ''}${formatKrw(summary.pureProfit)}`,
-              iconBg: summary.pureProfit >= 0 ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)',
-              textColor: summary.pureProfit >= 0 ? '#f87171' : '#60a5fa',
-              icon: summary.pureProfit >= 0 ? <TrendingUp size={16} color="#f87171" /> : <TrendingDown size={16} color="#60a5fa" />,
+              formatted: `${(summary.pureProfit || 0) >= 0 ? '+' : ''}${formatKrw(summary.pureProfit || 0)}`,
+              iconBg: (summary.pureProfit || 0) >= 0 ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)',
+              textColor: (summary.pureProfit || 0) >= 0 ? '#f87171' : '#60a5fa',
+              icon: (summary.pureProfit || 0) >= 0 ? <TrendingUp size={16} color="#f87171" /> : <TrendingDown size={16} color="#60a5fa" />,
               desc: '추가 입금 제외한 시장 수익',
             },
             {
               label: '기간 수익률',
-              formatted: `${summary.returnRate >= 0 ? '+' : ''}${summary.returnRate.toFixed(2)}%`,
-              iconBg: summary.returnRate >= 0 ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)',
-              textColor: summary.returnRate >= 0 ? '#f87171' : '#60a5fa',
-              icon: <Percent size={16} color={summary.returnRate >= 0 ? '#f87171' : '#60a5fa'} />,
+              formatted: `${(summary.returnRate || 0) >= 0 ? '+' : ''}${Number(summary.returnRate || 0).toFixed(2)}%`,
+              iconBg: (summary.returnRate || 0) >= 0 ? 'rgba(239,68,68,0.2)' : 'rgba(59,130,246,0.2)',
+              textColor: (summary.returnRate || 0) >= 0 ? '#f87171' : '#60a5fa',
+              icon: <Percent size={16} color={(summary.returnRate || 0) >= 0 ? '#f87171' : '#60a5fa'} />,
               desc: '기초 투자금 대비 수익률',
             },
             {
               label: '추가 투입금',
-              formatted: `${summary.periodInvestmentChange >= 0 ? '+' : ''}${formatKrw(summary.periodInvestmentChange)}`,
+              formatted: `${(summary.periodInvestmentChange || 0) >= 0 ? '+' : ''}${formatKrw(summary.periodInvestmentChange || 0)}`,
               iconBg: 'rgba(52,211,153,0.2)',
               textColor: '#34d399',
               icon: <DollarSign size={16} color="#34d399" />,
@@ -175,10 +176,10 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
             },
             {
               label: '기간 총 변동',
-              formatted: `${summary.periodTotalChange >= 0 ? '+' : ''}${formatKrw(summary.periodTotalChange)}`,
-              iconBg: summary.periodTotalChange >= 0 ? 'rgba(251,191,36,0.2)' : 'rgba(59,130,246,0.2)',
-              textColor: summary.periodTotalChange >= 0 ? '#fbbf24' : '#60a5fa',
-              icon: <TrendingUp size={16} color={summary.periodTotalChange >= 0 ? '#fbbf24' : '#60a5fa'} />,
+              formatted: `${(summary.periodTotalChange || 0) >= 0 ? '+' : ''}${formatKrw(summary.periodTotalChange || 0)}`,
+              iconBg: (summary.periodTotalChange || 0) >= 0 ? 'rgba(251,191,36,0.2)' : 'rgba(59,130,246,0.2)',
+              textColor: (summary.periodTotalChange || 0) >= 0 ? '#fbbf24' : '#60a5fa',
+              icon: <TrendingUp size={16} color={(summary.periodTotalChange || 0) >= 0 ? '#fbbf24' : '#60a5fa'} />,
               desc: '평가금 시작 대비 총 변동액',
             },
           ];
