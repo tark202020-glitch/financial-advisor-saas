@@ -1339,7 +1339,6 @@ function DeepResearchSection({ startDate, endDate, summary, tradeSummary, tradeC
                     </div>
                 </div>
             )}
-        </>)}
         </div>
     );
 }
