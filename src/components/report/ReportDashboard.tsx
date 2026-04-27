@@ -911,6 +911,7 @@ export default function ReportDashboard() {
                     </div>
                 </div>
              )}
+        </>)}
         </div>
     );
 }
