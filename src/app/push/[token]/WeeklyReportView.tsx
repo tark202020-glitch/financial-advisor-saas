@@ -137,59 +137,6 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
           </div>
         )}
 
-        {/* ──── 내 보유 종목 현황 ──── */}
-        {holdings && holdings.length > 0 && (
-          <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl overflow-hidden">
-            <div className="p-6 border-b border-[#333]">
-              <div className="flex items-center gap-2">
-                <Briefcase size={18} className="text-[#F7D047]" />
-                <h3 className="text-lg font-bold text-white">내 보유 종목 현황</h3>
-                <span className="ml-2 text-xs text-gray-500 bg-[#333] px-2 py-0.5 rounded-full">{holdings.length}종목</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">최근 스냅샷 기준 현재가 및 수익률입니다.</p>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-gray-400">
-                <thead className="bg-[#252525] text-xs uppercase text-gray-500 border-b border-[#333]">
-                  <tr>
-                    <th className="px-6 py-4 font-bold">종목명</th>
-                    <th className="px-6 py-4 font-bold text-right">수익률</th>
-                    <th className="px-6 py-4 font-bold text-right">수량</th>
-                    <th className="px-6 py-4 font-bold text-right">매수가</th>
-                    <th className="px-6 py-4 font-bold text-right">평가금</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#333]">
-                  {holdings.map((h: any) => (
-                    <tr key={h.symbol} className="hover:bg-[#2A2A2A] transition-colors">
-                      <td className="px-6 py-4">
-                        <span className="font-bold text-white">{h.name}</span>
-                        <span className="text-gray-500 text-xs ml-1.5">({h.symbol})</span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className={`font-bold ${h.profitRate >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                          {h.profitRate >= 0 ? '+' : ''}{h.profitRate.toFixed(2)}%
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">{h.quantity.toLocaleString()}주</td>
-                      <td className="px-6 py-4 text-right">{Math.round(h.buyPrice).toLocaleString()}원</td>
-                      <td className="px-6 py-4 text-right font-bold text-white">{formatKrw(h.totalValuation)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-[#252525] border-t border-[#444]">
-                  <tr>
-                    <td className="px-6 py-4 font-bold text-white" colSpan={4}>합계</td>
-                    <td className="px-6 py-4 text-right font-black text-[#F7D047] text-base">
-                      {formatKrw(holdings.reduce((s: number, h: any) => s + h.totalValuation, 0))}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-        )}
-
         {/* KPI Cards */}
         {summary && (() => {
           const cards = [
@@ -375,6 +322,65 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
                     );
                   })}
                 </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ──── 내 보유 종목 현황 (최하단) ──── */}
+        {holdings && holdings.length > 0 && (
+          <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl overflow-hidden">
+            <div className="p-6 border-b border-[#333]">
+              <div className="flex items-center gap-2">
+                <Briefcase size={18} className="text-[#F7D047]" />
+                <h3 className="text-lg font-bold text-white">내 보유 종목 현황</h3>
+                <span className="ml-2 text-xs text-gray-500 bg-[#333] px-2 py-0.5 rounded-full">{holdings.length}종목</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">최근 스냅샷 기준 현재가 및 수익률입니다.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-gray-400">
+                <thead className="bg-[#252525] text-xs uppercase text-gray-500 border-b border-[#333]">
+                  <tr>
+                    <th className="px-6 py-4 font-bold">종목명</th>
+                    <th className="px-6 py-4 font-bold text-right">수익률</th>
+                    <th className="px-6 py-4 font-bold text-right">수량</th>
+                    <th className="px-6 py-4 font-bold text-right">매수가</th>
+                    <th className="px-6 py-4 font-bold text-right">현재가</th>
+                    <th className="px-6 py-4 font-bold text-right">평가금</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#333]">
+                  {holdings.map((h: any) => (
+                    <tr key={h.symbol} className="hover:bg-[#2A2A2A] transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-white">{h.name}</span>
+                        <span className="text-gray-500 text-xs ml-1.5">({h.symbol})</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className={`font-bold ${h.profitRate >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                          {h.profitRate >= 0 ? '+' : ''}{h.profitRate.toFixed(2)}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">{h.quantity.toLocaleString()}주</td>
+                      <td className="px-6 py-4 text-right">{Math.round(h.buyPrice).toLocaleString()}원</td>
+                      <td className="px-6 py-4 text-right">
+                        <span className={h.currentPrice >= h.buyPrice ? 'text-red-400' : 'text-blue-400'}>
+                          {Math.round(h.currentPrice).toLocaleString()}원
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right font-bold text-white">{formatKrw(h.totalValuation)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-[#252525] border-t border-[#444]">
+                  <tr>
+                    <td className="px-6 py-4 font-bold text-white" colSpan={5}>합계</td>
+                    <td className="px-6 py-4 text-right font-black text-[#F7D047] text-base">
+                      {formatKrw(holdings.reduce((s: number, h: any) => s + h.totalValuation, 0))}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>

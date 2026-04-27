@@ -48,6 +48,23 @@ export function useReportData(startDate: string, endDate: string) {
         }
 
         let isMounted = true;
+
+        // ── sessionStorage 캐시 확인 (페이지 복귀 시 재조회 방지) ──
+        const cacheKey = `report_cache_${user.id}_${startDate}_${endDate}`;
+        try {
+            const cached = sessionStorage.getItem(cacheKey);
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed.historyData && parsed.tradeLogs) {
+                    console.log('[ReportData] Restored from session cache');
+                    setHistoryData(parsed.historyData);
+                    setTradeLogs(parsed.tradeLogs);
+                    setFailedSymbols(parsed.failedSymbols || []);
+                    setIsLoading(false);
+                    return;
+                }
+            }
+        } catch { /* cache miss or parse error, proceed with fetch */ }
         
         const fetchData = async () => {
             setIsLoading(true);
@@ -170,6 +187,15 @@ export function useReportData(startDate: string, endDate: string) {
                     // 날짜 내림차순으로 정렬 (표시용)
                     formattedTrades.sort((a, b) => b.trade_date.localeCompare(a.trade_date));
                     setTradeLogs(formattedTrades);
+
+                    // ── sessionStorage에 캐시 저장 ──
+                    try {
+                        sessionStorage.setItem(cacheKey, JSON.stringify({
+                            historyData: histData,
+                            tradeLogs: formattedTrades,
+                            failedSymbols: failedSymbols,
+                        }));
+                    } catch { /* storage full, ignore */ }
                 }
             } catch (err) {
                 console.error("Failed to fetch report data:", err);
