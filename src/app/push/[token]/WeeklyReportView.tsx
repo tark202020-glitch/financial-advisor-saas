@@ -105,40 +105,48 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
           </div>
         </div>
 
-        {/* ──── 전체 포트폴리오 현황 ──── */}
+        {/* ──── 전체 포트폴리오 현황 (골드 프리미엄) ──── */}
         {overallSummary && (
-          <div className="bg-gradient-to-br from-[#1a1a2e] to-[#1E1E1E] border border-[#333] rounded-2xl p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Wallet size={18} className="text-[#F7D047]" />
-              <h3 className="text-lg font-bold text-white">💰 전체 포트폴리오 현황</h3>
-              <span className="text-[10px] text-gray-500 ml-auto">
-                {overallSummary.firstDate} ~ {overallSummary.latestDate}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-[#252525] rounded-xl p-4 border border-[#333]">
-                <p className="text-xs text-gray-400 mb-1">전체 평가손익</p>
-                <p className={`text-lg font-black ${(overallSummary.totalProfit || 0) >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                  {(overallSummary.totalProfit || 0) >= 0 ? '+' : ''}{formatKrw(overallSummary.totalProfit || 0)}
-                </p>
+          <div className="relative overflow-hidden rounded-2xl border border-[#F7D047]/30">
+            {/* 골드 그라디언트 배경 */}
+            <div className="absolute inset-0 bg-gradient-to-br from-[#F7D047]/8 via-[#1a1a2e] to-[#0d0d1a]" />
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-[#F7D047] to-[#F59E0B]" />
+            
+            <div className="relative p-6 pl-7">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#F7D047] to-[#F59E0B] flex items-center justify-center shadow-lg shadow-[#F7D047]/20">
+                  <Wallet size={18} className="text-black" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-white">전체 포트폴리오 현황</h3>
+                  <p className="text-[10px] text-[#F7D047]/60">{overallSummary.firstDate} ~ {overallSummary.latestDate} 누적 기준</p>
+                </div>
               </div>
-              <div className="bg-[#252525] rounded-xl p-4 border border-[#333]">
-                <p className="text-xs text-gray-400 mb-1">전체 수익률</p>
-                <p className={`text-lg font-black ${(overallSummary.totalReturnRate || 0) >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
-                  {(overallSummary.totalReturnRate || 0) >= 0 ? '+' : ''}{Number(overallSummary.totalReturnRate || 0).toFixed(2)}%
-                </p>
-              </div>
-              <div className="bg-[#252525] rounded-xl p-4 border border-[#333]">
-                <p className="text-xs text-gray-400 mb-1">총 투자금</p>
-                <p className="text-lg font-black text-emerald-400">
-                  {formatKrw(overallSummary.totalInvestment || 0)}
-                </p>
-              </div>
-              <div className="bg-[#252525] rounded-xl p-4 border border-[#333]">
-                <p className="text-xs text-gray-400 mb-1">총 평가금</p>
-                <p className="text-lg font-black text-[#F7D047]">
-                  {formatKrw(overallSummary.totalValuation || 0)}
-                </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-black/30 backdrop-blur-sm rounded-xl p-4 border border-[#F7D047]/10">
+                  <p className="text-[11px] text-[#F7D047]/70 font-medium mb-1.5">전체 평가손익</p>
+                  <p className={`text-xl font-black ${(overallSummary.totalProfit || 0) >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                    {(overallSummary.totalProfit || 0) >= 0 ? '+' : ''}{formatKrw(overallSummary.totalProfit || 0)}
+                  </p>
+                </div>
+                <div className="bg-black/30 backdrop-blur-sm rounded-xl p-4 border border-[#F7D047]/10">
+                  <p className="text-[11px] text-[#F7D047]/70 font-medium mb-1.5">전체 수익률</p>
+                  <p className={`text-xl font-black ${(overallSummary.totalReturnRate || 0) >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                    {(overallSummary.totalReturnRate || 0) >= 0 ? '+' : ''}{Number(overallSummary.totalReturnRate || 0).toFixed(2)}%
+                  </p>
+                </div>
+                <div className="bg-black/30 backdrop-blur-sm rounded-xl p-4 border border-[#F7D047]/10">
+                  <p className="text-[11px] text-[#F7D047]/70 font-medium mb-1.5">총 투자금</p>
+                  <p className="text-xl font-black text-emerald-400">
+                    {formatKrw(overallSummary.totalInvestment || 0)}
+                  </p>
+                </div>
+                <div className="bg-black/30 backdrop-blur-sm rounded-xl p-4 border border-[#F7D047]/10">
+                  <p className="text-[11px] text-[#F7D047]/70 font-medium mb-1.5">총 평가금</p>
+                  <p className="text-xl font-black text-[#F7D047]">
+                    {formatKrw(overallSummary.totalValuation || 0)}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -153,6 +161,7 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
             </div>
 
             {/* 보유 종목 변동 현황 */}
+
             <div className="grid grid-cols-3 gap-3 mb-5">
               <div className="bg-[#252525] rounded-xl p-4 text-center border border-[#333]">
                 <p className="text-xs text-gray-400 mb-1">상승 종목</p>
@@ -198,7 +207,7 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
           </div>
         )}
 
-        {/* KPI Cards */}
+        {/* ──── 기간 성과 (블루 계열) ──── */}
         {summary && (() => {
           const cards = [
             {
@@ -236,21 +245,37 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
           ];
 
           return (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {cards.map((card, idx) => (
-                <div key={idx} className="bg-[#1E1E1E] border border-[#333] rounded-2xl p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: card.iconBg }}>
-                      {card.icon}
-                    </div>
-                    <span className="text-xs text-gray-400">{card.label}</span>
+            <div className="relative overflow-hidden rounded-2xl border border-indigo-500/20">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-[#1E1E1E] to-[#1E1E1E]" />
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-indigo-400 to-purple-500" />
+              
+              <div className="relative p-6 pl-7">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                    <BarChart3 size={16} className="text-indigo-400" />
                   </div>
-                  <p className="text-xl font-bold" style={{ color: card.textColor }}>
-                    {card.formatted}
-                  </p>
-                  <p className="text-[10px] text-gray-500 mt-1">{card.desc}</p>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">📊 기간 성과</h3>
+                    <p className="text-[10px] text-indigo-300/50">{startDate} ~ {endDate}</p>
+                  </div>
                 </div>
-              ))}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {cards.map((card, idx) => (
+                    <div key={idx} className="bg-[#1a1a2e]/60 border border-[#333] rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: card.iconBg }}>
+                          {card.icon}
+                        </div>
+                        <span className="text-[11px] text-gray-400">{card.label}</span>
+                      </div>
+                      <p className="text-lg font-bold" style={{ color: card.textColor }}>
+                        {card.formatted}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-1">{card.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           );
         })()}
