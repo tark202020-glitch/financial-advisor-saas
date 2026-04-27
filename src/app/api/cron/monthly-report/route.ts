@@ -198,13 +198,13 @@ async function generateMonthlyReport(userId: string, baseUrl: string, isTest: bo
       
       if (Array.isArray(snapshot)) {
         holdings = snapshot.map((asset: any) => ({
-          name: asset.name || asset.ticker || '알 수 없음',
-          ticker: asset.ticker || '',
+          name: asset.name || asset.ticker || asset.symbol || '알 수 없음',
+          ticker: asset.ticker || asset.symbol || '',
           quantity: asset.quantity || 0,
-          avgPrice: asset.avg_price || asset.avgPrice || 0,
+          avgPrice: asset.buy_price || asset.avg_price || asset.avgPrice || 0,
           currentPrice: asset.current_price || asset.currentPrice || 0, // 스냅샷 가격 (폴백)
-          market: asset.market || 'KRX',
-          marketType: getMarketType(asset.ticker || ''),
+          market: asset.market || asset.category || 'KRX',
+          marketType: getMarketType(asset.ticker || asset.symbol || ''),
           exchangeRate: asset.exchange_rate || asset.exchangeRate || 1,
         }));
       }
