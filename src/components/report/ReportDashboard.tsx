@@ -448,6 +448,106 @@ export default function ReportDashboard() {
                                             );
                                         })()}
 
+                                        {/* ── 차트 섹션 ── */}
+                                        {selectedReport.payload.chartData && selectedReport.payload.chartData.length > 1 && (() => {
+                                            const raw = selectedReport.payload.chartData;
+                                            const first = raw[0];
+                                            const processed = raw.map((d: any, i: number) => {
+                                                const prev = i > 0 ? raw[i - 1] : null;
+                                                const valuationDiff = d.valuation - first.valuation;
+                                                const investmentDiff = d.investment - first.investment;
+                                                const cumulativeProfit = valuationDiff - investmentDiff;
+                                                let dailyProfitChange = 0;
+                                                if (prev) {
+                                                    dailyProfitChange = (d.valuation - prev.valuation) - (d.investment - prev.investment);
+                                                }
+                                                return { ...d, cumulativeProfit, dailyProfitChange };
+                                            });
+
+                                            // 일별 매매 금액 집계
+                                            const logs = selectedReport.payload.tradeLogs || [];
+                                            const dayMap: Record<string, { date: string; buyAmount: number; sellAmount: number }> = {};
+                                            logs.forEach((log: any) => {
+                                                const dt = log.trade_date;
+                                                if (!dayMap[dt]) dayMap[dt] = { date: dt, buyAmount: 0, sellAmount: 0 };
+                                                const amt = log.price * log.quantity;
+                                                if (log.type === 'BUY') dayMap[dt].buyAmount += amt;
+                                                else if (log.type === 'SELL') dayMap[dt].sellAmount -= amt;
+                                            });
+                                            const tradeChartData = Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
+
+                                            return (
+                                                <>
+                                                    {/* 누적 수익금 추이 */}
+                                                    <div className="bg-[#252525] border border-[#333] rounded-xl p-5">
+                                                        <h4 className="font-bold text-white text-sm mb-4">누적 수익금 추이</h4>
+                                                        <div className="h-[250px] w-full">
+                                                            <ResponsiveContainer width="100%" height="100%">
+                                                                <ComposedChart data={processed} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+                                                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                                                    <XAxis dataKey="date" stroke="#666" tick={{ fill: '#888', fontSize: 11 }} tickFormatter={(v: string) => v.slice(5)} minTickGap={30} />
+                                                                    <YAxis stroke="#666" tick={{ fill: '#888', fontSize: 11 }} tickFormatter={(v: number) => `${(v / 10000).toFixed(0)}만`} />
+                                                                    <Tooltip contentStyle={{ backgroundColor: '#252525', borderColor: '#444', borderRadius: '8px' }} formatter={(value: any, name: any) => [formatKrw(Number(value) || 0), name]} />
+                                                                    <Legend wrapperStyle={{ fontSize: '11px' }} />
+                                                                    <ReferenceLine y={0} stroke="#555" strokeDasharray="3 3" />
+                                                                    <Bar dataKey="dailyProfitChange" opacity={0.7} name="일별 손익" radius={[3, 3, 0, 0]}>
+                                                                        {processed.map((_: any, index: number) => (
+                                                                            <Cell key={`cell-${index}`} fill={processed[index].dailyProfitChange >= 0 ? '#ef4444' : '#3b82f6'} />
+                                                                        ))}
+                                                                    </Bar>
+                                                                    <Line type="monotone" dataKey="cumulativeProfit" stroke="#ff7300" strokeWidth={2.5} dot={false} name="누적 수익금" />
+                                                                </ComposedChart>
+                                                            </ResponsiveContainer>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 투자금 및 평가금 추이 */}
+                                                    <div className="bg-[#252525] border border-[#333] rounded-xl p-5">
+                                                        <h4 className="font-bold text-white text-sm mb-4">투자금 및 평가금 추이</h4>
+                                                        <div className="h-[250px] w-full">
+                                                            <ResponsiveContainer width="100%" height="100%">
+                                                                <ComposedChart data={processed} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+                                                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                                                    <XAxis dataKey="date" stroke="#666" tick={{ fill: '#888', fontSize: 11 }} tickFormatter={(v: string) => v.slice(5)} minTickGap={30} />
+                                                                    <YAxis stroke="#666" tick={{ fill: '#888', fontSize: 11 }} tickFormatter={(v: number) => {
+                                                                        const abs = Math.abs(v);
+                                                                        if (abs >= 100000000) return `${(v / 100000000).toFixed(1)}억`;
+                                                                        if (abs >= 10000) return `${(v / 10000).toFixed(0)}만`;
+                                                                        return `${v}`;
+                                                                    }} domain={['auto', 'auto']} />
+                                                                    <Tooltip contentStyle={{ backgroundColor: '#252525', borderColor: '#444', borderRadius: '8px' }} formatter={(value: any, name: any) => [formatKrw(Number(value) || 0), name]} />
+                                                                    <Legend wrapperStyle={{ fontSize: '11px' }} />
+                                                                    <Area type="monotone" dataKey="valuation" fill="#3b82f6" stroke="#2563eb" fillOpacity={0.2} name="평가액" />
+                                                                    <Line type="monotone" dataKey="investment" stroke="#10b981" strokeWidth={2} dot={false} name="투자액" />
+                                                                </ComposedChart>
+                                                            </ResponsiveContainer>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 일별 매매 금액 추이 */}
+                                                    {tradeChartData.length > 0 && (
+                                                        <div className="bg-[#252525] border border-[#333] rounded-xl p-5">
+                                                            <h4 className="font-bold text-white text-sm mb-4">일별 매매 금액 추이</h4>
+                                                            <div className="h-[200px] w-full">
+                                                                <ResponsiveContainer width="100%" height="100%">
+                                                                    <ComposedChart data={tradeChartData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+                                                                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                                                        <XAxis dataKey="date" stroke="#666" tick={{ fill: '#888', fontSize: 11 }} tickFormatter={(v: string) => v.slice(5)} />
+                                                                        <YAxis stroke="#666" tick={{ fill: '#888', fontSize: 11 }} tickFormatter={(v: number) => `${(v / 10000).toFixed(0)}만`} />
+                                                                        <Tooltip contentStyle={{ backgroundColor: '#252525', borderColor: '#444', borderRadius: '8px' }} formatter={(value: any, name: any) => [formatKrw(Math.abs(Number(value) || 0)), name]} />
+                                                                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                                                                        <ReferenceLine y={0} stroke="#555" strokeDasharray="3 3" />
+                                                                        <Bar dataKey="buyAmount" fill="#ef4444" opacity={0.8} name="매수" radius={[3, 3, 0, 0]} />
+                                                                        <Bar dataKey="sellAmount" fill="#3b82f6" opacity={0.8} name="매도" radius={[3, 3, 0, 0]} />
+                                                                    </ComposedChart>
+                                                                </ResponsiveContainer>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+
                                         {/* 매매 내역 */}
                                         {selectedReport.payload.tradeLogs && selectedReport.payload.tradeLogs.length > 0 && (
                                             <div className="bg-[#252525] border border-[#333] rounded-xl overflow-hidden">
