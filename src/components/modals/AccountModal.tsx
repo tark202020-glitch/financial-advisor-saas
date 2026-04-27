@@ -80,7 +80,7 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
                 }),
             });
 
-            const res = await fetch('/api/push/generate-weekly-report');
+            const res = await fetch('/api/cron/monthly-report');
             const data = await res.json();
             if (data.success) {
                 // dispatch 결과까지 확인하여 실제 이메일 발송 여부 판별
