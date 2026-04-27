@@ -115,7 +115,7 @@ export async function dispatch(event: PushEvent, baseUrl: string): Promise<{
       }
 
       // 채널별 발송
-      let sendResult = { success: false, error: '' };
+      let sendResult: { success: boolean; error?: string } = { success: false, error: '' };
 
       switch (channel) {
         case 'email':
