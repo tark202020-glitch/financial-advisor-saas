@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from 'react';
-import { X, Download, Upload, User, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { X, Download, Upload, User, CheckCircle, AlertCircle, Loader2, Bell, Send, Mail } from 'lucide-react';
 import { usePortfolio, Asset } from '@/context/PortfolioContext';
 
 interface AccountModalProps {
@@ -15,6 +15,87 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
     const [restoreMessage, setRestoreMessage] = useState('');
     const [backupStatus, setBackupStatus] = useState<'idle' | 'success'>('idle');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // ---- 푸시 알림 설정 ----
+    const [notifEmail, setNotifEmail] = useState('');
+    const [weeklyReportEnabled, setWeeklyReportEnabled] = useState(true);
+    const [emailEnabled, setEmailEnabled] = useState(true);
+    const [notifLoading, setNotifLoading] = useState(false);
+    const [notifSaved, setNotifSaved] = useState(false);
+    const [testSending, setTestSending] = useState(false);
+    const [testResult, setTestResult] = useState<{ status: 'success' | 'error'; message: string } | null>(null);
+
+    // 알림 설정 로드
+    useEffect(() => {
+        if (!isOpen) return;
+        fetch('/api/push/settings')
+            .then(res => res.json())
+            .then(data => {
+                setNotifEmail(data.notification_email || '');
+                setWeeklyReportEnabled(data.weekly_report_enabled ?? true);
+                setEmailEnabled(data.email_enabled ?? true);
+            })
+            .catch(() => {});
+    }, [isOpen]);
+
+    // 알림 설정 저장
+    const handleSaveNotifSettings = async () => {
+        setNotifLoading(true);
+        try {
+            await fetch('/api/push/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    notification_email: notifEmail || null,
+                    email_enabled: emailEnabled,
+                    weekly_report_enabled: weeklyReportEnabled,
+                }),
+            });
+            setNotifSaved(true);
+            setTimeout(() => setNotifSaved(false), 3000);
+        } catch (e) {
+            alert('설정 저장에 실패했습니다.');
+        } finally {
+            setNotifLoading(false);
+        }
+    };
+
+    // 주간 리포트 테스트 발송
+    const handleTestSend = async () => {
+        if (!notifEmail) {
+            setTestResult({ status: 'error', message: '알림 수신 이메일을 먼저 등록해주세요.' });
+            return;
+        }
+        setTestSending(true);
+        setTestResult(null);
+        try {
+            // 먼저 설정 저장
+            await fetch('/api/push/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    notification_email: notifEmail,
+                    email_enabled: true,
+                    weekly_report_enabled: true,
+                }),
+            });
+
+            const res = await fetch('/api/push/generate-weekly-report');
+            const data = await res.json();
+            if (data.success) {
+                setTestResult({
+                    status: 'success',
+                    message: `리포트 발송 완료! (${data.period}, ${data.dataPoints}일 데이터, ${data.tradeCount}건 거래)`,
+                });
+            } else {
+                setTestResult({ status: 'error', message: data.error || '발송 실패' });
+            }
+        } catch (e: any) {
+            setTestResult({ status: 'error', message: e.message || '네트워크 오류' });
+        } finally {
+            setTestSending(false);
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -142,6 +223,104 @@ export default function AccountModal({ isOpen, onClose }: AccountModalProps) {
                     <div className="p-4 bg-[#252525] rounded-xl border border-[#333]">
                         <div className="text-sm text-gray-400 mb-1">등록된 종목 수</div>
                         <div className="text-2xl font-bold text-[#F7D047]">{assets.length}개</div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="h-[1px] bg-[#333]" />
+
+                    {/* Push Notification Settings */}
+                    <div>
+                        <h3 className="text-sm font-bold text-gray-300 mb-3">🔔 푸시 알림 설정</h3>
+
+                        {/* 알림 이메일 */}
+                        <div className="mb-3">
+                            <label className="block text-xs text-gray-400 mb-1.5 font-medium">알림 수신 이메일</label>
+                            <div className="relative">
+                                <input
+                                    type="email"
+                                    value={notifEmail}
+                                    onChange={(e) => setNotifEmail(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2.5 bg-[#252525] border border-[#444] rounded-xl text-white text-sm outline-none focus:border-[#F7D047] transition-colors placeholder:text-gray-500"
+                                    placeholder="알림 받을 이메일 주소 입력"
+                                />
+                                <Mail className="absolute left-3 top-2.5 text-gray-500" size={16} />
+                            </div>
+                            <p className="text-[10px] text-gray-500 mt-1">로그인 이메일과 다른 주소를 사용할 수 있습니다 (Gmail, Naver, Hanmail 등)</p>
+                        </div>
+
+                        {/* 토글 스위치들 */}
+                        <div className="space-y-2 mb-3">
+                            {/* 이메일 알림 */}
+                            <div className="flex items-center justify-between p-3 bg-[#252525] rounded-xl border border-[#333]">
+                                <div className="flex items-center gap-2">
+                                    <Mail size={14} className="text-blue-400" />
+                                    <span className="text-sm text-gray-300">이메일 알림</span>
+                                </div>
+                                <button
+                                    onClick={() => setEmailEnabled(!emailEnabled)}
+                                    className={`w-10 h-5 rounded-full transition-colors relative ${
+                                        emailEnabled ? 'bg-[#F7D047]' : 'bg-[#444]'
+                                    }`}
+                                >
+                                    <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all ${
+                                        emailEnabled ? 'left-5.5' : 'left-0.5'
+                                    }`} style={{ left: emailEnabled ? '22px' : '2px' }} />
+                                </button>
+                            </div>
+
+                            {/* 주간 리포트 */}
+                            <div className="flex items-center justify-between p-3 bg-[#252525] rounded-xl border border-[#333]">
+                                <div className="flex items-center gap-2">
+                                    <Bell size={14} className="text-[#F7D047]" />
+                                    <span className="text-sm text-gray-300">주간 투자리포트</span>
+                                </div>
+                                <button
+                                    onClick={() => setWeeklyReportEnabled(!weeklyReportEnabled)}
+                                    className={`w-10 h-5 rounded-full transition-colors relative ${
+                                        weeklyReportEnabled ? 'bg-[#F7D047]' : 'bg-[#444]'
+                                    }`}
+                                >
+                                    <div className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-all`}
+                                         style={{ left: weeklyReportEnabled ? '22px' : '2px' }} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 설정 저장 */}
+                        <button
+                            onClick={handleSaveNotifSettings}
+                            disabled={notifLoading}
+                            className="w-full py-2.5 bg-[#333] hover:bg-[#444] text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mb-3"
+                        >
+                            {notifLoading ? <Loader2 size={16} className="animate-spin" /> : notifSaved ? <CheckCircle size={16} className="text-green-400" /> : null}
+                            {notifSaved ? '저장 완료!' : '설정 저장'}
+                        </button>
+
+                        {/* 테스트 발송 */}
+                        <button
+                            onClick={handleTestSend}
+                            disabled={testSending}
+                            className="w-full flex items-center gap-3 p-4 bg-[#252525] rounded-xl border border-[#333] hover:bg-[#2a2a2a] hover:border-[#444] transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <div className="w-10 h-10 rounded-lg bg-[#F7D047]/10 flex items-center justify-center text-[#F7D047] group-hover:bg-[#F7D047]/20 transition-colors">
+                                {testSending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                            </div>
+                            <div className="flex flex-col text-left">
+                                <span className="text-sm font-bold text-white">주간 리포트 테스트 발송</span>
+                                <span className="text-xs text-gray-500">현재 날짜 기준 1주일 데이터로 리포트를 생성합니다</span>
+                            </div>
+                        </button>
+
+                        {testResult && (
+                            <div className={`mt-3 p-3 rounded-lg flex items-start gap-2 text-sm ${
+                                testResult.status === 'success'
+                                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                                    : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            }`}>
+                                {testResult.status === 'success' ? <CheckCircle size={16} className="shrink-0 mt-0.5" /> : <AlertCircle size={16} className="shrink-0 mt-0.5" />}
+                                <span>{testResult.message}</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Divider */}

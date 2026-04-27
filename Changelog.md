@@ -1,6 +1,16 @@
-## [Alpha V1.375] - 2026-04-27 00:11:14
+## [Alpha V1.376] - 2026-04-27 15:35:00
 
-### ✨ New Feature: AI Deep Research 투자 리포트 코멘트
+### 🚀 Feature: JUBOT 통합 푸시 알림 시스템 구축
+- **Summary**: 주간 리포트 및 다양한 알림을 이메일 등 외부 채널로 발송하는 Push Dispatcher 파이프라인 신설
+- **Detail** :
+  - **푸시 코어 엔진**: 알림 채널(이메일), 템플릿(주간 리포트), 보안 토큰(`access_token`) 생성 및 인증을 담당하는 핵심 엔진(`lib/push/dispatcher.ts`) 추가
+  - **보안 열람 페이지**: 외부 이메일 링크를 통해 접속하되, 민감한 투자 정보 보호를 위해 JUBOT 계정 이메일과 비밀번호 인증을 통과해야만 내용을 열람할 수 있는 토큰 기반 인증 뷰(`/push/[token]`) 도입
+  - **사용자 커스텀 알림 설정**: `AccountModal` 내에 푸시 알림 전용 UI를 추가하여, 수신 이메일을 로그인 계정과 분리하여 자유롭게 등록/변경하고 주간 리포트 구독 여부를 토글로 관리할 수 있도록 개선
+  - **주간 리포트 자동화 API**: Hobby 플랜의 제약을 우회하기 위해 수동/외부 트리거로 동작하며, 최근 1주일간의 매매 이력과 `portfolio_daily_history` 누적 수익 데이터를 집계하여 리포트를 생성하는 `/api/push/generate-weekly-report` 엔드포인트 구축
+  - **신규 DB 모델링**: `push_content`(컨텐츠 저장), `push_notifications`(발송 및 이력 큐), `user_notification_settings`(유저 설정) 3종의 Supabase 테이블 적용
+- **Build Time**: 2026-04-27 15:35:00
+
+## [Alpha V1.375] - 2026-04-27 00:11:14### ✨ New Feature: AI Deep Research 투자 리포트 코멘트
 - **Summary**: Google Deep Research 에이전트(Interactions API)를 활용한 AI 투자 분석 코멘트 기능 추가
 - **Detail** :
   - **Deep Research 에이전트 통합**: `@google/genai` SDK + Interactions API로 `deep-research-preview-04-2026` 에이전트 호출
