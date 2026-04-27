@@ -13,8 +13,17 @@ interface WeeklyReportViewProps {
 }
 
 export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
-  const { payload } = content;
-  const { chartData: rawChartData, tradeLogs, summary, tradeSummary, startDate, endDate, holdings, weeklyHighlights } = payload;
+  const { payload } = content || {};
+  const { 
+    chartData: rawChartData = [], 
+    tradeLogs = [], 
+    summary = null, 
+    tradeSummary = null, 
+    startDate = '', 
+    endDate = '', 
+    holdings = [], 
+    weeklyHighlights = null 
+  } = payload || {};
 
   // 차트 데이터 가공
   const chartData = useMemo(() => {

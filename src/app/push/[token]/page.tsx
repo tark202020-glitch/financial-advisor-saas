@@ -23,7 +23,11 @@ export default function PushContentPage({ params }: PushContentPageProps) {
 
   // Resolve params
   useEffect(() => {
-    params.then(p => setToken(p.token));
+    if (params instanceof Promise) {
+      params.then(p => setToken(p.token)).catch(console.error);
+    } else if (params && typeof params === 'object') {
+      setToken((params as any).token);
+    }
   }, [params]);
 
   // 토큰 유효성 확인
