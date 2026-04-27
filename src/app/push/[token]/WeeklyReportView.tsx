@@ -5,7 +5,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ComposedChart, Bar, Line, Legend, ReferenceLine, Cell
 } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Percent, Bot, ArrowLeft } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Percent, Bot, ArrowLeft, Flame, Snowflake, BarChart3, Briefcase } from 'lucide-react';
 import type { PushContent } from '@/lib/push/types';
 
 interface WeeklyReportViewProps {
@@ -14,7 +14,7 @@ interface WeeklyReportViewProps {
 
 export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
   const { payload } = content;
-  const { chartData: rawChartData, tradeLogs, summary, tradeSummary, startDate, endDate } = payload;
+  const { chartData: rawChartData, tradeLogs, summary, tradeSummary, startDate, endDate, holdings, weeklyHighlights } = payload;
 
   // 차트 데이터 가공
   const chartData = useMemo(() => {
@@ -82,6 +82,113 @@ export default function WeeklyReportView({ content }: WeeklyReportViewProps) {
 
       {/* Content */}
       <div className="max-w-[1400px] mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+        {/* ──── 주간 요약 (최상단) ──── */}
+        {weeklyHighlights && (
+          <div className="bg-gradient-to-br from-[#1a1a2e] to-[#1E1E1E] border border-[#333] rounded-2xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 size={18} className="text-[#F7D047]" />
+              <h3 className="text-lg font-bold text-white">📋 주간 리포트 요약</h3>
+            </div>
+
+            {/* 보유 종목 변동 현황 */}
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              <div className="bg-[#252525] rounded-xl p-4 text-center border border-[#333]">
+                <p className="text-xs text-gray-400 mb-1">상승 종목</p>
+                <p className="text-2xl font-black text-red-400">{weeklyHighlights.gainers}<span className="text-sm font-normal text-gray-500">개</span></p>
+              </div>
+              <div className="bg-[#252525] rounded-xl p-4 text-center border border-[#333]">
+                <p className="text-xs text-gray-400 mb-1">하락 종목</p>
+                <p className="text-2xl font-black text-blue-400">{weeklyHighlights.losers}<span className="text-sm font-normal text-gray-500">개</span></p>
+              </div>
+              <div className="bg-[#252525] rounded-xl p-4 text-center border border-[#333]">
+                <p className="text-xs text-gray-400 mb-1">보합</p>
+                <p className="text-2xl font-black text-gray-400">{weeklyHighlights.unchanged}<span className="text-sm font-normal text-gray-500">개</span></p>
+              </div>
+            </div>
+
+            {/* 가장 핫한 / 가장 부진한 종목 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {weeklyHighlights.topGainer && (
+                <div className="flex items-center gap-3 p-4 bg-red-500/5 rounded-xl border border-red-500/20">
+                  <div className="w-10 h-10 rounded-lg bg-red-500/15 flex items-center justify-center shrink-0">
+                    <Flame size={20} className="text-red-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-400">🔥 주간 최대 상승</p>
+                    <p className="text-sm font-bold text-white truncate">{weeklyHighlights.topGainer.name}</p>
+                    <p className="text-xs text-red-400 font-bold">+{weeklyHighlights.topGainer.changeRate.toFixed(2)}%</p>
+                  </div>
+                </div>
+              )}
+              {weeklyHighlights.topLoser && weeklyHighlights.topLoser.changeRate < 0 && (
+                <div className="flex items-center gap-3 p-4 bg-blue-500/5 rounded-xl border border-blue-500/20">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+                    <Snowflake size={20} className="text-blue-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-400">❄️ 주간 최대 하락</p>
+                    <p className="text-sm font-bold text-white truncate">{weeklyHighlights.topLoser.name}</p>
+                    <p className="text-xs text-blue-400 font-bold">{weeklyHighlights.topLoser.changeRate.toFixed(2)}%</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ──── 내 보유 종목 현황 ──── */}
+        {holdings && holdings.length > 0 && (
+          <div className="bg-[#1E1E1E] border border-[#333] rounded-2xl overflow-hidden">
+            <div className="p-6 border-b border-[#333]">
+              <div className="flex items-center gap-2">
+                <Briefcase size={18} className="text-[#F7D047]" />
+                <h3 className="text-lg font-bold text-white">내 보유 종목 현황</h3>
+                <span className="ml-2 text-xs text-gray-500 bg-[#333] px-2 py-0.5 rounded-full">{holdings.length}종목</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">최근 스냅샷 기준 현재가 및 수익률입니다.</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-gray-400">
+                <thead className="bg-[#252525] text-xs uppercase text-gray-500 border-b border-[#333]">
+                  <tr>
+                    <th className="px-6 py-4 font-bold">종목명</th>
+                    <th className="px-6 py-4 font-bold text-right">수익률</th>
+                    <th className="px-6 py-4 font-bold text-right">수량</th>
+                    <th className="px-6 py-4 font-bold text-right">매수가</th>
+                    <th className="px-6 py-4 font-bold text-right">평가금</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#333]">
+                  {holdings.map((h: any) => (
+                    <tr key={h.symbol} className="hover:bg-[#2A2A2A] transition-colors">
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-white">{h.name}</span>
+                        <span className="text-gray-500 text-xs ml-1.5">({h.symbol})</span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className={`font-bold ${h.profitRate >= 0 ? 'text-red-400' : 'text-blue-400'}`}>
+                          {h.profitRate >= 0 ? '+' : ''}{h.profitRate.toFixed(2)}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">{h.quantity.toLocaleString()}주</td>
+                      <td className="px-6 py-4 text-right">{Math.round(h.buyPrice).toLocaleString()}원</td>
+                      <td className="px-6 py-4 text-right font-bold text-white">{formatKrw(h.totalValuation)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-[#252525] border-t border-[#444]">
+                  <tr>
+                    <td className="px-6 py-4 font-bold text-white" colSpan={4}>합계</td>
+                    <td className="px-6 py-4 text-right font-black text-[#F7D047] text-base">
+                      {formatKrw(holdings.reduce((s: number, h: any) => s + h.totalValuation, 0))}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* KPI Cards */}
         {summary && (() => {

@@ -213,7 +213,85 @@ async function generateWeeklyReport(userId: string, baseUrl: string) {
 
   const tradeSummary = { totalBuy, totalSell, totalDividend, tradeCount: tradeLogs.length };
 
-  // 6. push_content에 저장
+  // ──── 6. 현재 보유 종목 현황 조회 ────
+  const { data: portfolioRows } = await supabase
+    .from('portfolios')
+    .select('symbol, name, quantity, buy_price')
+    .eq('user_id', userId)
+    .gt('quantity', 0);
+
+  // 가장 최근 스냅샷에서 현재가 추출
+  const latestSnapshot = historyData && historyData.length > 0
+    ? historyData[historyData.length - 1].assets_snapshot
+    : null;
+
+  const snapshotPriceMap: Record<string, number> = {};
+  if (latestSnapshot && Array.isArray(latestSnapshot)) {
+    latestSnapshot.forEach((asset: any) => {
+      snapshotPriceMap[asset.symbol] = asset.current_price || 0;
+    });
+  }
+
+  const holdings = (portfolioRows || []).map((p: any) => {
+    const category = getMarketType(p.symbol);
+    const currentPrice = snapshotPriceMap[p.symbol] || p.buy_price;
+    const qty = Number(p.quantity);
+    const buyPrice = Number(p.buy_price);
+    const totalInvested = buyPrice * qty;
+    const totalValuation = currentPrice * qty;
+    const profitRate = buyPrice > 0 ? ((currentPrice - buyPrice) / buyPrice) * 100 : 0;
+
+    return {
+      symbol: p.symbol,
+      name: p.name,
+      category,
+      quantity: qty,
+      buyPrice,
+      currentPrice,
+      totalInvested,
+      totalValuation,
+      profitRate,
+    };
+  }).sort((a: any, b: any) => b.totalValuation - a.totalValuation);
+
+  // ──── 7. 주간 하이라이트: 보유 종목 중 가장 많이 오른/내린 종목 ────
+  let weeklyHighlights: any = null;
+  if (historyData && historyData.length >= 2) {
+    const firstSnap = historyData[0].assets_snapshot;
+    const lastSnap = historyData[historyData.length - 1].assets_snapshot;
+
+    if (firstSnap && lastSnap && Array.isArray(firstSnap) && Array.isArray(lastSnap)) {
+      const firstMap = new Map(firstSnap.map((a: any) => [a.symbol, a]));
+      const changes: any[] = [];
+
+      lastSnap.forEach((last: any) => {
+        const first: any = firstMap.get(last.symbol);
+        if (first && first.current_price > 0 && last.current_price > 0) {
+          const changeRate = ((last.current_price - first.current_price) / first.current_price) * 100;
+          changes.push({
+            symbol: last.symbol,
+            name: last.name,
+            startPrice: first.current_price,
+            endPrice: last.current_price,
+            changeRate,
+          });
+        }
+      });
+
+      changes.sort((a, b) => b.changeRate - a.changeRate);
+
+      weeklyHighlights = {
+        topGainer: changes.length > 0 ? changes[0] : null,
+        topLoser: changes.length > 0 ? changes[changes.length - 1] : null,
+        totalHoldings: holdings.length,
+        gainers: changes.filter(c => c.changeRate > 0).length,
+        losers: changes.filter(c => c.changeRate < 0).length,
+        unchanged: changes.filter(c => c.changeRate === 0).length,
+      };
+    }
+  }
+
+  // 8. push_content에 저장
   const { data: content, error: contentError } = await supabase
     .from('push_content')
     .insert({
@@ -227,6 +305,8 @@ async function generateWeeklyReport(userId: string, baseUrl: string) {
         tradeLogs,
         summary,
         tradeSummary,
+        holdings,
+        weeklyHighlights,
       },
       status: chartData.length > 0 ? 'ready' : 'failed',
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30일 보관
@@ -239,7 +319,7 @@ async function generateWeeklyReport(userId: string, baseUrl: string) {
     throw new Error(`리포트 저장 실패: ${contentError.message}`);
   }
 
-  // 7. Push Dispatcher로 알림 발송
+  // 9. Push Dispatcher로 알림 발송
   const formatKrw = (val: number) => {
     if (Math.abs(val) >= 100000000) return `${(val / 100000000).toFixed(2)}억원`;
     if (Math.abs(val) >= 10000) return `${(val / 10000).toFixed(0)}만원`;
@@ -269,6 +349,7 @@ async function generateWeeklyReport(userId: string, baseUrl: string) {
     period: `${startDateStr} ~ ${endDateStr}`,
     dataPoints: chartData.length,
     tradeCount: tradeLogs.length,
+    holdingsCount: holdings.length,
     summary: summary ? {
       pureProfit: summary.pureProfit,
       returnRate: summary.returnRate,
