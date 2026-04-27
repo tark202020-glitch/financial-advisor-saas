@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
 
       // 로그인 사용자 → 개인 리포트만 생성
       const baseUrl = request.nextUrl.origin;
-      const result = await generateMonthlyReport(user.id, baseUrl);
+      const isTest = request.nextUrl.searchParams.get('test') === 'true';
+      const result = await generateMonthlyReport(user.id, baseUrl, isTest);
       return NextResponse.json(result);
     }
 
@@ -91,24 +92,29 @@ export async function GET(request: NextRequest) {
 /**
  * 개별 사용자의 월간 리포트 생성
  */
-async function generateMonthlyReport(userId: string, baseUrl: string) {
+async function generateMonthlyReport(userId: string, baseUrl: string, isTest: boolean = false) {
   const supabase = getServiceClient();
 
-  // 1. 기간 계산 (전월 1일 ~ 전월 말일)
-  // 예: 5월 1일에 실행 → 4월 1일 ~ 4월 30일
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
   const year = kstNow.getFullYear();
   const month = kstNow.getMonth(); // 0-indexed (현재월)
 
-  // 전월 1일
-  const startDate = new Date(Date.UTC(year, month - 1, 1));
-  // 전월 말일 (현재월 0일 = 전월 마지막 날)
-  const endDate = new Date(Date.UTC(year, month, 0));
+  let startDate, endDate;
+
+  if (isTest) {
+    // 테스트 모드: 당월 1일 ~ 당일
+    startDate = new Date(Date.UTC(year, month, 1));
+    endDate = new Date(kstNow); // 오늘
+  } else {
+    // 실제 발송: 전월 1일 ~ 전월 말일 (예: 5월 1일 실행 → 4월 1일 ~ 4월 30일)
+    startDate = new Date(Date.UTC(year, month - 1, 1));
+    endDate = new Date(Date.UTC(year, month, 0)); // 전월 말일
+  }
 
   const startDateStr = startDate.toISOString().split('T')[0];
   const endDateStr = endDate.toISOString().split('T')[0];
 
-  console.log(`[Monthly Report] Generating for user ${userId}: ${startDateStr} ~ ${endDateStr}`);
+  console.log(`[Monthly Report] Generating for user ${userId}: ${startDateStr} ~ ${endDateStr} (isTest: ${isTest})`);
 
   // 2. portfolio_daily_history에서 캐시된 데이터 조회
   const { data: historyData } = await supabase
