@@ -127,12 +127,16 @@ export async function POST(request: NextRequest) {
 async function generateMonthlyReport(userId: string, baseUrl: string) {
   const supabase = getServiceClient();
 
-  // 1. 기간 계산 (오늘 기준 30일 전 ~ 어제)
+  // 1. 기간 계산 (전월 1일 ~ 전월 말일)
+  // 예: 5월 1일에 실행 → 4월 1일 ~ 4월 30일
   const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const endDate = new Date(kstNow);
-  endDate.setDate(endDate.getDate() - 1); // 어제
-  const startDate = new Date(endDate);
-  startDate.setDate(startDate.getDate() - 29); // 30일 전
+  const year = kstNow.getFullYear();
+  const month = kstNow.getMonth(); // 0-indexed (현재월)
+
+  // 전월 1일
+  const startDate = new Date(Date.UTC(year, month - 1, 1));
+  // 전월 말일 (현재월 0일 = 전월 마지막 날)
+  const endDate = new Date(Date.UTC(year, month, 0));
 
   const startDateStr = startDate.toISOString().split('T')[0];
   const endDateStr = endDate.toISOString().split('T')[0];

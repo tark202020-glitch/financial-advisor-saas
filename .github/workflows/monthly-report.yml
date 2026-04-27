@@ -1,0 +1,43 @@
+# 월간 투자 리포트 자동 발송
+# 매월 1일 KST 09:00 (UTC 00:00)에 실행
+# 전월 1일 ~ 전월 말일 기간의 리포트를 생성하여 이메일 발송
+
+name: Monthly Investment Report
+
+on:
+  schedule:
+    # 매월 1일 UTC 00:00 (KST 09:00)에 실행
+    - cron: '0 0 1 * *'
+  
+  # 수동 실행 지원 (GitHub Actions 탭에서 직접 트리거 가능)
+  workflow_dispatch:
+
+jobs:
+  send-monthly-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 🚀 월간 리포트 생성 및 발송
+        run: |
+          echo "📊 월간 투자 리포트 생성 시작..."
+          echo "실행 시각: $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S KST')"
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/push/generate-weekly-report")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response: $BODY"
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ 리포트 발송 실패 (HTTP $HTTP_CODE)"
+            exit 1
+          fi
+          
+          echo "✅ 월간 리포트 발송 완료!"
