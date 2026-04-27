@@ -19,25 +19,38 @@ jobs:
 
     steps:
       - name: 🚀 월간 리포트 생성 및 발송
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          VERCEL_BYPASS: ${{ secrets.VERCEL_BYPASS_SECRET }}
         run: |
           echo "📊 월간 투자 리포트 생성 시작..."
           echo "실행 시각: $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M:%S KST')"
+          echo "APP_URL 설정 여부: $([ -n "$APP_URL" ] && echo '✅ 설정됨' || echo '❌ 미설정')"
+          echo "CRON_SECRET 설정 여부: $([ -n "$CRON_SECRET" ] && echo '✅ 설정됨' || echo '❌ 미설정')"
+          echo "VERCEL_BYPASS 설정 여부: $([ -n "$VERCEL_BYPASS" ] && echo '✅ 설정됨' || echo '❌ 미설정')"
           
-          RESPONSE=$(curl -s -L -w "\n%{http_code}" \
+          TARGET_URL="${APP_URL}/api/push/generate-weekly-report"
+          echo "호출 URL: ${TARGET_URL}"
+          
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" \
+            -L --post301 --post302 --post303 \
             -X POST \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.APP_URL }}/api/push/generate-weekly-report")
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "x-vercel-protection-bypass: ${VERCEL_BYPASS}" \
+            "${TARGET_URL}")
           
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
+          BODY=$(cat /tmp/response.txt)
           
           echo "HTTP Status: $HTTP_CODE"
-          echo "Response: $BODY"
+          echo "Response Body: $BODY"
           
-          if [ "$HTTP_CODE" != "200" ]; then
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ 월간 리포트 발송 완료!"
+          else
             echo "❌ 리포트 발송 실패 (HTTP $HTTP_CODE)"
+            echo "디버그: 응답 처음 500자"
+            echo "$BODY" | head -c 500
             exit 1
           fi
-          
-          echo "✅ 월간 리포트 발송 완료!"
