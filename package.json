@@ -9,8 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@google/genai": "^1.0.0",
+    "@google/generative-ai": "^0.24.1",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",
     "clsx": "^2.1.1",
@@ -27,12 +27,13 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/nodemailer": "^6.4.17",
     "@types/node": "^20",
+    "@types/nodemailer": "^6.4.17",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

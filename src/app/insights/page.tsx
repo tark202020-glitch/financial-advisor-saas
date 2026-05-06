@@ -117,14 +117,14 @@ export default function InsightsPage() {
                 {/* Data Status Banner */}
                 <DataStatusBanner />
 
+                {/* 1. Portfolio Composition */}
+                <PortfolioCompositionBlock />
+
                 {/* AI Portfolio Analysis (주봇) */}
                 <JubotPortfolioInsight />
 
-                {/* 1. Target Price Graphs */}
+                {/* 2. Target Price Graphs */}
                 <TargetProximityBlock />
-
-                {/* 2. Portfolio Composition */}
-                <PortfolioCompositionBlock />
 
                 {/* 3. AI Analysis History Timeline */}
                 <JubotHistory />
